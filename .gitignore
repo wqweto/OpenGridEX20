@@ -1,0 +1,15 @@
+## VB6 workspace
+
+*.vbw
+*.vbg
+*.bak
+*.log
+*.scc
+*.exe
+**/_del/*
+**/.claude/*
+*.dll
+*.exp
+*.lib
+*.zip
+*.ocx

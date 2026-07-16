@@ -1,0 +1,50 @@
+//=========================================================================
+// OpenGEXHelper.odl - Helper typelib for Open GridEX 2000 Control
+//
+// Defines the IObjectSafety interface with DWORD-sized parameters so it
+// can be implemented from VB6 via Implements. Compile with:
+//
+//   mktyplib OpenGEXHelper.odl
+//=========================================================================
+
+[
+  uuid(498C0DA0-655B-42FE-8CFC-6C3F066EB67D),
+  version(1.0),
+  helpstring("OpenGEX Helper Typelib")
+]
+library OpenGEXHelper
+{
+    importlib("stdole32.tlb");
+
+    [
+      odl,
+      uuid(CB5BDC81-93C1-11CF-8F20-00805F2CD064),
+      helpstring("IObjectSafety Interface")
+    ]
+    interface IObjectSafety : IUnknown
+    {
+        [helpstring("GetInterfaceSafetyOptions")]
+        HRESULT GetInterfaceSafetyOptions(
+                        [in] long riid,
+                        [in] long* pdwSupportedOptions,
+                        [in] long* pdwEnabledOptions);
+        [helpstring("SetInterfaceSafetyOptions")]
+        HRESULT SetInterfaceSafetyOptions(
+                        [in] long riid,
+                        [in] long dwOptionsSetMask,
+                        [in] long dwEnabledOptions);
+    };
+    
+    [uuid(A4C46780-499F-101B-BB78-00AA00383CBB), odl]
+    interface IVbCollection  : IUnknown {
+        HRESULT GetTypeInfoCount([out, retval] int* pctinfo);
+        LONG GetTypeInfo([in] int itinfo,[in] long lcid,[out] void *pptinfo);
+        LONG GetIDsOfNames([in] void *riid,[in] LPWSTR *rgszNames,[in] int cNames,[in] long lcid,[out] long *rgdispid);
+        LONG Invoke([in] long dispidMember,[in] void *riid,[in] long lcid,[in] short wFlags,[in] void *pdispparams,[out] VARIANT *pvarResult,[out] void *pexcepinfo,[out] int *puArgErr);
+        long Item([in] VARIANT* Index, [out, optional] VARIANT* pvarRet);
+        long Add([in] VARIANT* Item, [in, optional] VARIANT* Key, [in, optional] VARIANT* Before, [in, optional] VARIANT* After);
+        long Count([out] long* pcRet);
+        long Remove([in] VARIANT* Index);
+        long NewEnum([out] IUnknown** ppunk);
+    };
+};

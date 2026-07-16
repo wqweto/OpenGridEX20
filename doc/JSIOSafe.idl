@@ -1,0 +1,34 @@
+// Generated .IDL file (by the OLE/COM Object Viewer)
+// 
+// typelib filename: JSIOSafe.tlb
+
+[
+  uuid(C67830E0-D11D-11CF-BD80-00AA00575603),
+  version(1.0)
+]
+library IObjectSafetyTLB
+{
+    // TLib : OLE Automation : {00020430-0000-0000-C000-000000000046}
+    importlib("stdole2.tlb");
+
+    // Forward declare all types defined in this typelib
+    interface IObjectSafety;
+
+    [
+      odl,
+      uuid(CB5BDC81-93C1-11CF-8F20-00805F2CD064),
+      helpstring("IObjectSafety Interface")
+    ]
+    interface IObjectSafety : IUnknown {
+        [helpstring("GetInterfaceSafetyOptions")]
+        HRESULT _stdcall GetInterfaceSafetyOptions(
+                        [in] long riid, 
+                        [in] long* pdwSupportedOptions, 
+                        [in] long* pdwEnabledOptions);
+        [helpstring("SetInterfaceSafetyOptions")]
+        HRESULT _stdcall SetInterfaceSafetyOptions(
+                        [in] long riid, 
+                        [in] long dwOptionsSetMask, 
+                        [in] long dwEnabledOptions);
+    };
+};
