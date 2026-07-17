@@ -1,0 +1,58 @@
+VERSION 5.00
+Object = "{24F4AB9F-37F4-43D4-B383-FB6CD721B629}#1.0#0"; "OpenGridEX20.ocx"
+Begin VB.Form frmMain
+   Caption         =   "Snapshot"
+   ClientHeight    =   4500
+   ClientLeft      =   60
+   ClientTop       =   345
+   ClientWidth     =   7500
+   LinkTopic       =   "Form1"
+   ScaleHeight     =   4500
+   ScaleWidth      =   7500
+   StartUpPosition =   3  'Windows Default
+   Begin OpenGridEX20.GridEX GridEX1
+      Height          =   2000
+      Left            =   60
+      TabIndex        =   0
+      Top             =   60
+      Width           =   3000
+      _ExtentX        =   5292
+      _ExtentY        =   3528
+   End
+   Begin OpenGridEX20.GEXPreview GEXPreview1
+      Height          =   2000
+      Left            =   3180
+      TabIndex        =   1
+      Top             =   60
+      Width           =   3000
+      _ExtentX        =   5292
+      _ExtentY        =   3528
+   End
+End
+Attribute VB_Name = "frmMain"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+'=========================================================================
+'
+' Open GridEX 2000 Control
+' Snapshot engine smoke test: dumps both hosted controls to JSON files
+'
+'=========================================================================
+Option Explicit
+
+Private Sub Form_Load()
+    pvSaveText App.Path & "\GridEX.json", SnapshotToJson(GridEX1.Object, "GridEX", False)
+    pvSaveText App.Path & "\GEXPreview.json", SnapshotToJson(GEXPreview1.Object, "GEXPreview", False)
+    Unload Me
+End Sub
+
+Private Sub pvSaveText(sFile As String, sText As String)
+    Dim lFile           As Long
+
+    lFile = FreeFile
+    Open sFile For Output As #lFile
+    Print #lFile, sText;
+    Close #lFile
+End Sub

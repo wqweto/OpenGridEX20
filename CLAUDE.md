@@ -1,5 +1,12 @@
 # Open GridEX 2000 Control
 
+## General guidelines
+
+- Keep CHANGELOG.md current
+- Don't need DAO binding implemented
+- This is source-compatible implementation
+- In next version this will be translated VB6->VC6 for performance
+
 ## Coding Style for this project
 
 - Declare all helper procedures `Private`

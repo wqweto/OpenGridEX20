@@ -13,3 +13,5 @@
 *.lib
 *.zip
 *.ocx
+*.oca
+test/Snapshot/*.json

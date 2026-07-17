@@ -1,0 +1,3672 @@
+// Generated .IDL file (by the OLE/COM Object Viewer)
+// 
+// typelib filename: OpenGridEX20.ocx
+
+[
+  uuid(24F4AB9F-37F4-43D4-B383-FB6CD721B629),
+  version(1.0),
+  helpstring("Open GridEX 2000 Control"),
+  custom(50867B00-BB69-11D0-A8FF-00A0C9110059, 9782)
+
+]
+library OpenGridEX20
+{
+    // TLib : OLE Automation : {00020430-0000-0000-C000-000000000046}
+    importlib("stdole2.tlb");
+    // TLib : OpenGEX Helper Typelib : {498C0DA0-655B-42FE-8CFC-6C3F066EB67D}
+    importlib("OpenGEXHelper.tlb");
+
+    // Forward declare all types defined in this typelib
+    interface _GridEX;
+    interface _GEXPreview;
+    interface _JSColumn;
+    interface _JSColumns;
+    interface _JSFmtCondition;
+    interface _JSFmtConditions;
+    interface _JSGridImage;
+    interface _JSGridImages;
+    interface _JSGroup;
+    interface _JSGroups;
+    interface _JSSortKey;
+    interface _JSSortKeys;
+    interface _JSValueItem;
+    interface _JSValueList;
+    interface _JSDataObject;
+    interface _JSDataObjectFiles;
+    interface _JSSelectedItems;
+    interface _JSSelectedItem;
+    interface _JSRetBoolean;
+    interface _JSRetVariant;
+    interface _JSRetInteger;
+    interface _JSFormatStyles;
+    interface _JSRowData;
+    interface _JSFormatStyle;
+    interface _JSPrinterProperties;
+    interface _GridDesigner;
+    dispinterface __GridEX;
+    dispinterface __GEXPreview;
+
+    [
+      odl,
+      uuid(E00D4328-B100-4ED8-ACEB-27DCB3C61BD1),
+      version(1.0),
+      helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)"),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _GridEX : IDispatch {
+        [restricted] void Missing7();
+        [restricted] void Missing8();
+        [restricted] void Missing9();
+        [restricted] void Missing10();
+        [restricted] void Missing11();
+        [restricted] void Missing12();
+        [restricted] void Missing13();
+        [restricted] void Missing14();
+        [restricted] void Missing15();
+        [restricted] void Missing16();
+        [restricted] void Missing17();
+        [restricted] void Missing18();
+        [restricted] void Missing19();
+        [restricted] void Missing20();
+        [restricted] void Missing21();
+        [restricted] void Missing22();
+        [restricted] void Missing23();
+        [restricted] void Missing24();
+        [restricted] void Missing25();
+        [restricted] void Missing26();
+        [restricted] void Missing27();
+        [restricted] void Missing28();
+        [restricted] void Missing29();
+        [restricted] void Missing30();
+        [restricted] void Missing31();
+        [restricted] void Missing32();
+        [restricted] void Missing33();
+        [restricted] void Missing34();
+        [restricted] void Missing35();
+        [restricted] void Missing36();
+        [restricted] void Missing37();
+        [restricted] void Missing38();
+        [restricted] void Missing39();
+        [restricted] void Missing40();
+        [restricted] void Missing41();
+        [restricted] void Missing42();
+        [restricted] void Missing43();
+        [restricted] void Missing44();
+        [restricted] void Missing45();
+        [restricted] void Missing46();
+        [restricted] void Missing47();
+        [restricted] void Missing48();
+        [restricted] void Missing49();
+        [restricted] void Missing50();
+        [restricted] void Missing51();
+        [restricted] void Missing52();
+        [restricted] void Missing53();
+        [restricted] void Missing54();
+        [restricted] void Missing55();
+        [restricted] void Missing56();
+        [restricted] void Missing57();
+        [restricted] void Missing58();
+        [restricted] void Missing59();
+        [restricted] void Missing60();
+        [restricted] void Missing61();
+        [restricted] void Missing62();
+        [restricted] void Missing63();
+        [restricted] void Missing64();
+        [restricted] void Missing65();
+        [restricted] void Missing66();
+        [restricted] void Missing67();
+        [restricted] void Missing68();
+        [restricted] void Missing69();
+        [restricted] void Missing70();
+        [restricted] void Missing71();
+        [restricted] void Missing72();
+        [restricted] void Missing73();
+        [restricted] void Missing74();
+        [restricted] void Missing75();
+        [restricted] void Missing76();
+        [restricted] void Missing77();
+        [restricted] void Missing78();
+        [restricted] void Missing79();
+        [restricted] void Missing80();
+        [restricted] void Missing81();
+        [restricted] void Missing82();
+        [restricted] void Missing83();
+        [restricted] void Missing84();
+        [restricted] void Missing85();
+        [restricted] void Missing86();
+        [restricted] void Missing87();
+        [restricted] void Missing88();
+        [restricted] void Missing89();
+        [restricted] void Missing90();
+        [restricted] void Missing91();
+        [restricted] void Missing92();
+        [restricted] void Missing93();
+        [restricted] void Missing94();
+        [restricted] void Missing95();
+        [restricted] void Missing96();
+        [restricted] void Missing97();
+        [restricted] void Missing98();
+        [restricted] void Missing99();
+        [restricted] void Missing100();
+        [restricted] void Missing101();
+        [restricted] void Missing102();
+        [restricted] void Missing103();
+        [restricted] void Missing104();
+        [restricted] void Missing105();
+        [restricted] void Missing106();
+        [restricted] void Missing107();
+        [restricted] void Missing108();
+        [restricted] void Missing109();
+        [restricted] void Missing110();
+        [restricted] void Missing111();
+        [restricted] void Missing112();
+        [restricted] void Missing113();
+        [restricted] void Missing114();
+        [restricted] void Missing115();
+        [restricted] void Missing116();
+        [restricted] void Missing117();
+        [restricted] void Missing118();
+        [restricted] void Missing119();
+        [restricted] void Missing120();
+        [restricted] void Missing121();
+        [restricted] void Missing122();
+        [restricted] void Missing123();
+        [restricted] void Missing124();
+        [restricted] void Missing125();
+        [restricted] void Missing126();
+        [restricted] void Missing127();
+        [restricted] void Missing128();
+        [restricted] void Missing129();
+        [restricted] void Missing130();
+        [restricted] void Missing131();
+        [restricted] void Missing132();
+        [restricted] void Missing133();
+        [restricted] void Missing134();
+        [restricted] void Missing135();
+        [restricted] void Missing136();
+        [restricted] void Missing137();
+        [restricted] void Missing138();
+        [restricted] void Missing139();
+        [restricted] void Missing140();
+        [restricted] void Missing141();
+        [restricted] void Missing142();
+        [restricted] void Missing143();
+        [restricted] void Missing144();
+        [restricted] void Missing145();
+        [restricted] void Missing146();
+        [restricted] void Missing147();
+        [restricted] void Missing148();
+        [restricted] void Missing149();
+        [restricted] void Missing150();
+        [restricted] void Missing151();
+        [restricted] void Missing152();
+        [restricted] void Missing153();
+        [restricted] void Missing154();
+        [restricted] void Missing155();
+        [restricted] void Missing156();
+        [restricted] void Missing157();
+        [restricted] void Missing158();
+        [restricted] void Missing159();
+        [restricted] void Missing160();
+        [restricted] void Missing161();
+        [restricted] void Missing162();
+        [restricted] void Missing163();
+        [restricted] void Missing164();
+        [restricted] void Missing165();
+        [restricted] void Missing166();
+        [restricted] void Missing167();
+        [restricted] void Missing168();
+        [restricted] void Missing169();
+        [restricted] void Missing170();
+        [restricted] void Missing171();
+        [restricted] void Missing172();
+        [restricted] void Missing173();
+        [restricted] void Missing174();
+        [restricted] void Missing175();
+        [restricted] void Missing176();
+        [restricted] void Missing177();
+        [restricted] void Missing178();
+        [restricted] void Missing179();
+        [restricted] void Missing180();
+        [restricted] void Missing181();
+        [restricted] void Missing182();
+        [restricted] void Missing183();
+        [restricted] void Missing184();
+        [restricted] void Missing185();
+        [restricted] void Missing186();
+        [restricted] void Missing187();
+        [restricted] void Missing188();
+        [restricted] void Missing189();
+        [restricted] void Missing190();
+        [restricted] void Missing191();
+        [restricted] void Missing192();
+        [restricted] void Missing193();
+        [restricted] void Missing194();
+        [restricted] void Missing195();
+        [restricted] void Missing196();
+        [restricted] void Missing197();
+        [restricted] void Missing198();
+        [restricted] void Missing199();
+        [restricted] void Missing200();
+        [restricted] void Missing201();
+        [restricted] void Missing202();
+        [restricted] void Missing203();
+        [restricted] void Missing204();
+        [restricted] void Missing205();
+        [restricted] void Missing206();
+        [restricted] void Missing207();
+        [restricted] void Missing208();
+        [restricted] void Missing209();
+        [restricted] void Missing210();
+        [restricted] void Missing211();
+        [restricted] void Missing212();
+        [restricted] void Missing213();
+        [restricted] void Missing214();
+        [restricted] void Missing215();
+        [restricted] void Missing216();
+        [restricted] void Missing217();
+        [restricted] void Missing218();
+        [restricted] void Missing219();
+        [restricted] void Missing220();
+        [restricted] void Missing221();
+        [restricted] void Missing222();
+        [restricted] void Missing223();
+        [restricted] void Missing224();
+        [restricted] void Missing225();
+        [restricted] void Missing226();
+        [restricted] void Missing227();
+        [restricted] void Missing228();
+        [restricted] void Missing229();
+        [restricted] void Missing230();
+        [restricted] void Missing231();
+        [restricted] void Missing232();
+        [restricted] void Missing233();
+        [restricted] void Missing234();
+        [restricted] void Missing235();
+        [restricted] void Missing236();
+        [restricted] void Missing237();
+        [restricted] void Missing238();
+        [restricted] void Missing239();
+        [restricted] void Missing240();
+        [restricted] void Missing241();
+        [restricted] void Missing242();
+        [restricted] void Missing243();
+        [restricted] void Missing244();
+        [restricted] void Missing245();
+        [restricted] void Missing246();
+        [restricted] void Missing247();
+        [restricted] void Missing248();
+        [restricted] void Missing249();
+        [restricted] void Missing250();
+        [restricted] void Missing251();
+        [restricted] void Missing252();
+        [restricted] void Missing253();
+        [restricted] void Missing254();
+        [restricted] void Missing255();
+        [restricted] void Missing256();
+        [restricted] void Missing257();
+        [restricted] void Missing258();
+        [restricted] void Missing259();
+        [restricted] void Missing260();
+        [restricted] void Missing261();
+        [restricted] void Missing262();
+        [restricted] void Missing263();
+        [restricted] void Missing264();
+        [restricted] void Missing265();
+        [restricted] void Missing266();
+        [restricted] void Missing267();
+        [restricted] void Missing268();
+        [restricted] void Missing269();
+        [restricted] void Missing270();
+        [restricted] void Missing271();
+        [restricted] void Missing272();
+        [restricted] void Missing273();
+        [restricted] void Missing274();
+        [restricted] void Missing275();
+        [restricted] void Missing276();
+        [restricted] void Missing277();
+        [restricted] void Missing278();
+        [restricted] void Missing279();
+        [restricted] void Missing280();
+        [restricted] void Missing281();
+        [restricted] void Missing282();
+        [restricted] void Missing283();
+        [restricted] void Missing284();
+        [restricted] void Missing285();
+        [restricted] void Missing286();
+        [restricted] void Missing287();
+        [restricted] void Missing288();
+        [restricted] void Missing289();
+        [restricted] void Missing290();
+        [restricted] void Missing291();
+        [restricted] void Missing292();
+        [restricted] void Missing293();
+        [restricted] void Missing294();
+        [restricted] void Missing295();
+        [restricted] void Missing296();
+        [restricted] void Missing297();
+        [restricted] void Missing298();
+        [restricted] void Missing299();
+        [restricted] void Missing300();
+        [restricted] void Missing301();
+        [restricted] void Missing302();
+        [restricted] void Missing303();
+        [restricted] void Missing304();
+        [restricted] void Missing305();
+        [restricted] void Missing306();
+        [restricted] void Missing307();
+        [restricted] void Missing308();
+        [restricted] void Missing309();
+        [restricted] void Missing310();
+        [restricted] void Missing311();
+        [restricted] void Missing312();
+        [restricted] void Missing313();
+        [restricted] void Missing314();
+        [restricted] void Missing315();
+        [restricted] void Missing316();
+        [restricted] void Missing317();
+        [restricted] void Missing318();
+        [restricted] void Missing319();
+        [restricted] void Missing320();
+        [restricted] void Missing321();
+        [restricted] void Missing322();
+        [restricted] void Missing323();
+        [restricted] void Missing324();
+        [restricted] void Missing325();
+        [restricted] void Missing326();
+        [restricted] void Missing327();
+        [restricted] void Missing328();
+        [restricted] void Missing329();
+        [restricted] void Missing330();
+        [restricted] void Missing331();
+        [restricted] void Missing332();
+        [restricted] void Missing333();
+        [restricted] void Missing334();
+        [restricted] void Missing335();
+        [restricted] void Missing336();
+        [restricted] void Missing337();
+        [restricted] void Missing338();
+        [restricted] void Missing339();
+        [restricted] void Missing340();
+        [restricted] void Missing341();
+        [restricted] void Missing342();
+        [restricted] void Missing343();
+        [restricted] void Missing344();
+        [restricted] void Missing345();
+        [restricted] void Missing346();
+        [restricted] void Missing347();
+        [restricted] void Missing348();
+        [restricted] void Missing349();
+        [restricted] void Missing350();
+        [restricted] void Missing351();
+        [restricted] void Missing352();
+        [restricted] void Missing353();
+        [restricted] void Missing354();
+        [restricted] void Missing355();
+        [restricted] void Missing356();
+        [restricted] void Missing357();
+        [restricted] void Missing358();
+        [restricted] void Missing359();
+        [restricted] void Missing360();
+        [restricted] void Missing361();
+        [restricted] void Missing362();
+        [restricted] void Missing363();
+        [restricted] void Missing364();
+        [restricted] void Missing365();
+        [restricted] void Missing366();
+        [restricted] void Missing367();
+        [restricted] void Missing368();
+        [restricted] void Missing369();
+        [restricted] void Missing370();
+        [restricted] void Missing371();
+        [restricted] void Missing372();
+        [restricted] void Missing373();
+        [restricted] void Missing374();
+        [restricted] void Missing375();
+        [restricted] void Missing376();
+        [restricted] void Missing377();
+        [restricted] void Missing378();
+        [restricted] void Missing379();
+        [restricted] void Missing380();
+        [restricted] void Missing381();
+        [restricted] void Missing382();
+        [restricted] void Missing383();
+        [restricted] void Missing384();
+        [restricted] void Missing385();
+        [restricted] void Missing386();
+        [restricted] void Missing387();
+        [restricted] void Missing388();
+        [restricted] void Missing389();
+        [restricted] void Missing390();
+        [restricted] void Missing391();
+        [restricted] void Missing392();
+        [restricted] void Missing393();
+        [restricted] void Missing394();
+        [restricted] void Missing395();
+        [restricted] void Missing396();
+        [restricted] void Missing397();
+        [restricted] void Missing398();
+        [restricted] void Missing399();
+        [restricted] void Missing400();
+        [restricted] void Missing401();
+        [restricted] void Missing402();
+        [restricted] void Missing403();
+        [restricted] void Missing404();
+        [restricted] void Missing405();
+        [restricted] void Missing406();
+        [restricted] void Missing407();
+        [restricted] void Missing408();
+        [restricted] void Missing409();
+        [restricted] void Missing410();
+        [restricted] void Missing411();
+        [restricted] void Missing412();
+        [restricted] void Missing413();
+        [restricted] void Missing414();
+        [restricted] void Missing415();
+        [restricted] void Missing416();
+        [restricted] void Missing417();
+        [restricted] void Missing418();
+        [restricted] void Missing419();
+        [restricted] void Missing420();
+        [restricted] void Missing421();
+        [restricted] void Missing422();
+        [restricted] void Missing423();
+        [restricted] void Missing424();
+        [restricted] void Missing425();
+        [restricted] void Missing426();
+        [restricted] void Missing427();
+        [restricted] void Missing428();
+        [restricted] void Missing429();
+        [restricted] void Missing430();
+        [restricted] void Missing431();
+        [restricted] void Missing432();
+        [restricted] void Missing433();
+        [restricted] void Missing434();
+        [restricted] void Missing435();
+        [restricted] void Missing436();
+        [restricted] void Missing437();
+        [restricted] void Missing438();
+        [restricted] void Missing439();
+        [restricted] void Missing440();
+        [restricted] void Missing441();
+        [restricted] void Missing442();
+        [restricted] void Missing443();
+        [restricted] void Missing444();
+        [restricted] void Missing445();
+        [restricted] void Missing446();
+        [restricted] void Missing447();
+        [restricted] void Missing448();
+        [restricted] void Missing449();
+        [restricted] void Missing450();
+        [restricted] void Missing451();
+        [restricted] void Missing452();
+        [restricted] void Missing453();
+        [restricted] void Missing454();
+        [restricted] void Missing455();
+        [restricted] void Missing456();
+        [restricted] void Missing457();
+        [restricted] void Missing458();
+        [restricted] void Missing459();
+        [restricted] void Missing460();
+        [restricted] void Missing461();
+        [restricted] void Missing462();
+        [restricted] void Missing463();
+        [restricted] void Missing464();
+        [restricted] void Missing465();
+        [restricted] void Missing466();
+        [restricted] void Missing467();
+        [restricted] void Missing468();
+        [restricted] void Missing469();
+        [restricted] void Missing470();
+        [restricted] void Missing471();
+        [restricted] void Missing472();
+        [restricted] void Missing473();
+        [restricted] void Missing474();
+        [restricted] void Missing475();
+        [restricted] void Missing476();
+        [restricted] void Missing477();
+        [restricted] void Missing478();
+        [restricted] void Missing479();
+        [restricted] void Missing480();
+        [restricted] void Missing481();
+        [restricted] void Missing482();
+        [restricted] void Missing483();
+        [restricted] void Missing484();
+        [restricted] void Missing485();
+        [restricted] void Missing486();
+        [restricted] void Missing487();
+        [restricted] void Missing488();
+        [restricted] void Missing489();
+        [restricted] void Missing490();
+        [restricted] void Missing491();
+        [id(0x6803006e), propget, helpstring("Returns/sets the number of fixed columns at the left of the control.")]
+        HRESULT FrozenColumns([out, retval] short* );
+        [id(0x6803006e), propput, helpstring("Returns/sets the number of fixed columns at the left of the control.")]
+        HRESULT FrozenColumns([in] short );
+        [id(0x6803006d), propget]
+        HRESULT RowHeight([out, retval] long* );
+        [id(0x6803006d), propput]
+        HRESULT RowHeight([in] long );
+        [id(0x6803006c), propget, helpstring("Returns the handle of the cell editor.")]
+        HRESULT hWndEdit([out, retval] long* );
+        [id(0x6803006b), propget, helpstring("Returns/sets how OLE drop operations are handled.")]
+        HRESULT OLEDropMode([out, retval] jgexOleDropModeConstants* );
+        [id(0x6803006b), propput, helpstring("Returns/sets how OLE drop operations are handled.")]
+        HRESULT OLEDropMode([in] jgexOleDropModeConstants );
+        [id(0x6803006a), propget, helpstring("Returns/sets an ADO Recordset object defined by control's properties or by an existing ADO Recordset.")]
+        HRESULT ADORecordset([out, retval] IDispatch** );
+        [id(0x6803006a), propputref, helpstring("Returns/sets an ADO Recordset object defined by control's properties or by an existing ADO Recordset.")]
+        HRESULT ADORecordset([in] IDispatch* );
+        [id(0x68030069), propget, helpstring("Returns the JSFmtConditions collection of the control.")]
+        HRESULT FmtConditions([out, retval] _JSFmtConditions** );
+        [id(0x68030068), propget, helpstring("Returns/sets the foreground color used to display text in cells.")]
+        HRESULT ForeColor([out, retval] OLE_COLOR* );
+        [id(0x68030068), propput, helpstring("Returns/sets the foreground color used to display text in cells.")]
+        HRESULT ForeColor([in] OLE_COLOR );
+        [id(0x68030067), propget, helpstring("Returns/sets the background color for even rows.")]
+        HRESULT RowColorEven([out, retval] OLE_COLOR* );
+        [id(0x68030067), propput, helpstring("Returns/sets the background color for even rows.")]
+        HRESULT RowColorEven([in] OLE_COLOR );
+        [id(0x68030066), propget, helpstring("Returns/sets the background color for odd rows.")]
+        HRESULT RowColorOdd([out, retval] OLE_COLOR* );
+        [id(0x68030066), propput, helpstring("Returns/sets the background color for odd rows.")]
+        HRESULT RowColorOdd([in] OLE_COLOR );
+        [id(0x68030065), propget, helpstring("Returns the count of rows.")]
+        HRESULT RowCount([out, retval] long* );
+        [id(0x68030064), propget, helpstring("Returns/set whether a row is selected or not.")]
+        HRESULT RowSelected(
+                        [in] long RowPosition, 
+                        [out, retval] VARIANT_BOOL* );
+        [id(0x68030064), propput, helpstring("Returns/set whether a row is selected or not.")]
+        HRESULT RowSelected(
+                        [in] long RowPosition, 
+                        [in] VARIANT_BOOL );
+        [id(0x68030063), propget, helpstring("Returns the JSSortKeys collection of the control.")]
+        HRESULT SortKeys([out, retval] _JSSortKeys** );
+        [id(0x68030062), propget, helpstring("Returns or sets the active column.")]
+        HRESULT Col([out, retval] short* );
+        [id(0x68030062), propput, helpstring("Returns or sets the active column.")]
+        HRESULT Col([in] short );
+        [id(0x68030061), propget, helpstring("Returns/sets background color of the group rows.")]
+        HRESULT BackColorRowGroup([out, retval] OLE_COLOR* );
+        [id(0x68030061), propput, helpstring("Returns/sets background color of the group rows.")]
+        HRESULT BackColorRowGroup([in] OLE_COLOR );
+        [id(0x68030060), propget, helpstring("Returns the JSGroups collection of the control.")]
+        HRESULT Groups([out, retval] _JSGroups** );
+        [id(0x6803005f), propget, helpstring("Determines whether the record navigator is visible or hidden.")]
+        HRESULT RecordNavigator([out, retval] VARIANT_BOOL* );
+        [id(0x6803005f), propput, helpstring("Determines whether the record navigator is visible or hidden.")]
+        HRESULT RecordNavigator([in] VARIANT_BOOL );
+        [id(0x6803005e), propget, helpstring("Returns/sets the border style.")]
+        HRESULT BorderStyle([out, retval] jgexBorderStyleConstants* );
+        [id(0x6803005e), propput, helpstring("Returns/sets the border style.")]
+        HRESULT BorderStyle([in] jgexBorderStyleConstants );
+        [id(0x6803005d), propget, helpstring("Returns the JSColumns collection.")]
+        HRESULT Columns([out, retval] _JSColumns** );
+        [id(0x6803005c), propget, helpstring("Determines whether the group by box is displayed.")]
+        HRESULT GroupByBoxVisible([out, retval] VARIANT_BOOL* );
+        [id(0x6803005c), propput, helpstring("Determines whether the group by box is displayed.")]
+        HRESULT GroupByBoxVisible([in] VARIANT_BOOL );
+        [id(0x6803005b), propget, helpstring("Returns/sets background color of the group by box.")]
+        HRESULT BackColorGBBox([out, retval] OLE_COLOR* );
+        [id(0x6803005b), propput, helpstring("Returns/sets background color of the group by box.")]
+        HRESULT BackColorGBBox([in] OLE_COLOR );
+        [id(0x6803005a), propget, helpstring("Returns/sets the grid and cards background color.")]
+        HRESULT BackColor([out, retval] OLE_COLOR* );
+        [id(0x6803005a), propput, helpstring("Returns/sets the grid and cards background color.")]
+        HRESULT BackColor([in] OLE_COLOR );
+        [id(0x68030059), propget, helpstring("Returns/sets the height of the column header row.")]
+        HRESULT ColumnHeaderHeight([out, retval] long* );
+        [id(0x68030059), propput, helpstring("Returns/sets the height of the column header row.")]
+        HRESULT ColumnHeaderHeight([in] long );
+        [id(0x68030058), propget, helpstring("Determines whether column headers are displayed.")]
+        HRESULT ColumnHeaders([out, retval] VARIANT_BOOL* );
+        [id(0x68030058), propput, helpstring("Determines whether column headers are displayed.")]
+        HRESULT ColumnHeaders([in] VARIANT_BOOL );
+        [id(0x68030057), propget, helpstring("Returns/sets background color of column and row headers.")]
+        HRESULT BackColorHeader([out, retval] OLE_COLOR* );
+        [id(0x68030057), propput, helpstring("Returns/sets background color of column and row headers.")]
+        HRESULT BackColorHeader([in] OLE_COLOR );
+        [id(0x68030056), propget, helpstring("Returns/sets the color used to create masks for images.")]
+        HRESULT MaskColor([out, retval] OLE_COLOR* );
+        [id(0x68030056), propput, helpstring("Returns/sets the color used to create masks for images.")]
+        HRESULT MaskColor([in] OLE_COLOR );
+        [id(0x68030055), propget, helpstring("Returns/sets a value indicating the default column width used for new columns.")]
+        HRESULT DefaultColumnWidth([out, retval] long* );
+        [id(0x68030055), propput, helpstring("Returns/sets a value indicating the default column width used for new columns.")]
+        HRESULT DefaultColumnWidth([in] long );
+        [id(0x68030054), propget, helpstring("Determines the way records are displayed.")]
+        HRESULT View([out, retval] jgexViewConstants* );
+        [id(0x68030054), propput, helpstring("Determines the way records are displayed.")]
+        HRESULT View([in] jgexViewConstants );
+        [id(0x68030053), propget, helpstring("Returns/sets the width of JSGridImage objects.")]
+        HRESULT ImageWidth([out, retval] long* );
+        [id(0x68030053), propput, helpstring("Returns/sets the width of JSGridImage objects.")]
+        HRESULT ImageWidth([in] long );
+        [id(0x68030052), propget, helpstring("Returns/sets the height of JSGridImage objects.")]
+        HRESULT ImageHeight([out, retval] long* );
+        [id(0x68030052), propput, helpstring("Returns/sets the height of JSGridImage objects.")]
+        HRESULT ImageHeight([in] long );
+        [id(0x68030051), propget, helpstring("Returns the JSGridImages collection used by the control.")]
+        HRESULT GridImages([out, retval] _JSGridImages** );
+        [id(0x68030050), propget, helpstring("Determines whether the row headers are displayed.")]
+        HRESULT RowHeaders([out, retval] VARIANT_BOOL* );
+        [id(0x68030050), propput, helpstring("Determines whether the row headers are displayed.")]
+        HRESULT RowHeaders([in] VARIANT_BOOL );
+        [id(0x6803004f), propget, helpstring("Determines whether the user can add records.")]
+        HRESULT AllowAddNew([out, retval] VARIANT_BOOL* );
+        [id(0x6803004f), propput, helpstring("Determines whether the user can add records.")]
+        HRESULT AllowAddNew([in] VARIANT_BOOL );
+        [id(0x6803004e), propget, helpstring("Returns/sets the position of the row where the user can add new records.")]
+        HRESULT NewRowPos([out, retval] jgexNewRowPosConstants* );
+        [id(0x6803004e), propput, helpstring("Returns/sets the position of the row where the user can add new records.")]
+        HRESULT NewRowPos([in] jgexNewRowPosConstants );
+        [id(0x6803004d), propget, helpstring("Returns/sets the number of items.")]
+        HRESULT ItemCount([out, retval] long* );
+        [id(0x6803004d), propput, helpstring("Returns/sets the number of items.")]
+        HRESULT ItemCount([in] long );
+        [id(0x6803004c), propget, helpstring("Returns/sets a value representing the data retrieval mode.")]
+        HRESULT DataMode([out, retval] jgexDataModeConstants* );
+        [id(0x6803004c), propput, helpstring("Returns/sets a value representing the data retrieval mode.")]
+        HRESULT DataMode([in] jgexDataModeConstants );
+        [id(0x6803004b), propget, helpstring("Returns/sets the left-most visible column.")]
+        HRESULT LeftCol([out, retval] short* );
+        [id(0x6803004b), propput, helpstring("Returns/sets the left-most visible column.")]
+        HRESULT LeftCol([in] short );
+        [id(0x6803004a), propget, helpstring("Returns/sets  the font used in column headers.")]
+        HRESULT ColumnHeaderFont([out, retval] Font** );
+        [id(0x6803004a), propputref, helpstring("Returns/sets  the font used in column headers.")]
+        HRESULT ColumnHeaderFont([in] Font* );
+        [id(0xfffffe00), propget, helpstring("Returns/sets a Font object.")]
+        HRESULT Font([out, retval] Font** );
+        [id(0xfffffe00), propputref, helpstring("Returns/sets a Font object.")]
+        HRESULT Font([in] Font* );
+        [id(0x68030049), propget, helpstring("Returns/sets the row position of the first visible row or card.")]
+        HRESULT FirstItem([out, retval] long* );
+        [id(0x68030049), propput, helpstring("Returns/sets the row position of the first visible row or card.")]
+        HRESULT FirstItem([in] long );
+        [id(0x68030048), propget, helpstring("Determines whether the control will draw lines between cells.")]
+        HRESULT GridLines([out, retval] jgexGridLinesConstants* );
+        [id(0x68030048), propput, helpstring("Determines whether the control will draw lines between cells.")]
+        HRESULT GridLines([in] jgexGridLinesConstants );
+        [id(0x68030047), propget, helpstring("Returns/sets the color used to draw grid lines.")]
+        HRESULT GridLinesColor([out, retval] OLE_COLOR* );
+        [id(0x68030047), propput, helpstring("Returns/sets the color used to draw grid lines.")]
+        HRESULT GridLinesColor([in] OLE_COLOR );
+        [id(0x68030046), propget, helpstring("Returns/sets the background color of the area outside the grid or card.")]
+        HRESULT BackColorBkg([out, retval] OLE_COLOR* );
+        [id(0x68030046), propput, helpstring("Returns/sets the background color of the area outside the grid or card.")]
+        HRESULT BackColorBkg([in] OLE_COLOR );
+        [id(0x68030045), propget, helpstring("Returns/sets the horizontal and vertical space between cards.")]
+        HRESULT CardSpacing([out, retval] long* );
+        [id(0x68030045), propput, helpstring("Returns/sets the horizontal and vertical space between cards.")]
+        HRESULT CardSpacing([in] long );
+        [id(0x68030044), propget, helpstring("Returns/sets the width of a card.")]
+        HRESULT CardWidth([out, retval] long* );
+        [id(0x68030044), propput, helpstring("Returns/sets the width of a card.")]
+        HRESULT CardWidth([in] long );
+        [id(0x68030043), propget, helpstring("Returns/sets a value containing a bookmark for a row.")]
+        HRESULT RowBookmark(
+                        [in] long RowIndex, 
+                        [out, retval] VARIANT* );
+        [id(0x68030043), propput, helpstring("Returns/sets a value containing a bookmark for a row.")]
+        HRESULT RowBookmark(
+                        [in] long RowIndex, 
+                        [in] VARIANT );
+        [id(0x68030042), propget, helpstring("Returns/sets the current row/card position.")]
+        HRESULT Row([out, retval] long* );
+        [id(0x68030042), propput, helpstring("Returns/sets the current row/card position.")]
+        HRESULT Row([in] long );
+        [id(0x68030041), propget, helpstring("Returns/sets the error message string from the underlying data source. ")]
+        HRESULT ErrorText([out, retval] BSTR* );
+        [id(0x68030041), propput, helpstring("Returns/sets the error message string from the underlying data source. ")]
+        HRESULT ErrorText([in] BSTR );
+        [id(0x68030040), propget, helpstring("Determines wheter the user can edit records. ")]
+        HRESULT AllowEdit([out, retval] VARIANT_BOOL* );
+        [id(0x68030040), propput, helpstring("Determines wheter the user can edit records. ")]
+        HRESULT AllowEdit([in] VARIANT_BOOL );
+        [id(0x6803003f), propget, helpstring("Returns/sets a value indicating that the data has been changed by some process other than that of retrieving data from the current record.")]
+        HRESULT DataChanged([out, retval] VARIANT_BOOL* );
+        [id(0x6803003f), propput, helpstring("Returns/sets a value indicating that the data has been changed by some process other than that of retrieving data from the current record.")]
+        HRESULT DataChanged([in] VARIANT_BOOL );
+        [id(0x6803003e), propget, helpstring("Returns the handle of the control.")]
+        HRESULT hWnd([out, retval] long* );
+        [id(0x6803003d), propget, helpstring("Determines whether the user can delete records.")]
+        HRESULT AllowDelete([out, retval] VARIANT_BOOL* );
+        [id(0x6803003d), propput, helpstring("Determines whether the user can delete records.")]
+        HRESULT AllowDelete([in] VARIANT_BOOL );
+        [id(0x6803003c), propget, helpstring("Returns/sets the text displayed in the group by box when no groups are set.")]
+        HRESULT GroupByBoxInfoText([out, retval] BSTR* );
+        [id(0x6803003c), propput, helpstring("Returns/sets the text displayed in the group by box when no groups are set.")]
+        HRESULT GroupByBoxInfoText([in] BSTR );
+        [id(0x6803003b), propget, helpstring("Returns/sets the foreground color used to display text in headers.")]
+        HRESULT ForeColorHeader([out, retval] OLE_COLOR* );
+        [id(0x6803003b), propput, helpstring("Returns/sets the foreground color used to display text in headers.")]
+        HRESULT ForeColorHeader([in] OLE_COLOR );
+        [id(0x6803003a), propget, helpstring("Returns/sets the foreground color used to display text in group rows.")]
+        HRESULT ForeColorRowGroup([out, retval] OLE_COLOR* );
+        [id(0x6803003a), propput, helpstring("Returns/sets the foreground color used to display text in group rows.")]
+        HRESULT ForeColorRowGroup([in] OLE_COLOR );
+        [id(0x68030039), propget, helpstring("Returns/sets the background color of the rectangle surrounding the information text displayed in the group by box ")]
+        HRESULT BackColorInfoText([out, retval] OLE_COLOR* );
+        [id(0x68030039), propput, helpstring("Returns/sets the background color of the rectangle surrounding the information text displayed in the group by box ")]
+        HRESULT BackColorInfoText([in] OLE_COLOR );
+        [id(0x68030038), propget, helpstring("Returns/sets the foreground color used to display the information text in the group by box.")]
+        HRESULT ForeColorInfoText([out, retval] OLE_COLOR* );
+        [id(0x68030038), propput, helpstring("Returns/sets the foreground color used to display the information text in the group by box.")]
+        HRESULT ForeColorInfoText([in] OLE_COLOR );
+        [id(0x68030037), propget, helpstring("Enables automatic sorting and groupping of records after commit changes made by the user.")]
+        HRESULT AutomaticArrange([out, retval] VARIANT_BOOL* );
+        [id(0x68030037), propput, helpstring("Enables automatic sorting and groupping of records after commit changes made by the user.")]
+        HRESULT AutomaticArrange([in] VARIANT_BOOL );
+        [id(0x68030036), propget, helpstring("Returns/sets a value that represents the connect parameter used to open the database.")]
+        HRESULT Connect([out, retval] BSTR* );
+        [id(0x68030036), propput, helpstring("Returns/sets a value that represents the connect parameter used to open the database.")]
+        HRESULT Connect([in] BSTR );
+        [id(0x68030035), propget, helpstring("Returns/sets the name and location of the source of data.")]
+        HRESULT DatabaseName([out, retval] BSTR* );
+        [id(0x68030035), propput, helpstring("Returns/sets the name and location of the source of data.")]
+        HRESULT DatabaseName([in] BSTR );
+        [id(0x68030034), propget, helpstring("Determines whether the database is opened for single- or multi-user access.")]
+        HRESULT Exclusive([out, retval] VARIANT_BOOL* );
+        [id(0x68030034), propput, helpstring("Determines whether the database is opened for single- or multi-user access.")]
+        HRESULT Exclusive([in] VARIANT_BOOL );
+        [id(0x68030033), propget, helpstring("Returns/sets the underlying table, SQL statement, or QueryDef object for the Recordset.")]
+        HRESULT RecordSource([out, retval] BSTR* );
+        [id(0x68030033), propput, helpstring("Returns/sets the underlying table, SQL statement, or QueryDef object for the Recordset.")]
+        HRESULT RecordSource([in] BSTR );
+        [id(0x68030032), propget, helpstring("Returns/sets a value indicating the type of recordset object.")]
+        HRESULT RecordsetType([out, retval] jgexRecordsetTypeConstants* );
+        [id(0x68030032), propput, helpstring("Returns/sets a value indicating the type of recordset object.")]
+        HRESULT RecordsetType([in] jgexRecordsetTypeConstants );
+        [id(0x68030031), propget, helpstring("Determines whether the user can drag columns.")]
+        HRESULT AllowColumnDrag([out, retval] VARIANT_BOOL* );
+        [id(0x68030031), propput, helpstring("Determines whether the user can drag columns.")]
+        HRESULT AllowColumnDrag([in] VARIANT_BOOL );
+        [id(0x68030030), propget, helpstring("Returns/sets the style used to highlight a selected cell.")]
+        HRESULT SelectionStyle([out, retval] jgexSelectionStyleConstants* );
+        [id(0x68030030), propput, helpstring("Returns/sets the style used to highlight a selected cell.")]
+        HRESULT SelectionStyle([in] jgexSelectionStyleConstants );
+        [id(0x6803002f), propget, helpstring("Determines whether the user can resize cards.")]
+        HRESULT AllowCardSizing([out, retval] VARIANT_BOOL* );
+        [id(0x6803002f), propput, helpstring("Determines whether the user can resize cards.")]
+        HRESULT AllowCardSizing([in] VARIANT_BOOL );
+        [id(0x6803002e), propget, helpstring("Returns/sets the text that will appear before the caption in every card.")]
+        HRESULT CardCaptionPrefix([out, retval] BSTR* );
+        [id(0x6803002e), propput, helpstring("Returns/sets the text that will appear before the caption in every card.")]
+        HRESULT CardCaptionPrefix([in] BSTR );
+        [id(0x6803002d), propget, helpstring("Returns/sets whether the control will show borders in cards.")]
+        HRESULT CardBorders([out, retval] VARIANT_BOOL* );
+        [id(0x6803002d), propput, helpstring("Returns/sets whether the control will show borders in cards.")]
+        HRESULT CardBorders([in] VARIANT_BOOL );
+        [id(0x6803002c), propget, helpstring("Determines whether the control should scroll its contents while the user moves the scroll box along the vertical scroll bar.")]
+        HRESULT ContinuousScroll([out, retval] VARIANT_BOOL* );
+        [id(0x6803002c), propput, helpstring("Determines whether the control should scroll its contents while the user moves the scroll box along the vertical scroll bar.")]
+        HRESULT ContinuousScroll([in] VARIANT_BOOL );
+        [id(0x6803002b), propget, helpstring("Returns/sets a Recordset object defined by control's properties or by an existing Recordset.")]
+        HRESULT Recordset([out, retval] IDispatch** );
+        [id(0x6803002b), propputref, helpstring("Returns/sets a Recordset object defined by control's properties or by an existing Recordset.")]
+        HRESULT Recordset([in] IDispatch* );
+        [id(0x6803002a), propget, helpstring("Returns/sets the value of a column in the current row.")]
+        HRESULT Value(
+                        [in] short ColIndex, 
+                        [out, retval] VARIANT* );
+        [id(0x6803002a), propput, helpstring("Returns/sets the value of a column in the current row.")]
+        HRESULT Value(
+                        [in] short ColIndex, 
+                        [in] VARIANT );
+        [id(0x68030029), propget, helpstring("Returns True if the control has loaded all bookmark records in the recordset.")]
+        HRESULT FullyLoaded([out, retval] VARIANT_BOOL* );
+        [id(0x68030028), propget, helpstring("Returns or sets the type of locking for the Recordset.")]
+        HRESULT LockType([out, retval] jgexLockTypeConstants* );
+        [id(0x68030028), propput, helpstring("Returns or sets the type of locking for the Recordset.")]
+        HRESULT LockType([in] jgexLockTypeConstants );
+        [id(0x68030027), propget, helpstring("Returns/sets a value that specifies one or more characteristics of the Recordset object.")]
+        HRESULT Options([out, retval] long* );
+        [id(0x68030027), propput, helpstring("Returns/sets a value that specifies one or more characteristics of the Recordset object.")]
+        HRESULT Options([in] long );
+        [id(0x68030026), propget, helpstring("Returns/sets a value indicating whether the Database object must be opened as read only.")]
+        HRESULT ReadOnly([out, retval] VARIANT_BOOL* );
+        [id(0x68030026), propput, helpstring("Returns/sets a value indicating whether the Database object must be opened as read only.")]
+        HRESULT ReadOnly([in] VARIANT_BOOL );
+        [id(0x68030025), propget, helpstring("Determines wheter the control uses alternating row colors.")]
+        HRESULT UseEvenOddColor([out, retval] VARIANT_BOOL* );
+        [id(0x68030025), propput, helpstring("Determines wheter the control uses alternating row colors.")]
+        HRESULT UseEvenOddColor([in] VARIANT_BOOL );
+        [id(0x68030024), propget, helpstring("Returns/sets the display style for headers.")]
+        HRESULT HeaderStyle([out, retval] jgexHeaderStyleConstants* );
+        [id(0x68030024), propput, helpstring("Returns/sets the display style for headers.")]
+        HRESULT HeaderStyle([in] jgexHeaderStyleConstants );
+        [id(0x68030023), propget, helpstring("Determines how selected items will be displayed when the control loses focus.")]
+        HRESULT HideSelection([out, retval] jgexHideSelectionConstants* );
+        [id(0x68030023), propput, helpstring("Determines how selected items will be displayed when the control loses focus.")]
+        HRESULT HideSelection([in] jgexHideSelectionConstants );
+        [id(0x68030022), propget, helpstring("Determines whether a user can make multiple selections.")]
+        HRESULT MultiSelect([out, retval] VARIANT_BOOL* );
+        [id(0x68030022), propput, helpstring("Determines whether a user can make multiple selections.")]
+        HRESULT MultiSelect([in] VARIANT_BOOL );
+        [id(0x68030021), propget, helpstring("Returns the JSSelectedItems collection in the control.")]
+        HRESULT SelectedItems([out, retval] _JSSelectedItems** );
+        [id(0x68030020), propget, helpstring("Determines wheter dragging of the selected rows are detected.")]
+        HRESULT DetectRowDrag([out, retval] VARIANT_BOOL* );
+        [id(0x68030020), propput, helpstring("Determines wheter dragging of the selected rows are detected.")]
+        HRESULT DetectRowDrag([in] VARIANT_BOOL );
+        [id(0x6803001f), propget, helpstring("Returns/sets the text displayed in the calendar drop-down 'Today' button.")]
+        HRESULT CalendarTodayText([out, retval] BSTR* );
+        [id(0x6803001f), propput, helpstring("Returns/sets the text displayed in the calendar drop-down 'Today' button.")]
+        HRESULT CalendarTodayText([in] BSTR );
+        [id(0x6803001e), propget, helpstring("Returns/sets the text displayed in the calendar drop-down 'None' button.")]
+        HRESULT CalendarNoneText([out, retval] BSTR* );
+        [id(0x6803001e), propput, helpstring("Returns/sets the text displayed in the calendar drop-down 'None' button.")]
+        HRESULT CalendarNoneText([in] BSTR );
+        [id(0x6803001d), propget, helpstring("Returns/sets whether the cell editor is active.")]
+        HRESULT EditMode([out, retval] jgexEditModeConstants* );
+        [id(0x6803001d), propput, helpstring("Returns/sets whether the cell editor is active.")]
+        HRESULT EditMode([in] jgexEditModeConstants );
+        [id(0x6803001c), propget, helpstring("Returns/sets the starting point of text selected in a cell editor; indicates the position of the insertion point if no text is selected.")]
+        HRESULT SelStart([out, retval] long* );
+        [id(0x6803001c), propput, helpstring("Returns/sets the starting point of text selected in a cell editor; indicates the position of the insertion point if no text is selected.")]
+        HRESULT SelStart([in] long );
+        [id(0x6803001b), propget, helpstring("Returns/sets the number of characters selected. ")]
+        HRESULT SelLength([out, retval] long* );
+        [id(0x6803001b), propput, helpstring("Returns/sets the number of characters selected. ")]
+        HRESULT SelLength([in] long );
+        [id(0x6803001a), propget, helpstring("Returns/sets the string containing the currently selected text in the cell editor.")]
+        HRESULT SelText([out, retval] BSTR* );
+        [id(0x6803001a), propput, helpstring("Returns/sets the string containing the currently selected text in the cell editor.")]
+        HRESULT SelText([in] BSTR );
+        [id(0x68030019), propget, helpstring("Returns/sets whether a group row is expanded or collapsed.")]
+        HRESULT RowExpanded(
+                        [in] long RowPosition, 
+                        [out, retval] VARIANT_BOOL* );
+        [id(0x68030019), propput, helpstring("Returns/sets whether a group row is expanded or collapsed.")]
+        HRESULT RowExpanded(
+                        [in] long RowPosition, 
+                        [in] VARIANT_BOOL );
+        [id(0x68030018), propget, helpstring("Returns/sets the location of the cursor engine (ADO mode only).")]
+        HRESULT CursorLocation([out, retval] jgexCursorLocationConstants* );
+        [id(0x68030018), propput, helpstring("Returns/sets the location of the cursor engine (ADO mode only).")]
+        HRESULT CursorLocation([in] jgexCursorLocationConstants );
+        [id(0x68030017), propget, helpstring("Determines the behavior of the tab key.")]
+        HRESULT TabKeyBehavior([out, retval] jgexTabKeyBehaviorConstants* );
+        [id(0x68030017), propput, helpstring("Determines the behavior of the tab key.")]
+        HRESULT TabKeyBehavior([in] jgexTabKeyBehaviorConstants );
+        [id(0x68030016), propget, helpstring("Determines whether the control can respond to user-generated events.")]
+        HRESULT Enabled([out, retval] VARIANT_BOOL* );
+        [id(0x68030016), propput, helpstring("Determines whether the control can respond to user-generated events.")]
+        HRESULT Enabled([in] VARIANT_BOOL );
+        [id(0x68030015), propget, helpstring("Determines whether visible columns should be automatically sized to fit on the control's client width.")]
+        HRESULT ColumnAutoResize([out, retval] VARIANT_BOOL* );
+        [id(0x68030015), propput, helpstring("Determines whether visible columns should be automatically sized to fit on the control's client width.")]
+        HRESULT ColumnAutoResize([in] VARIANT_BOOL );
+        [id(0x68030014), propget, helpstring("Returns the JSFormatStyles collection.")]
+        HRESULT FormatStyles([out, retval] _JSFormatStyles** );
+        [id(0x68030013), propget, helpstring("Returns the JSPrinterProperties object of the control.")]
+        HRESULT PrinterProperties([out, retval] _JSPrinterProperties** );
+        [id(0x68030012), propget, helpstring("Returns/sets the number of lines to be displayed in preview rows.")]
+        HRESULT PreviewRowLines([out, retval] short* );
+        [id(0x68030012), propput, helpstring("Returns/sets the number of lines to be displayed in preview rows.")]
+        HRESULT PreviewRowLines([in] short );
+        [id(0x68030011), propget, helpstring("Returns/sets the index or key of the column to be displayed as the preview row.")]
+        HRESULT PreviewColumn([out, retval] VARIANT* );
+        [id(0x68030011), propput, helpstring("Returns/sets the index or key of the column to be displayed as the preview row.")]
+        HRESULT PreviewColumn([in] VARIANT );
+        [id(0x68030010), propget, helpstring("Determines the style of group footers. ")]
+        HRESULT GroupFooterStyle([out, retval] jgexGroupFooterStyleConstants* );
+        [id(0x68030010), propput, helpstring("Determines the style of group footers. ")]
+        HRESULT GroupFooterStyle([in] jgexGroupFooterStyleConstants );
+        [id(0x6803000f), propget, helpstring("Determines whether the control should display empty fields in cards.")]
+        HRESULT ShowEmptyFields([out, retval] VARIANT_BOOL* );
+        [id(0x6803000f), propput, helpstring("Determines whether the control should display empty fields in cards.")]
+        HRESULT ShowEmptyFields([in] VARIANT_BOOL );
+        [id(0x6803000e), propget, helpstring("Determines whether the control will behave as a drop down list for a column in another GridEX control.")]
+        HRESULT ActAsDropDown([out, retval] VARIANT_BOOL* );
+        [id(0x6803000e), propput, helpstring("Determines whether the control will behave as a drop down list for a column in another GridEX control.")]
+        HRESULT ActAsDropDown([in] VARIANT_BOOL );
+        [id(0x6803000d), propget, helpstring("Returns/sets the index or key of the column used to supply a data value to another GridEX control.")]
+        HRESULT BoundColumnIndex([out, retval] VARIANT* );
+        [id(0x6803000d), propput, helpstring("Returns/sets the index or key of the column used to supply a data value to another GridEX control.")]
+        HRESULT BoundColumnIndex([in] VARIANT );
+        [id(0x6803000c), propget, helpstring("Returns/sets the index or key of the column that replaces Id values in a DropDown GridEX Control.")]
+        HRESULT ReplaceColumnIndex([out, retval] VARIANT* );
+        [id(0x6803000c), propput, helpstring("Returns/sets the index or key of the column that replaces Id values in a DropDown GridEX Control.")]
+        HRESULT ReplaceColumnIndex([in] VARIANT );
+        [id(0x6803000b), propget, helpstring("Determines the grid lines style.")]
+        HRESULT GridLineStyle([out, retval] jgexGridLineStyleConstants* );
+        [id(0x6803000b), propput, helpstring("Determines the grid lines style.")]
+        HRESULT GridLineStyle([in] jgexGridLineStyleConstants );
+        [id(0x6803000a), propget, helpstring("Determines whether empty rows below the last row should be displayed. ")]
+        HRESULT EmptyRows([out, retval] VARIANT_BOOL* );
+        [id(0x6803000a), propput, helpstring("Determines whether empty rows below the last row should be displayed. ")]
+        HRESULT EmptyRows([in] VARIANT_BOOL );
+        [id(0x68030009), propget, helpstring("Determines whether drawing is enabled or not.")]
+        HRESULT Redraw([out, retval] VARIANT_BOOL* );
+        [id(0x68030009), propput, helpstring("Determines whether drawing is enabled or not.")]
+        HRESULT Redraw([in] VARIANT_BOOL );
+        [id(0x68030008), propget, helpstring("Determines how the control groups records. ")]
+        HRESULT DefaultGroupMode([out, retval] jgexDefaultGroupModeConstants* );
+        [id(0x68030008), propput, helpstring("Determines how the control groups records. ")]
+        HRESULT DefaultGroupMode([in] jgexDefaultGroupModeConstants );
+        [id(0x68030007), propget, helpstring("Determines whether the group and sort settings will be held when rebinding the control.")]
+        HRESULT HoldSortSettings([out, retval] VARIANT_BOOL* );
+        [id(0x68030007), propput, helpstring("Determines whether the group and sort settings will be held when rebinding the control.")]
+        HRESULT HoldSortSettings([in] VARIANT_BOOL );
+        [id(0x68030006), propget, helpstring("Returns/sets the text displayed in the record navigator.")]
+        HRESULT RecordNavigatorString([out, retval] BSTR* );
+        [id(0x68030006), propput, helpstring("Returns/sets the text displayed in the record navigator.")]
+        HRESULT RecordNavigatorString([in] BSTR );
+        [id(0x68030005), propget, helpstring("Determines whether the control should show tool tips over cells where text is not entirely displayed.")]
+        HRESULT ShowToolTips([out, retval] VARIANT_BOOL* );
+        [id(0x68030005), propput, helpstring("Determines whether the control should show tool tips over cells where text is not entirely displayed.")]
+        HRESULT ShowToolTips([in] VARIANT_BOOL );
+        [id(0x68030004), propget, helpstring("Determines whether the control should show tool tips while the user scrolls vertically.")]
+        HRESULT ScrollToolTips([out, retval] VARIANT_BOOL* );
+        [id(0x68030004), propput, helpstring("Determines whether the control should show tool tips while the user scrolls vertically.")]
+        HRESULT ScrollToolTips([in] VARIANT_BOOL );
+        [id(0x68030003), propget, helpstring("Returns/sets the index or key of the column used to get values for scroll tool tips.")]
+        HRESULT ScrollToolTipColumn([out, retval] VARIANT* );
+        [id(0x68030003), propput, helpstring("Returns/sets the index or key of the column used to get values for scroll tool tips.")]
+        HRESULT ScrollToolTipColumn([in] VARIANT );
+        [id(0x68030002), propget, helpstring("Determines whether the control should sort values automatically when the user clicks on a column header.")]
+        HRESULT AutomaticSort([out, retval] VARIANT_BOOL* );
+        [id(0x68030002), propput, helpstring("Determines whether the control should sort values automatically when the user clicks on a column header.")]
+        HRESULT AutomaticSort([in] VARIANT_BOOL );
+        [id(0x68030001), propget, helpstring("Returns/sets the left indent, in twips, for text in the preview row.")]
+        HRESULT PreviewRowIndent([out, retval] long* );
+        [id(0x68030001), propput, helpstring("Returns/sets the left indent, in twips, for text in the preview row.")]
+        HRESULT PreviewRowIndent([in] long );
+        [id(0x68030000), propget, helpstring("Determines whether users can resize rows.")]
+        HRESULT AllowRowSizing([out, retval] VARIANT_BOOL* );
+        [id(0x68030000), propput, helpstring("Determines whether users can resize rows.")]
+        HRESULT AllowRowSizing([in] VARIANT_BOOL );
+        [id(0x6003006f), helpstring("Loads a previously saved GridEX layout from an URL.")]
+        HRESULT LoadLayoutFromURL(
+                        [in] BSTR URL, 
+                        [in, out, optional, defaultvalue(-1)] VARIANT_BOOL* Rebind, 
+                        [in, optional] BSTR DatabaseName);
+        [id(0x60030070), helpstring("Set focus to the specific record box in the record navigator.")]
+        HRESULT SetFocusRecordNavigator();
+        [id(0x60030071), helpstring("Forces a GridEX control to refresh its contents without re-opening the recordset. ")]
+        HRESULT Refetch([in, out, optional] VARIANT* HoldSortSettings);
+        [id(0x60030072), helpstring("Prints the contents of a GridEX control.")]
+        HRESULT PrintGrid(
+                        [in, out, optional] VARIANT_BOOL* UsePrintSetupDlg, 
+                        [in, out, optional] VARIANT_BOOL* PrintSelectedItems);
+        [id(0x60030073), helpstring("Loads a previously saved GridEX layout from a file.")]
+        HRESULT LoadLayout(
+                        [in] BSTR FileName, 
+                        [in, out, optional, defaultvalue(-1)] VARIANT_BOOL* Rebind, 
+                        [in, optional] BSTR DatabaseName);
+        [id(0x60030074), helpstring("Initiates an OLE drag/drop operation.")]
+        HRESULT OLEDrag();
+        [id(0x60030075), helpstring("Collapses all group rows.")]
+        HRESULT CollapseAll();
+        [id(0x60030076), helpstring("Forces the re-sort of the records.")]
+        HRESULT RefreshSort();
+        [id(0x60030077), helpstring("Returns the original index of a row.")]
+        HRESULT RowIndex(
+                        [in] long RowPosition, 
+                        [out, retval] long* );
+        [id(0x60030078), helpstring("Forces recalculation of groups.")]
+        HRESULT RefreshGroups([in, optional] VARIANT_BOOL AllCollapsed);
+        [id(0x60030079), helpstring("Ensures visibility of a cell.")]
+        HRESULT EnsureVisible(
+                        [in, optional] long Row, 
+                        [in, optional] short Col);
+        [id(0x6003007a), helpstring("Forces re-creation of the recordset.")]
+        HRESULT Rebind([in, out, optional] VARIANT* HoldSortSettings);
+        [id(0x6003007b), helpstring("Returns True if the specified row is a group row.")]
+        HRESULT IsGroupItem(
+                        [in] long Row, 
+                        [out, retval] VARIANT_BOOL* );
+        [id(0x6003007c), helpstring("Forces a complete repaint of a GridEX control.")]
+        HRESULT Refresh();
+        [id(0x6003007d), helpstring("Prevents recalculation of the column layout when the recordset is created.")]
+        HRESULT HoldFields();
+        [id(0x6003007e), helpstring("Restores the default layout columns.")]
+        HRESULT ClearFields();
+        [id(0xfffffdd8), helpstring("Displays the About box for the control.")]
+        HRESULT AboutBox();
+        [id(0x6003007f), helpstring("Loads the bookmarks of all records in the underlying Recordset.")]
+        HRESULT LoadEntireRecordset();
+        [id(0x60030080), helpstring("Expands all group rows.")]
+        HRESULT ExpandAll();
+        [id(0x60030081), helpstring("Returns the part of a GridEX control that contains the specified point.")]
+        HRESULT HitTest(
+                        [in] long X, 
+                        [in] long Y, 
+                        [out, retval] jgexHitTestConstants* );
+        [id(0x60030082), helpstring("Returns a JSColumn object that contains a given point.")]
+        HRESULT ColFromPoint(
+                        [in] long X, 
+                        [in] long Y, 
+                        [out, retval] _JSColumn** );
+        [id(0x60030083), helpstring("Returns the row that contains the given point.")]
+        HRESULT RowFromPoint(
+                        [in] long X, 
+                        [in] long Y, 
+                        [out, retval] long* );
+        [id(0x60030084), helpstring("Sets the current row as the one that matches the Bookmark.")]
+        HRESULT MoveToBookmark([in] VARIANT vBookmark);
+        [id(0x60030085), helpstring("Sets the current row as the one that matches the index.")]
+        HRESULT MoveToRowIndex([in] long RowIndex);
+        [id(0x60030086), helpstring("Commit changes made to the current row writing to the database and re-position the record in case that needed.")]
+        HRESULT Update();
+        [id(0x60030087), helpstring("Sets the first open record as the current row.")]
+        HRESULT MoveFirst();
+        [id(0x60030088), helpstring("Sets the last open record as the current row.")]
+        HRESULT MoveLast();
+        [id(0x60030089), helpstring("Moves to the previous open record.")]
+        HRESULT MovePrevious();
+        [id(0x6003008a), helpstring("Moves to the next open record.")]
+        HRESULT MoveNext();
+        [id(0x6003008b), helpstring("Moves the current row to the specified position.")]
+        HRESULT MoveRelative([in] long nRows);
+        [id(0x6003008c), helpstring("Deletes selected rows.")]
+        HRESULT Delete();
+        [id(0x6003008d), helpstring("Searches for records added after all bookmarks have been loaded.")]
+        HRESULT SearchNewRecords();
+        [id(0x6003008e), helpstring("Refreshes data of the record that matches the Bookmark.")]
+        HRESULT RefreshRowBookmark([in] VARIANT Bookmark);
+        [id(0x6003008f), helpstring("Refreshes data of the record that matches the index.")]
+        HRESULT RefreshRowIndex([in] long RowIndex);
+        [id(0x60030090), helpstring("Returns the level of a group row.")]
+        HRESULT GroupRowLevel(
+                        [in] long RowPosition, 
+                        [out, retval] short* );
+        [id(0x60030091), helpstring("Expands and selects children records of selected group rows.")]
+        HRESULT ExpandSelection();
+        [id(0x60030092), helpstring("Returns the contents of the selected rows.")]
+        HRESULT GetClipString(
+                        [in, optional] VARIANT_BOOL IncludeHeaders, 
+                        [in, optional] BSTR ColumnDelimeter, 
+                        [in, optional] BSTR RowDelimeter, 
+                        [out, retval] BSTR* );
+        [id(0x60030093), helpstring("Returns True if a cell is visible.")]
+        HRESULT CellVisible(
+                        [in, out, optional] long* RowPosition, 
+                        [in, out, optional] short* ColPosition, 
+                        [out, retval] VARIANT_BOOL* );
+        [id(0x60030094), helpstring("Returns the left of a cell.")]
+        HRESULT CellLeft(
+                        [in, out, optional] long* RowPosition, 
+                        [in, out, optional] short* ColPosition, 
+                        [out, retval] long* );
+        [id(0x60030095), helpstring("Returns the top of a cell.")]
+        HRESULT CellTop(
+                        [in, out, optional] long* RowPosition, 
+                        [in, out, optional] short* ColPosition, 
+                        [out, retval] long* );
+        [id(0x60030096), helpstring("Returns the width of a cell.")]
+        HRESULT CellWidth(
+                        [in, out, optional] long* RowPosition, 
+                        [in, out, optional] short* ColPosition, 
+                        [out, retval] long* );
+        [id(0x60030097), helpstring("Returns the height of a cell.")]
+        HRESULT CellHeight(
+                        [in, out, optional] long* RowPosition, 
+                        [in, out, optional] short* ColPosition, 
+                        [out, retval] long* );
+        [id(0x60030098), helpstring("Sets the current row to the one that matches the specified criteria.")]
+        HRESULT Find(
+                        [in] short ColIndex, 
+                        [in] jgexConditionOperatorConstants Operator, 
+                        [in] VARIANT Value1, 
+                        [in, optional] VARIANT Value2, 
+                        [in, out, optional, defaultvalue(-1)] long* Start, 
+                        [in, out, optional] long* SearchDirection, 
+                        [out, retval] VARIANT_BOOL* );
+        [id(0x60030099), helpstring("Saves the current GridEX layout in a file.")]
+        HRESULT SaveLayout([in] BSTR FileName);
+        [id(0x6003009a), helpstring("Sends the contents of a GridEX control to be printed to a GEXPreview control.")]
+        HRESULT PrintPreview(
+                        [in, out] IDispatch** PreviewControl, 
+                        [in, out, optional] VARIANT_BOOL* PrintSelectedItems);
+        [id(0x6003009b), helpstring("Returns the JSGroup object in the specified coordinates.")]
+        HRESULT GroupFromPoint(
+                        [in] long X, 
+                        [in] long Y, 
+                        [out, retval] _JSGroup** );
+        [id(0x6003009c), helpstring("Returns a string that contains the GridEX control layout settings.")]
+        HRESULT LayoutString(
+                        [in, out, optional] VARIANT_BOOL* UnicodeCompression, 
+                        [out, retval] BSTR* );
+        [id(0x6003009d), helpstring("Loads a previously saved GridEX layout from a layout string.")]
+        HRESULT LoadLayoutString(
+                        [in, out] BSTR* LayoutString, 
+                        [in, out, optional] VARIANT_BOOL* Rebind, 
+                        [in, out, optional] BSTR* DatabaseName);
+        [id(0x6003009e), helpstring("Returns a JSRowData object representing a row.")]
+        HRESULT GetRowData(
+                        [in] long RowPosition, 
+                        [out, retval] _JSRowData** );
+    };
+
+    [
+      uuid(D6FDF0F9-460E-468F-9430-87F9198424BD),
+      version(1.0),
+      helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)"),
+      noncreatable,
+      control
+    ]
+    coclass GridEX {
+        [default] interface _GridEX;
+        interface IObjectSafety;
+        [default, source] dispinterface __GridEX;
+    };
+
+    [
+      odl,
+      uuid(ED88098F-0154-429D-9988-A8EE84C70CFF),
+      version(1.0),
+      helpstring("Janus GridEX 2000 Print Preview Control (DAO 3.6 & ADO 2.x)"),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _GEXPreview : IDispatch {
+        [restricted] void Missing7();
+        [restricted] void Missing8();
+        [restricted] void Missing9();
+        [restricted] void Missing10();
+        [restricted] void Missing11();
+        [restricted] void Missing12();
+        [restricted] void Missing13();
+        [restricted] void Missing14();
+        [restricted] void Missing15();
+        [restricted] void Missing16();
+        [restricted] void Missing17();
+        [restricted] void Missing18();
+        [restricted] void Missing19();
+        [restricted] void Missing20();
+        [restricted] void Missing21();
+        [restricted] void Missing22();
+        [restricted] void Missing23();
+        [restricted] void Missing24();
+        [restricted] void Missing25();
+        [restricted] void Missing26();
+        [restricted] void Missing27();
+        [restricted] void Missing28();
+        [restricted] void Missing29();
+        [restricted] void Missing30();
+        [restricted] void Missing31();
+        [restricted] void Missing32();
+        [restricted] void Missing33();
+        [restricted] void Missing34();
+        [restricted] void Missing35();
+        [restricted] void Missing36();
+        [restricted] void Missing37();
+        [restricted] void Missing38();
+        [restricted] void Missing39();
+        [restricted] void Missing40();
+        [restricted] void Missing41();
+        [restricted] void Missing42();
+        [restricted] void Missing43();
+        [restricted] void Missing44();
+        [restricted] void Missing45();
+        [restricted] void Missing46();
+        [restricted] void Missing47();
+        [restricted] void Missing48();
+        [restricted] void Missing49();
+        [restricted] void Missing50();
+        [restricted] void Missing51();
+        [restricted] void Missing52();
+        [restricted] void Missing53();
+        [restricted] void Missing54();
+        [restricted] void Missing55();
+        [restricted] void Missing56();
+        [restricted] void Missing57();
+        [restricted] void Missing58();
+        [restricted] void Missing59();
+        [restricted] void Missing60();
+        [restricted] void Missing61();
+        [restricted] void Missing62();
+        [restricted] void Missing63();
+        [restricted] void Missing64();
+        [restricted] void Missing65();
+        [restricted] void Missing66();
+        [restricted] void Missing67();
+        [restricted] void Missing68();
+        [restricted] void Missing69();
+        [restricted] void Missing70();
+        [restricted] void Missing71();
+        [restricted] void Missing72();
+        [restricted] void Missing73();
+        [restricted] void Missing74();
+        [restricted] void Missing75();
+        [restricted] void Missing76();
+        [restricted] void Missing77();
+        [restricted] void Missing78();
+        [restricted] void Missing79();
+        [restricted] void Missing80();
+        [restricted] void Missing81();
+        [restricted] void Missing82();
+        [restricted] void Missing83();
+        [restricted] void Missing84();
+        [restricted] void Missing85();
+        [restricted] void Missing86();
+        [restricted] void Missing87();
+        [restricted] void Missing88();
+        [restricted] void Missing89();
+        [restricted] void Missing90();
+        [restricted] void Missing91();
+        [restricted] void Missing92();
+        [restricted] void Missing93();
+        [restricted] void Missing94();
+        [restricted] void Missing95();
+        [restricted] void Missing96();
+        [restricted] void Missing97();
+        [restricted] void Missing98();
+        [restricted] void Missing99();
+        [restricted] void Missing100();
+        [restricted] void Missing101();
+        [restricted] void Missing102();
+        [restricted] void Missing103();
+        [restricted] void Missing104();
+        [restricted] void Missing105();
+        [restricted] void Missing106();
+        [restricted] void Missing107();
+        [restricted] void Missing108();
+        [restricted] void Missing109();
+        [restricted] void Missing110();
+        [restricted] void Missing111();
+        [restricted] void Missing112();
+        [restricted] void Missing113();
+        [restricted] void Missing114();
+        [restricted] void Missing115();
+        [restricted] void Missing116();
+        [restricted] void Missing117();
+        [restricted] void Missing118();
+        [restricted] void Missing119();
+        [restricted] void Missing120();
+        [restricted] void Missing121();
+        [restricted] void Missing122();
+        [restricted] void Missing123();
+        [restricted] void Missing124();
+        [restricted] void Missing125();
+        [restricted] void Missing126();
+        [restricted] void Missing127();
+        [restricted] void Missing128();
+        [restricted] void Missing129();
+        [restricted] void Missing130();
+        [restricted] void Missing131();
+        [restricted] void Missing132();
+        [restricted] void Missing133();
+        [restricted] void Missing134();
+        [restricted] void Missing135();
+        [restricted] void Missing136();
+        [restricted] void Missing137();
+        [restricted] void Missing138();
+        [restricted] void Missing139();
+        [restricted] void Missing140();
+        [restricted] void Missing141();
+        [restricted] void Missing142();
+        [restricted] void Missing143();
+        [restricted] void Missing144();
+        [restricted] void Missing145();
+        [restricted] void Missing146();
+        [restricted] void Missing147();
+        [restricted] void Missing148();
+        [restricted] void Missing149();
+        [restricted] void Missing150();
+        [restricted] void Missing151();
+        [restricted] void Missing152();
+        [restricted] void Missing153();
+        [restricted] void Missing154();
+        [restricted] void Missing155();
+        [restricted] void Missing156();
+        [restricted] void Missing157();
+        [restricted] void Missing158();
+        [restricted] void Missing159();
+        [restricted] void Missing160();
+        [restricted] void Missing161();
+        [restricted] void Missing162();
+        [restricted] void Missing163();
+        [restricted] void Missing164();
+        [restricted] void Missing165();
+        [restricted] void Missing166();
+        [restricted] void Missing167();
+        [restricted] void Missing168();
+        [restricted] void Missing169();
+        [restricted] void Missing170();
+        [restricted] void Missing171();
+        [restricted] void Missing172();
+        [restricted] void Missing173();
+        [restricted] void Missing174();
+        [restricted] void Missing175();
+        [restricted] void Missing176();
+        [restricted] void Missing177();
+        [restricted] void Missing178();
+        [restricted] void Missing179();
+        [restricted] void Missing180();
+        [restricted] void Missing181();
+        [restricted] void Missing182();
+        [restricted] void Missing183();
+        [restricted] void Missing184();
+        [restricted] void Missing185();
+        [restricted] void Missing186();
+        [restricted] void Missing187();
+        [restricted] void Missing188();
+        [restricted] void Missing189();
+        [restricted] void Missing190();
+        [restricted] void Missing191();
+        [restricted] void Missing192();
+        [restricted] void Missing193();
+        [restricted] void Missing194();
+        [restricted] void Missing195();
+        [restricted] void Missing196();
+        [restricted] void Missing197();
+        [restricted] void Missing198();
+        [restricted] void Missing199();
+        [restricted] void Missing200();
+        [restricted] void Missing201();
+        [restricted] void Missing202();
+        [restricted] void Missing203();
+        [restricted] void Missing204();
+        [restricted] void Missing205();
+        [restricted] void Missing206();
+        [restricted] void Missing207();
+        [restricted] void Missing208();
+        [restricted] void Missing209();
+        [restricted] void Missing210();
+        [restricted] void Missing211();
+        [restricted] void Missing212();
+        [restricted] void Missing213();
+        [restricted] void Missing214();
+        [restricted] void Missing215();
+        [restricted] void Missing216();
+        [restricted] void Missing217();
+        [restricted] void Missing218();
+        [restricted] void Missing219();
+        [restricted] void Missing220();
+        [restricted] void Missing221();
+        [restricted] void Missing222();
+        [restricted] void Missing223();
+        [restricted] void Missing224();
+        [restricted] void Missing225();
+        [restricted] void Missing226();
+        [restricted] void Missing227();
+        [restricted] void Missing228();
+        [restricted] void Missing229();
+        [restricted] void Missing230();
+        [restricted] void Missing231();
+        [restricted] void Missing232();
+        [restricted] void Missing233();
+        [restricted] void Missing234();
+        [restricted] void Missing235();
+        [restricted] void Missing236();
+        [restricted] void Missing237();
+        [restricted] void Missing238();
+        [restricted] void Missing239();
+        [restricted] void Missing240();
+        [restricted] void Missing241();
+        [restricted] void Missing242();
+        [restricted] void Missing243();
+        [restricted] void Missing244();
+        [restricted] void Missing245();
+        [restricted] void Missing246();
+        [restricted] void Missing247();
+        [restricted] void Missing248();
+        [restricted] void Missing249();
+        [restricted] void Missing250();
+        [restricted] void Missing251();
+        [restricted] void Missing252();
+        [restricted] void Missing253();
+        [restricted] void Missing254();
+        [restricted] void Missing255();
+        [restricted] void Missing256();
+        [restricted] void Missing257();
+        [restricted] void Missing258();
+        [restricted] void Missing259();
+        [restricted] void Missing260();
+        [restricted] void Missing261();
+        [restricted] void Missing262();
+        [restricted] void Missing263();
+        [restricted] void Missing264();
+        [restricted] void Missing265();
+        [restricted] void Missing266();
+        [restricted] void Missing267();
+        [restricted] void Missing268();
+        [restricted] void Missing269();
+        [restricted] void Missing270();
+        [restricted] void Missing271();
+        [restricted] void Missing272();
+        [restricted] void Missing273();
+        [restricted] void Missing274();
+        [restricted] void Missing275();
+        [restricted] void Missing276();
+        [restricted] void Missing277();
+        [restricted] void Missing278();
+        [restricted] void Missing279();
+        [restricted] void Missing280();
+        [restricted] void Missing281();
+        [restricted] void Missing282();
+        [restricted] void Missing283();
+        [restricted] void Missing284();
+        [restricted] void Missing285();
+        [restricted] void Missing286();
+        [restricted] void Missing287();
+        [restricted] void Missing288();
+        [restricted] void Missing289();
+        [restricted] void Missing290();
+        [restricted] void Missing291();
+        [restricted] void Missing292();
+        [restricted] void Missing293();
+        [restricted] void Missing294();
+        [restricted] void Missing295();
+        [restricted] void Missing296();
+        [restricted] void Missing297();
+        [restricted] void Missing298();
+        [restricted] void Missing299();
+        [restricted] void Missing300();
+        [restricted] void Missing301();
+        [restricted] void Missing302();
+        [restricted] void Missing303();
+        [restricted] void Missing304();
+        [restricted] void Missing305();
+        [restricted] void Missing306();
+        [restricted] void Missing307();
+        [restricted] void Missing308();
+        [restricted] void Missing309();
+        [restricted] void Missing310();
+        [restricted] void Missing311();
+        [restricted] void Missing312();
+        [restricted] void Missing313();
+        [restricted] void Missing314();
+        [restricted] void Missing315();
+        [restricted] void Missing316();
+        [restricted] void Missing317();
+        [restricted] void Missing318();
+        [restricted] void Missing319();
+        [restricted] void Missing320();
+        [restricted] void Missing321();
+        [restricted] void Missing322();
+        [restricted] void Missing323();
+        [restricted] void Missing324();
+        [restricted] void Missing325();
+        [restricted] void Missing326();
+        [restricted] void Missing327();
+        [restricted] void Missing328();
+        [restricted] void Missing329();
+        [restricted] void Missing330();
+        [restricted] void Missing331();
+        [restricted] void Missing332();
+        [restricted] void Missing333();
+        [restricted] void Missing334();
+        [restricted] void Missing335();
+        [restricted] void Missing336();
+        [restricted] void Missing337();
+        [restricted] void Missing338();
+        [restricted] void Missing339();
+        [restricted] void Missing340();
+        [restricted] void Missing341();
+        [restricted] void Missing342();
+        [restricted] void Missing343();
+        [restricted] void Missing344();
+        [restricted] void Missing345();
+        [restricted] void Missing346();
+        [restricted] void Missing347();
+        [restricted] void Missing348();
+        [restricted] void Missing349();
+        [restricted] void Missing350();
+        [restricted] void Missing351();
+        [restricted] void Missing352();
+        [restricted] void Missing353();
+        [restricted] void Missing354();
+        [restricted] void Missing355();
+        [restricted] void Missing356();
+        [restricted] void Missing357();
+        [restricted] void Missing358();
+        [restricted] void Missing359();
+        [restricted] void Missing360();
+        [restricted] void Missing361();
+        [restricted] void Missing362();
+        [restricted] void Missing363();
+        [restricted] void Missing364();
+        [restricted] void Missing365();
+        [restricted] void Missing366();
+        [restricted] void Missing367();
+        [restricted] void Missing368();
+        [restricted] void Missing369();
+        [restricted] void Missing370();
+        [restricted] void Missing371();
+        [restricted] void Missing372();
+        [restricted] void Missing373();
+        [restricted] void Missing374();
+        [restricted] void Missing375();
+        [restricted] void Missing376();
+        [restricted] void Missing377();
+        [restricted] void Missing378();
+        [restricted] void Missing379();
+        [restricted] void Missing380();
+        [restricted] void Missing381();
+        [restricted] void Missing382();
+        [restricted] void Missing383();
+        [restricted] void Missing384();
+        [restricted] void Missing385();
+        [restricted] void Missing386();
+        [restricted] void Missing387();
+        [restricted] void Missing388();
+        [restricted] void Missing389();
+        [restricted] void Missing390();
+        [restricted] void Missing391();
+        [restricted] void Missing392();
+        [restricted] void Missing393();
+        [restricted] void Missing394();
+        [restricted] void Missing395();
+        [restricted] void Missing396();
+        [restricted] void Missing397();
+        [restricted] void Missing398();
+        [restricted] void Missing399();
+        [restricted] void Missing400();
+        [restricted] void Missing401();
+        [restricted] void Missing402();
+        [restricted] void Missing403();
+        [restricted] void Missing404();
+        [restricted] void Missing405();
+        [restricted] void Missing406();
+        [restricted] void Missing407();
+        [restricted] void Missing408();
+        [restricted] void Missing409();
+        [restricted] void Missing410();
+        [restricted] void Missing411();
+        [restricted] void Missing412();
+        [restricted] void Missing413();
+        [restricted] void Missing414();
+        [restricted] void Missing415();
+        [restricted] void Missing416();
+        [restricted] void Missing417();
+        [restricted] void Missing418();
+        [restricted] void Missing419();
+        [restricted] void Missing420();
+        [restricted] void Missing421();
+        [restricted] void Missing422();
+        [restricted] void Missing423();
+        [restricted] void Missing424();
+        [restricted] void Missing425();
+        [restricted] void Missing426();
+        [restricted] void Missing427();
+        [restricted] void Missing428();
+        [restricted] void Missing429();
+        [restricted] void Missing430();
+        [restricted] void Missing431();
+        [restricted] void Missing432();
+        [restricted] void Missing433();
+        [restricted] void Missing434();
+        [restricted] void Missing435();
+        [restricted] void Missing436();
+        [restricted] void Missing437();
+        [restricted] void Missing438();
+        [restricted] void Missing439();
+        [restricted] void Missing440();
+        [restricted] void Missing441();
+        [restricted] void Missing442();
+        [restricted] void Missing443();
+        [restricted] void Missing444();
+        [restricted] void Missing445();
+        [restricted] void Missing446();
+        [restricted] void Missing447();
+        [restricted] void Missing448();
+        [restricted] void Missing449();
+        [restricted] void Missing450();
+        [restricted] void Missing451();
+        [restricted] void Missing452();
+        [restricted] void Missing453();
+        [restricted] void Missing454();
+        [restricted] void Missing455();
+        [restricted] void Missing456();
+        [restricted] void Missing457();
+        [restricted] void Missing458();
+        [restricted] void Missing459();
+        [restricted] void Missing460();
+        [restricted] void Missing461();
+        [restricted] void Missing462();
+        [restricted] void Missing463();
+        [restricted] void Missing464();
+        [restricted] void Missing465();
+        [restricted] void Missing466();
+        [restricted] void Missing467();
+        [restricted] void Missing468();
+        [restricted] void Missing469();
+        [restricted] void Missing470();
+        [restricted] void Missing471();
+        [restricted] void Missing472();
+        [restricted] void Missing473();
+        [restricted] void Missing474();
+        [restricted] void Missing475();
+        [restricted] void Missing476();
+        [restricted] void Missing477();
+        [restricted] void Missing478();
+        [restricted] void Missing479();
+        [restricted] void Missing480();
+        [restricted] void Missing481();
+        [restricted] void Missing482();
+        [restricted] void Missing483();
+        [restricted] void Missing484();
+        [restricted] void Missing485();
+        [restricted] void Missing486();
+        [restricted] void Missing487();
+        [restricted] void Missing488();
+        [restricted] void Missing489();
+        [restricted] void Missing490();
+        [restricted] void Missing491();
+        [id(0x68030009), propget, helpstring("Returns the number of pages in a document.")]
+        HRESULT TotalPages([out, retval] long* );
+        [id(0x68030008), propget, helpstring("Returns or sets the page displayed.")]
+        HRESULT CurrentPage([out, retval] long* );
+        [id(0x68030008), propput, helpstring("Returns or sets the page displayed.")]
+        HRESULT CurrentPage([in] long );
+        [id(0x68030007), propget, helpstring("Returns/sets a Font object used in the toolbar.")]
+        HRESULT ToolbarFont([out, retval] Font** );
+        [id(0x68030007), propputref, helpstring("Returns/sets a Font object used in the toolbar.")]
+        HRESULT ToolbarFont([in] Font* );
+        [id(0x68030006), propget, helpstring("Determines how GEXPreview control should display pages.")]
+        HRESULT Zoom([out, retval] jgexZoomConstants* );
+        [id(0x68030006), propput, helpstring("Determines how GEXPreview control should display pages.")]
+        HRESULT Zoom([in] jgexZoomConstants );
+        [id(0x68030005), propget, helpstring("Determines whether the tool bar is displayed.")]
+        HRESULT ToolbarVisible([out, retval] VARIANT_BOOL* );
+        [id(0x68030005), propput, helpstring("Determines whether the tool bar is displayed.")]
+        HRESULT ToolbarVisible([in] VARIANT_BOOL );
+        [id(0x68030004), propget, helpstring("Returns/sets the text displayed in the <Page Setup> button.")]
+        HRESULT PageSetupText([out, retval] BSTR* );
+        [id(0x68030004), propput, helpstring("Returns/sets the text displayed in the <Page Setup> button.")]
+        HRESULT PageSetupText([in] BSTR );
+        [id(0x68030003), propget, helpstring("Returns/sets the text displayed in the <Print> button.")]
+        HRESULT PrintText([out, retval] BSTR* );
+        [id(0x68030003), propput, helpstring("Returns/sets the text displayed in the <Print> button.")]
+        HRESULT PrintText([in] BSTR );
+        [id(0x68030002), propget, helpstring("Returns/sets the text displayed in the <Close> button.")]
+        HRESULT CloseButtonText([out, retval] BSTR* );
+        [id(0x68030002), propput, helpstring("Returns/sets the text displayed in the <Close> button.")]
+        HRESULT CloseButtonText([in] BSTR );
+        [id(0x68030001), propget, helpstring("Returns the handle of a GEXPreview control.")]
+        HRESULT hWnd([out, retval] long* );
+        [id(0x68030000), propget, helpstring("Retusns/sets the background color of the control.")]
+        HRESULT BackColor([out, retval] OLE_COLOR* );
+        [id(0x68030000), propput, helpstring("Retusns/sets the background color of the control.")]
+        HRESULT BackColor([in] OLE_COLOR );
+        [id(0x6003000a), helpstring("Displays the next page in a document.")]
+        HRESULT NextPage();
+        [id(0x6003000b), helpstring("Displays the previous page in a document.")]
+        HRESULT PreviousPage();
+        [id(0x6003000c), helpstring("Forces the recalculation of the layout for pages in a document.")]
+        HRESULT Repaginate();
+    };
+
+    [
+      uuid(91B6C35C-7149-4CAD-AB96-64B1F60A3F61),
+      version(1.0),
+      helpstring("Janus GridEX 2000 Print Preview Control (DAO 3.6 & ADO 2.x)"),
+      noncreatable,
+      control
+    ]
+    coclass GEXPreview {
+        [default] interface _GEXPreview;
+        interface IObjectSafety;
+        [default, source] dispinterface __GEXPreview;
+    };
+
+    [
+      odl,
+      uuid(87DC9D76-285D-408E-8B1D-BCE81869201D),
+      version(1.0),
+      helpstring("Represents a column within a GridEX control."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSColumn : IDispatch {
+        [id(0x6803002c), propget, helpstring("Returns/sets a string that uniquely identifies a column in a collection.")]
+        HRESULT Key([out, retval] BSTR* );
+        [id(0x6803002b), propget, helpstring("Returns/sets a value that determines the alignment of text in the column's header.")]
+        HRESULT HeaderAlignment([out, retval] jgexAlignmentConstants* );
+        [id(0x6803002b), propput, helpstring("Returns/sets a value that determines the alignment of text in the column's header.")]
+        HRESULT HeaderAlignment([in] jgexAlignmentConstants );
+        [id(0x6803002a), propget, helpstring("Returns/sets the index of the JSGridImage displayed in the column's header.")]
+        HRESULT HeaderIcon([out, retval] short* );
+        [id(0x6803002a), propput, helpstring("Returns/sets the index of the JSGridImage displayed in the column's header.")]
+        HRESULT HeaderIcon([in] short );
+        [id(0x68030029), propget, helpstring("Returns/sets the index of the JSGridImage displayed in the column's cells.")]
+        HRESULT DefaultIcon([out, retval] short* );
+        [id(0x68030029), propput, helpstring("Returns/sets the index of the JSGridImage displayed in the column's cells.")]
+        HRESULT DefaultIcon([in] short );
+        [id(0x68030028), propget, helpstring("Returns a value that represents the index of the JSColumn in the JSColumns collection.")]
+        HRESULT Index([out, retval] short* );
+        [id(0x68030027), propget, helpstring("Returns/sets the position of the column.")]
+        HRESULT ColPosition([out, retval] short* );
+        [id(0x68030027), propput, helpstring("Returns/sets the position of the column.")]
+        HRESULT ColPosition([in] short );
+        [id(0x68030026), propget, helpstring("Returns the JSValueList collection for the column.")]
+        HRESULT ValueList([out, retval] _JSValueList** );
+        [id(0x68030025), propget, helpstring("Returns/sets a value indicating whether an object is visible or hidden.")]
+        HRESULT Visible([out, retval] VARIANT_BOOL* );
+        [id(0x68030025), propput, helpstring("Returns/sets a value indicating whether an object is visible or hidden.")]
+        HRESULT Visible([in] VARIANT_BOOL );
+        [id(0x68030024), propget, helpstring("Returns/sets the width of a column.")]
+        HRESULT Width([out, retval] long* );
+        [id(0x68030024), propput, helpstring("Returns/sets the width of a column.")]
+        HRESULT Width([in] long );
+        [id(0x68030023), propget, helpstring("Returns/sets a value that represents a field in the Recordset.")]
+        HRESULT DataField([out, retval] BSTR* );
+        [id(0x68030023), propput, helpstring("Returns/sets a value that represents a field in the Recordset.")]
+        HRESULT DataField([in] BSTR );
+        [id(00000000), propget]
+        HRESULT Caption([out, retval] BSTR* );
+        [id(00000000), propput]
+        HRESULT Caption([in] BSTR );
+        [id(0x68030022), propget, helpstring("Returns/sets a value indicating Determines whether a user can resize the column.")]
+        HRESULT AllowSizing([out, retval] VARIANT_BOOL* );
+        [id(0x68030022), propput, helpstring("Returns/sets a value indicating Determines whether a user can resize the column.")]
+        HRESULT AllowSizing([in] VARIANT_BOOL );
+        [id(0x68030021), propget, helpstring("Returns/sets a value that indicates how column's contents are displayed.")]
+        HRESULT ColumnType([out, retval] jgexColumnTypeConstants* );
+        [id(0x68030021), propput, helpstring("Returns/sets a value that indicates how column's contents are displayed.")]
+        HRESULT ColumnType([in] jgexColumnTypeConstants );
+        [id(0x68030020), propget, helpstring("Determines whether the column's value will be displayed in the card caption.")]
+        HRESULT CardCaption([out, retval] VARIANT_BOOL* );
+        [id(0x68030020), propput, helpstring("Determines whether the column's value will be displayed in the card caption.")]
+        HRESULT CardCaption([in] VARIANT_BOOL );
+        [id(0x6803001f), propget, helpstring("Returns/sets a value that indicates how column is edited by the user.")]
+        HRESULT EditType([out, retval] jgexEditTypeConstants* );
+        [id(0x6803001f), propput, helpstring("Returns/sets a value that indicates how column is edited by the user.")]
+        HRESULT EditType([in] jgexEditTypeConstants );
+        [id(0x6803001e), propget, helpstring("Controls whether the column has a list of values.")]
+        HRESULT HasValueList([out, retval] VARIANT_BOOL* );
+        [id(0x6803001e), propput, helpstring("Controls whether the column has a list of values.")]
+        HRESULT HasValueList([in] VARIANT_BOOL );
+        [id(0x6803001d), propget, helpstring("Returns a value that represents the sort applied to a column.")]
+        HRESULT SortOrder([out, retval] jgexSortOrderConstants* );
+        [id(0x6803001c), propget, helpstring("Determines the way that values in the column are sorted and/or grouped.")]
+        HRESULT SortType([out, retval] jgexSortTypeConstants* );
+        [id(0x6803001c), propput, helpstring("Determines the way that values in the column are sorted and/or grouped.")]
+        HRESULT SortType([in] jgexSortTypeConstants );
+        [id(0x6803001b), propget, helpstring("Controls whether the caption of a column is displayed before its value in the card body.")]
+        HRESULT ShowCaptionInCardView([out, retval] VARIANT_BOOL* );
+        [id(0x6803001b), propput, helpstring("Controls whether the caption of a column is displayed before its value in the card body.")]
+        HRESULT ShowCaptionInCardView([in] VARIANT_BOOL );
+        [id(0x6803001a), propget, helpstring("Returns a value that indicates whether the Column is grouped.")]
+        HRESULT IsGrouped([out, retval] VARIANT_BOOL* );
+        [id(0x68030019), propget, helpstring("Returns/sets a value indicating the format string for the Column.")]
+        HRESULT Format([out, retval] BSTR* );
+        [id(0x68030019), propput, helpstring("Returns/sets a value indicating the format string for the Column.")]
+        HRESULT Format([in] BSTR );
+        [id(0x68030018), propget, helpstring("Returns/sets a value that determines the alignment of text in the column.")]
+        HRESULT TextAlignment([out, retval] jgexAlignmentConstants* );
+        [id(0x68030018), propput, helpstring("Returns/sets a value that determines the alignment of text in the column.")]
+        HRESULT TextAlignment([in] jgexAlignmentConstants );
+        [id(0x68030017), propget, helpstring("Returns/sets a value indicating the format string for the value of the group rows when the control is grouped by the column.")]
+        HRESULT GroupFormat([out, retval] BSTR* );
+        [id(0x68030017), propput, helpstring("Returns/sets a value indicating the format string for the value of the group rows when the control is grouped by the column.")]
+        HRESULT GroupFormat([in] BSTR );
+        [id(0x68030016), propget, helpstring("Returns/sets the string displayed in a group row before the group value.")]
+        HRESULT GroupPrefix([out, retval] BSTR* );
+        [id(0x68030016), propput, helpstring("Returns/sets the string displayed in a group row before the group value.")]
+        HRESULT GroupPrefix([in] BSTR );
+        [id(0x68030015), propget, helpstring("Returns/sets the string displayed in a group row when the value grouped is an empty string.")]
+        HRESULT GroupEmptyStringCaption([out, retval] BSTR* );
+        [id(0x68030015), propput, helpstring("Returns/sets the string displayed in a group row when the value grouped is an empty string.")]
+        HRESULT GroupEmptyStringCaption([in] BSTR );
+        [id(0x68030014), propget, helpstring("Determines whether the column's icon will be displayed in the card caption.")]
+        HRESULT CardIcon([out, retval] VARIANT_BOOL* );
+        [id(0x68030014), propput, helpstring("Determines whether the column's icon will be displayed in the card caption.")]
+        HRESULT CardIcon([in] VARIANT_BOOL );
+        [id(0x68030013), propget, helpstring("Returns/sets whether the FetchIcon event will be fired for the column.")]
+        HRESULT FetchIcon([out, retval] VARIANT_BOOL* );
+        [id(0x68030013), propput, helpstring("Returns/sets whether the FetchIcon event will be fired for the column.")]
+        HRESULT FetchIcon([in] VARIANT_BOOL );
+        [id(0x68030012), propget, helpstring("Returns/sets whether the FetchData event will be fired for the column.")]
+        HRESULT FetchData([out, retval] VARIANT_BOOL* );
+        [id(0x68030012), propput, helpstring("Returns/sets whether the FetchData event will be fired for the column.")]
+        HRESULT FetchData([in] VARIANT_BOOL );
+        [id(0x68030011), propget, helpstring("Returns/sets an expression that stores any extra data needed for your program. ")]
+        HRESULT Tag([out, retval] BSTR* );
+        [id(0x68030011), propput, helpstring("Returns/sets an expression that stores any extra data needed for your program. ")]
+        HRESULT Tag([in] BSTR );
+        [id(0x68030010), propget, helpstring("Returns/sets a value indicating that data in the column has changed by some process other than by retrieving data from the current record.")]
+        HRESULT DataChanged([out, retval] VARIANT_BOOL* );
+        [id(0x68030010), propput, helpstring("Returns/sets a value indicating that data in the column has changed by some process other than by retrieving data from the current record.")]
+        HRESULT DataChanged([in] VARIANT_BOOL );
+        [id(0x6803000f), propget, helpstring("Returns/sets whether the column values are replaced for using the ValueList for the column.")]
+        HRESULT ReplaceValues([out, retval] VARIANT_BOOL* );
+        [id(0x6803000f), propput, helpstring("Returns/sets whether the column values are replaced for using the ValueList for the column.")]
+        HRESULT ReplaceValues([in] VARIANT_BOOL );
+        [id(0x6803000e), propget, helpstring("Returns/sets the default value for the column in a new record.")]
+        HRESULT DefaultValue([out, retval] VARIANT* );
+        [id(0x6803000e), propput, helpstring("Returns/sets the default value for the column in a new record.")]
+        HRESULT DefaultValue([in] VARIANT );
+        [id(0x6803000d), propget, helpstring("Returns/sets the maximum number of characters that can be entered in a field.")]
+        HRESULT MaxLength([out, retval] long* );
+        [id(0x6803000d), propput, helpstring("Returns/sets the maximum number of characters that can be entered in a field.")]
+        HRESULT MaxLength([in] long );
+        [id(0x6803000c), propget, helpstring("Determines how empty strings are written in the database.")]
+        HRESULT NullBehavior([out, retval] jgexNullBehaviorConstants* );
+        [id(0x6803000c), propput, helpstring("Determines how empty strings are written in the database.")]
+        HRESULT NullBehavior([in] jgexNullBehaviorConstants );
+        [id(0x6803000b), propget, helpstring("Determines if a column will show a button when the user enters edit mode.")]
+        HRESULT ButtonStyle([out, retval] jgexButtonStyleConstants* );
+        [id(0x6803000b), propput, helpstring("Determines if a column will show a button when the user enters edit mode.")]
+        HRESULT ButtonStyle([in] jgexButtonStyleConstants );
+        [id(0x6803000a), propget, helpstring("Controls whether cell can be selected.")]
+        HRESULT Selectable([out, retval] VARIANT_BOOL* );
+        [id(0x6803000a), propput, helpstring("Controls whether cell can be selected.")]
+        HRESULT Selectable([in] VARIANT_BOOL );
+        [id(0x68030009), propget, helpstring("Returns/sets the name of the JSFormatStyle to be applied in all the cells in a column.")]
+        HRESULT CellStyle([out, retval] BSTR* );
+        [id(0x68030009), propput, helpstring("Returns/sets the name of the JSFormatStyle to be applied in all the cells in a column.")]
+        HRESULT CellStyle([in] BSTR );
+        [id(0x68030008), propget, helpstring("determines whether text in a cell is wordwrapped.")]
+        HRESULT WordWrap([out, retval] VARIANT_BOOL* );
+        [id(0x68030008), propput, helpstring("determines whether text in a cell is wordwrapped.")]
+        HRESULT WordWrap([in] VARIANT_BOOL );
+        [id(0x68030007), propget, helpstring("Returns/sets the aggregate function to be shown in group footers for a column.")]
+        HRESULT AggregateFunction([out, retval] jgexAggregateFunctionConstants* );
+        [id(0x68030007), propput, helpstring("Returns/sets the aggregate function to be shown in group footers for a column.")]
+        HRESULT AggregateFunction([in] jgexAggregateFunctionConstants );
+        [id(0x68030006), propget, helpstring("Returns or sets the minimum number of rows displayed in a word wrap column.")]
+        HRESULT MinRowsInCardView([out, retval] long* );
+        [id(0x68030006), propput, helpstring("Returns or sets the minimum number of rows displayed in a word wrap column.")]
+        HRESULT MinRowsInCardView([in] long );
+        [id(0x68030005), propget, helpstring("Returns or sets the maximum number of rows displayed in a word wrap column.")]
+        HRESULT MaxRowsInCardView([out, retval] long* );
+        [id(0x68030005), propput, helpstring("Returns or sets the maximum number of rows displayed in a word wrap column.")]
+        HRESULT MaxRowsInCardView([in] long );
+        [id(0x68030004), propget, helpstring("Returns/sets the GridEX control that acts as a drop down list for the column.")]
+        HRESULT DropDownControl([out, retval] IDispatch** );
+        [id(0x68030004), propputref, helpstring("Returns/sets the GridEX control that acts as a drop down list for the column.")]
+        HRESULT DropDownControl([in] IDispatch* );
+        [id(0x68030003), propget, helpstring("Returns/sets the text displayed in a tool tip when users moves the mouse pointer over a column header.")]
+        HRESULT HeaderToolTip([out, retval] BSTR* );
+        [id(0x68030003), propput, helpstring("Returns/sets the text displayed in a tool tip when users moves the mouse pointer over a column header.")]
+        HRESULT HeaderToolTip([in] BSTR );
+        [id(0x68030002), propget, helpstring("Returns/sets the name of the JSFormatStyle to be applied in the column header.")]
+        HRESULT HeaderStyle([out, retval] BSTR* );
+        [id(0x68030002), propput, helpstring("Returns/sets the name of the JSFormatStyle to be applied in the column header.")]
+        HRESULT HeaderStyle([in] BSTR );
+        [id(0x68030001), propget, helpstring("Returns/sets the format string for the aggregate function result of a column in the group footer row.")]
+        HRESULT TotalRowFormat([out, retval] BSTR* );
+        [id(0x68030001), propput, helpstring("Returns/sets the format string for the aggregate function result of a column in the group footer row.")]
+        HRESULT TotalRowFormat([in] BSTR );
+        [id(0x68030000), propget, helpstring("Returns/sets the string displayed in a group footer row before the aggregate function result.")]
+        HRESULT TotalRowPrefix([out, retval] BSTR* );
+        [id(0x68030000), propput, helpstring("Returns/sets the string displayed in a group footer row before the aggregate function result.")]
+        HRESULT TotalRowPrefix([in] BSTR );
+        [id(0x6003002d), helpstring("Adjusts the width of a column to accommodate the longest text.")]
+        HRESULT AutoSize();
+    };
+
+    [
+      uuid(FE9ED869-FDA0-4CA6-A1F0-B574DC1C6135),
+      version(1.0),
+      helpstring("Represents a column within a GridEX control."),
+      noncreatable
+    ]
+    coclass JSColumn {
+        [default] interface _JSColumn;
+    };
+
+    [
+      odl,
+      uuid(BA34EE5E-A98D-4D47-AB7A-9347F142BE5C),
+      version(1.0),
+      helpstring("Collection of column objects."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSColumns : IDispatch {
+        [id(00000000), propget, helpstring("Returns a specific JSColumn either by index or by key.")]
+        HRESULT Item(
+                        [in] VARIANT vntIndexKey, 
+                        [out, retval] _JSColumn** );
+        [id(0x68030000), propget, helpstring("Returns the number of objects in a collection.")]
+        HRESULT Count([out, retval] short* );
+        [id(0xfffffffc), propget, hidden]
+        HRESULT NewEnum([out, retval] IUnknown** );
+        [id(0x60030001), helpstring("Removes all objects in a collection.")]
+        HRESULT Clear();
+        [id(0x60030002), helpstring("Adds a JSColumn and returns a reference to the newly created object.")]
+        HRESULT Add(
+                        [in, optional] BSTR Caption, 
+                        [in, optional, defaultvalue(0)] jgexColumnTypeConstants ColumnType, 
+                        [in, optional, defaultvalue(1)] jgexEditTypeConstants EditType, 
+                        [in, optional] BSTR Key, 
+                        [out, retval] _JSColumn** );
+        [id(0x60030003), helpstring("Returns a specific JSColumn based on its position.")]
+        HRESULT ItemByPosition(
+                        [in] short ColPosition, 
+                        [out, retval] _JSColumn** );
+        [id(0x60030004), helpstring("Removes a specific JSColumn from the collection.")]
+        HRESULT Remove([in] VARIANT vntIndexKey);
+    };
+
+    [
+      uuid(E8B251BB-B1D1-4EEE-8315-2B393CFFAB7C),
+      version(1.0),
+      helpstring("Collection of column objects."),
+      noncreatable
+    ]
+    coclass JSColumns {
+        [default] interface _JSColumns;
+    };
+
+    [
+      odl,
+      uuid(38BAD5F1-9024-44DE-9D03-EEAE085AC5E4),
+      version(1.0),
+      helpstring("Contains the criteria that rows must meet to appear in a different format."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSFmtCondition : IDispatch {
+        [id(0x68030006), propget, helpstring("Returns the JSFormatStyle object for the JSFmtCondition.")]
+        HRESULT FormatStyle([out, retval] _JSFormatStyle** );
+        [id(0x68030005), propget, helpstring("Returns/sets the index of the column  to be compared.")]
+        HRESULT ColIndex([out, retval] short* );
+        [id(0x68030005), propput, helpstring("Returns/sets the index of the column  to be compared.")]
+        HRESULT ColIndex([in] short );
+        [id(0x68030004), propget, helpstring("Returns/sets the operator used for comparison.")]
+        HRESULT Operator([out, retval] jgexConditionOperatorConstants* );
+        [id(0x68030004), propput, helpstring("Returns/sets the operator used for comparison.")]
+        HRESULT Operator([in] jgexConditionOperatorConstants );
+        [id(0x68030003), propget, helpstring("Returns/sets the value that is compared with column values.")]
+        HRESULT Value1([out, retval] VARIANT* );
+        [id(0x68030003), propput, helpstring("Returns/sets the value that is compared with column values.")]
+        HRESULT Value1([in] VARIANT );
+        [id(0x68030002), propget, helpstring("Returns/sets the value that is compared with column values.")]
+        HRESULT Value2([out, retval] VARIANT* );
+        [id(0x68030002), propput, helpstring("Returns/sets the value that is compared with column values.")]
+        HRESULT Value2([in] VARIANT );
+        [id(0x68030001), propget, helpstring("Returns a value that represents the index of an object in a collection. ")]
+        HRESULT Index([out, retval] short* );
+        [id(0x68030000), propget, helpstring("Returns/sets a string that uniquely identifies a member in a collection.")]
+        HRESULT Key([out, retval] BSTR* );
+        [id(0x60030007), helpstring("Sets the condition parameters.")]
+        HRESULT SetCondition(
+                        [in] short ColIndex, 
+                        [in] jgexConditionOperatorConstants Operator, 
+                        [in] VARIANT Value1, 
+                        [in, optional] VARIANT Value2);
+    };
+
+    [
+      uuid(F4538DCC-11E8-412F-87E7-ACBAD91F42FA),
+      version(1.0),
+      helpstring("Contains the criteria that rows must meet to appear in a different format."),
+      noncreatable
+    ]
+    coclass JSFmtCondition {
+        [default] interface _JSFmtCondition;
+    };
+
+    [
+      odl,
+      uuid(6CB025B8-88C0-4489-A07F-03F022759661),
+      version(1.0),
+      helpstring("Collection of FmtCondition objects."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSFmtConditions : IDispatch {
+        [id(00000000), propget, helpstring("Returns a specific JSFmtCondition of  the collection either by index or by key.")]
+        HRESULT Item(
+                        [in] VARIANT Index, 
+                        [out, retval] _JSFmtCondition** );
+        [id(0x68030004), propget, helpstring("Returns the number of objects in a collection.")]
+        HRESULT Count([out, retval] long* );
+        [id(0xfffffffc), propget, hidden]
+        HRESULT NewEnum([out, retval] IUnknown** );
+        [id(0x68030003), propget, helpstring("Returns a JSFmtCondition object that is used through the group rows.")]
+        HRESULT GroupCondition([out, retval] _JSFmtCondition** );
+        [id(0x68030002), propget, helpstring("Controls whether the GroupCondition property is valid.")]
+        HRESULT ApplyGroupCondition([out, retval] VARIANT_BOOL* );
+        [id(0x68030002), propput, helpstring("Controls whether the GroupCondition property is valid.")]
+        HRESULT ApplyGroupCondition([in] VARIANT_BOOL );
+        [id(0x68030001), propget, helpstring("Returns/sets the text displayed in a group row when one or more rows in the group meet the criteria specified in the JSGroupCondition object's properties.")]
+        HRESULT GroupConditionCountTitle([out, retval] BSTR* );
+        [id(0x68030001), propput, helpstring("Returns/sets the text displayed in a group row when one or more rows in the group meet the criteria specified in the JSGroupCondition object's properties.")]
+        HRESULT GroupConditionCountTitle([in] BSTR );
+        [id(0x68030000), propget, helpstring("Controls whether the count of rows, that meet the criteria in GroupCondition property settings, will be displayed in a group row.")]
+        HRESULT ShowGroupConditionCount([out, retval] VARIANT_BOOL* );
+        [id(0x68030000), propput, helpstring("Controls whether the count of rows, that meet the criteria in GroupCondition property settings, will be displayed in a group row.")]
+        HRESULT ShowGroupConditionCount([in] VARIANT_BOOL );
+        [id(0x60030005), helpstring("Adds a JSFmtCondition object to the collection and returns a reference to the newly created object.")]
+        HRESULT Add(
+                        [in] short ColIndex, 
+                        [in, optional, defaultvalue(0)] jgexConditionOperatorConstants Operator, 
+                        [in, optional] VARIANT Value1, 
+                        [in, optional] VARIANT Value2, 
+                        [in, optional] BSTR Key, 
+                        [out, retval] _JSFmtCondition** );
+        [id(0x60030006), helpstring("Removes a specific member from the JSFmtConditions collection.")]
+        HRESULT Remove([in] VARIANT Index);
+        [id(0x60030007), helpstring("Removes all objects in a collection.")]
+        HRESULT Clear();
+    };
+
+    [
+      uuid(EC4B9FB8-B265-4B9B-81E5-A5524143BF18),
+      version(1.0),
+      helpstring("Collection of FmtCondition objects."),
+      noncreatable
+    ]
+    coclass JSFmtConditions {
+        [default] interface _JSFmtConditions;
+    };
+
+    [
+      odl,
+      uuid(48A49337-9F7B-4CDC-B3BE-207413505A9B),
+      version(1.0),
+      helpstring("Represents an image used in a GridEX control."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSGridImage : IDispatch {
+        [id(0x68030001), propget, helpstring("Returns or sets a graphic to be displayed.")]
+        HRESULT Picture([out, retval] Picture** );
+        [id(0x68030000), propget, helpstring("Returns a value that represents the index of an object in a collection. ")]
+        HRESULT Index([out, retval] short* );
+    };
+
+    [
+      uuid(8E356C76-75E3-486F-A9B7-6BC48F9C9023),
+      version(1.0),
+      helpstring("Represents an image used in a GridEX control."),
+      noncreatable
+    ]
+    coclass JSGridImage {
+        [default] interface _JSGridImage;
+    };
+
+    [
+      odl,
+      uuid(82B18936-3888-42DB-9261-597E6F3B3110),
+      version(1.0),
+      helpstring("Collection of JSGridImage objects."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSGridImages : IDispatch {
+        [id(00000000), propget, helpstring("Returns a specific JSGridImage of the JSGridImages Collection.")]
+        HRESULT Item(
+                        [in] short Index, 
+                        [out, retval] _JSGridImage** );
+        [id(0x68030001), propget, helpstring("Returns the number of objects in a collection.")]
+        HRESULT Count([out, retval] short* );
+        [id(0xfffffffc), propget, hidden]
+        HRESULT NewEnum([out, retval] IUnknown** );
+        [id(0x68030000), propget, helpstring("Returns/sets the handle of an external ImageList.")]
+        HRESULT hImageList([out, retval] long* );
+        [id(0x68030000), propput, helpstring("Returns/sets the handle of an external ImageList.")]
+        HRESULT hImageList([in] long );
+        [id(0x60030002), helpstring("Adds a JSGridImage object to the collection and returns a reference to the newly created object.")]
+        HRESULT Add(
+                        [in] Picture* Picture, 
+                        [out, retval] _JSGridImage** );
+        [id(0x60030003), helpstring("Removes a specific member from the JSGridImages collection.")]
+        HRESULT Remove([in] short Index);
+        [id(0x60030004), helpstring("Removes all objects in a collection.")]
+        HRESULT Clear();
+    };
+
+    [
+      uuid(1C0BF58A-285B-439E-930B-3A1870F9342D),
+      version(1.0),
+      helpstring("Collection of JSGridImage objects."),
+      noncreatable
+    ]
+    coclass JSGridImages {
+        [default] interface _JSGridImages;
+    };
+
+    [
+      odl,
+      uuid(9EE4B305-0476-486F-A5E5-FDFBED0569F5),
+      version(1.0),
+      helpstring("Represents a group level in a GridEX control."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSGroup : IDispatch {
+        [id(0x68030002), propget, helpstring("Returns a value that represents the index of the JSGroup in the JSGroups collection.")]
+        HRESULT Index([out, retval] short* );
+        [id(0x68030001), propget]
+        HRESULT SortOrder([out, retval] jgexSortOrderConstants* );
+        [id(0x68030001), propput]
+        HRESULT SortOrder([in] jgexSortOrderConstants );
+        [id(0x68030000), propget, helpstring("Returns/sets the index of the grouped column.")]
+        HRESULT ColIndex([out, retval] short* );
+        [id(0x68030000), propput, helpstring("Returns/sets the index of the grouped column.")]
+        HRESULT ColIndex([in] short );
+    };
+
+    [
+      uuid(EBFAE31F-AAC5-433B-B67F-C0E9F9EA13A1),
+      version(1.0),
+      helpstring("Represents a group level in a GridEX control."),
+      noncreatable
+    ]
+    coclass JSGroup {
+        [default] interface _JSGroup;
+    };
+
+    [
+      odl,
+      uuid(AC15DE2A-8EE4-42FA-8182-08AD0B45FBBA),
+      version(1.0),
+      helpstring("Collection of JSGroup objects."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSGroups : IDispatch {
+        [id(00000000), propget, helpstring("Returns a specific JSGroup of the Collection.")]
+        HRESULT Item(
+                        [in] short Index, 
+                        [out, retval] _JSGroup** );
+        [id(0x68030000), propget, helpstring("Returns the number of objects in a collection.")]
+        HRESULT Count([out, retval] long* );
+        [id(0xfffffffc), propget, hidden]
+        HRESULT NewEnum([out, retval] IUnknown** );
+        [id(0x60030001), helpstring("Adds a JSGroup object to the collection and returns a reference to the newly created object.")]
+        HRESULT Add(
+                        [in] short ColIndex, 
+                        [in] jgexSortOrderConstants SortOrder, 
+                        [in, optional] short Index, 
+                        [out, retval] _JSGroup** );
+        [id(0x60030002), helpstring("Removes all objects in a collection.")]
+        HRESULT Clear();
+        [id(0x60030003), helpstring("Removes a specific member from the collection.")]
+        HRESULT Remove([in] short Index);
+    };
+
+    [
+      uuid(43E78EEC-5B01-4A8A-9A98-D08F3FDFF1D4),
+      version(1.0),
+      helpstring("Collection of JSGroup objects."),
+      noncreatable
+    ]
+    coclass JSGroups {
+        [default] interface _JSGroups;
+    };
+
+    [
+      odl,
+      uuid(12CD22B9-C101-4A91-8482-DB8CFEFB97FC),
+      version(1.0),
+      helpstring("Contains information for sorting in a GridEX control."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSSortKey : IDispatch {
+        [id(0x68030002), propget, helpstring("Returns a value that represents the index of the JSSortKey in the JSSortKeys collection.")]
+        HRESULT Index([out, retval] short* );
+        [id(0x68030001), propget, helpstring("Returns/sets the index of the sorted column.")]
+        HRESULT ColIndex([out, retval] short* );
+        [id(0x68030001), propput, helpstring("Returns/sets the index of the sorted column.")]
+        HRESULT ColIndex([in] short );
+        [id(0x68030000), propget, helpstring("Returns/sets a value that represents the sort order.")]
+        HRESULT SortOrder([out, retval] jgexSortOrderConstants* );
+        [id(0x68030000), propput, helpstring("Returns/sets a value that represents the sort order.")]
+        HRESULT SortOrder([in] jgexSortOrderConstants );
+    };
+
+    [
+      uuid(7298F5E9-4A39-482A-903B-97C9B95C1FD1),
+      version(1.0),
+      helpstring("Contains information for sorting in a GridEX control."),
+      noncreatable
+    ]
+    coclass JSSortKey {
+        [default] interface _JSSortKey;
+    };
+
+    [
+      odl,
+      uuid(56913C14-910C-4BD1-B8AC-9A4BF4ADC960),
+      version(1.0),
+      helpstring("Collection of JSSortKey objects."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSSortKeys : IDispatch {
+        [id(00000000), propget, helpstring("Returns a specific JSSortKey of the Collection.")]
+        HRESULT Item(
+                        [in] short Index, 
+                        [out, retval] _JSSortKey** );
+        [id(0x68030000), propget, helpstring("Returns the number of objects in a collection.")]
+        HRESULT Count([out, retval] long* );
+        [id(0xfffffffc), propget, hidden]
+        HRESULT NewEnum([out, retval] IUnknown** );
+        [id(0x60030001), helpstring("Adds a JSSortKey object to the collection and returns a reference to the newly created object.")]
+        HRESULT Add(
+                        [in] short ColIndex, 
+                        [in] jgexSortOrderConstants SortOrder, 
+                        [in, optional] short Index, 
+                        [out, retval] _JSSortKey** );
+        [id(0x60030002), helpstring("Removes a specific member from the collection.")]
+        HRESULT Remove([in] short Index);
+        [id(0x60030003), helpstring("Removes all objects in a collection.")]
+        HRESULT Clear();
+    };
+
+    [
+      uuid(A670808D-4768-41CC-B67B-474E8FC14EF6),
+      version(1.0),
+      helpstring("Collection of JSSortKey objects."),
+      noncreatable
+    ]
+    coclass JSSortKeys {
+        [default] interface _JSSortKeys;
+    };
+
+    [
+      odl,
+      uuid(47221B4A-78AF-4D1F-A067-2A25FDEEF040),
+      version(1.0),
+      helpstring("Represents a text for replacement when a cell matches its value."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSValueItem : IDispatch {
+        [id(0x68030004), propget, helpstring("Returns a value that represents the index of an object in a collection. ")]
+        HRESULT Index([out, retval] long* );
+        [id(0x68030003), propget, helpstring("Returns/sets the text that is linked to the Value.")]
+        HRESULT Text([out, retval] BSTR* );
+        [id(0x68030003), propput, helpstring("Returns/sets the text that is linked to the Value.")]
+        HRESULT Text([in] BSTR );
+        [id(0x68030002), propget, helpstring("Returns/sets the value for the object.")]
+        HRESULT Value([out, retval] VARIANT* );
+        [id(0x68030002), propput, helpstring("Returns/sets the value for the object.")]
+        HRESULT Value([in] VARIANT );
+        [id(0x68030001), propget, helpstring("Returns/sets the index of the JSGridImage that is linked to the value.")]
+        HRESULT IconIndex([out, retval] short* );
+        [id(0x68030001), propput, helpstring("Returns/sets the index of the JSGridImage that is linked to the value.")]
+        HRESULT IconIndex([in] short );
+        [id(0x68030000), propget, helpstring("Determines whether a JSValueItem is visible or hidden in a drop-down list.")]
+        HRESULT Visible([out, retval] VARIANT_BOOL* );
+        [id(0x68030000), propput, helpstring("Determines whether a JSValueItem is visible or hidden in a drop-down list.")]
+        HRESULT Visible([in] VARIANT_BOOL );
+    };
+
+    [
+      uuid(67FC169E-4AEA-4FCA-971C-FDBB30469E28),
+      version(1.0),
+      helpstring("Represents a text for replacement when a cell matches its value."),
+      noncreatable
+    ]
+    coclass JSValueItem {
+        [default] interface _JSValueItem;
+    };
+
+    [
+      odl,
+      uuid(5C22E697-6E34-49CE-ACF6-07D156B2DCC4),
+      version(1.0),
+      helpstring("Contains a List a ValueItem objects."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSValueList : IDispatch {
+        [id(00000000), propget, helpstring("Returns a specific JSValueItem of the JSValueList.")]
+        HRESULT Item(
+                        [in] long Index, 
+                        [out, retval] _JSValueItem** );
+        [id(0x68030002), propget, helpstring("Returns a specific JSValueItem of the JSValueList.")]
+        HRESULT ItemByValue(
+                        [in] VARIANT Value, 
+                        [out, retval] _JSValueItem** );
+        [id(0x68030001), propget, helpstring("Returns the number ofJS ValueItem objects in a JSValueList.")]
+        HRESULT Count([out, retval] long* );
+        [id(0x68030000), propget, helpstring("Returns the number of visible value items.")]
+        HRESULT VisibleCount([out, retval] long* );
+        [id(0xfffffffc), propget, hidden]
+        HRESULT NewEnum([out, retval] IUnknown** );
+        [id(0x60030003), helpstring("Adds a JSValueItem object and returns a reference to the newly created object.")]
+        HRESULT Add(
+                        [in] VARIANT Value, 
+                        [in, optional] BSTR Text, 
+                        [in, optional] short IconIndex, 
+                        [out, retval] _JSValueItem** );
+        [id(0x60030004), helpstring("Removes all JSValueItem objects.")]
+        HRESULT Clear();
+        [id(0x60030005), helpstring("Removes a specific JSValueItem from the JSValueList.")]
+        HRESULT Remove([in] long Index);
+        [id(0x60030006), helpstring("Removes a specific JSValueItem from the JSValueList.")]
+        HRESULT RemoveItemByValue([in] VARIANT Value);
+    };
+
+    [
+      uuid(EF8A91AB-8A6A-40ED-B239-B6A1F8A3893F),
+      version(1.0),
+      helpstring("Contains a List a ValueItem objects."),
+      noncreatable
+    ]
+    coclass JSValueList {
+        [default] interface _JSValueList;
+    };
+
+    [
+      odl,
+      uuid(C3989115-0B86-404D-959D-2D4391DEE0A3),
+      version(1.0),
+      helpstring("Used for specifying formats and data that will be supported for OLE drag and drop operations."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSDataObject : IDispatch {
+        [id(0x68030000), propget, helpstring("Returns a JSDataObjectFiles collection, which in turn contains a list of all filenames used by a JSDataObject object.")]
+        HRESULT Files([out, retval] _JSDataObjectFiles** );
+        [id(0x60030001), helpstring("Deletes the contents of the JSDataObject object.")]
+        HRESULT Clear();
+        [id(0x60030002), helpstring("Returns data from a JSDataObject object in the form of a variant.")]
+        HRESULT GetData(
+                        [in] short Format, 
+                        [out, retval] VARIANT* );
+        [id(0x60030003), helpstring("Returns a value indicating whether an item in the JSDataObject object matches a specified format. ")]
+        HRESULT GetFormat(
+                        [in] short Format, 
+                        [out, retval] VARIANT_BOOL* );
+        [id(0x60030004), helpstring("Inserts data into a JSDataObject object using the specified data format.")]
+        HRESULT SetData(
+                        [in, optional] VARIANT Value, 
+                        [in, optional] VARIANT Format);
+    };
+
+    [
+      uuid(D7B07D39-6126-4212-B30B-EFEC020FA857),
+      version(1.0),
+      helpstring("Used for specifying formats and data that will be supported for OLE drag and drop operations."),
+      noncreatable
+    ]
+    coclass JSDataObject {
+        [default] interface _JSDataObject;
+    };
+
+    [
+      odl,
+      uuid(B7619DA8-D225-4F19-A766-6E2EF2275BAE),
+      version(1.0),
+      helpstring("Collection of filenames used by the JSDataObject object (jgexCFFiles format only)."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSDataObjectFiles : IDispatch {
+        [id(00000000), propget, helpstring("Returns an specific file name.")]
+        HRESULT Item(
+                        [in] long Index, 
+                        [out, retval] BSTR* );
+        [id(0x68030000), propget, helpstring("Returns the number of file names in the collection.")]
+        HRESULT Count([out, retval] long* );
+        [id(0xfffffffc), propget, hidden]
+        HRESULT NewEnum([out, retval] IUnknown** );
+        [id(0x60030001), helpstring("Adds a filename to the Files collection of a JSDataObject object (jgexCFFiles format only).")]
+        HRESULT Add(
+                        [in] BSTR FileName, 
+                        [in, optional] VARIANT Index);
+        [id(0x60030002), helpstring("Removes an specific file name.")]
+        HRESULT Remove([in] long Index);
+        [id(0x60030003), helpstring("Removes all file names in the collection.")]
+        HRESULT Clear();
+    };
+
+    [
+      uuid(A98D6D01-5D1D-45CF-B6A0-378550EC1B5F),
+      version(1.0),
+      helpstring("Collection of filenames used by the JSDataObject object (jgexCFFiles format only)."),
+      noncreatable
+    ]
+    coclass JSDataObjectFiles {
+        [default] interface _JSDataObjectFiles;
+    };
+
+    [
+      odl,
+      uuid(193E05B8-8591-4B25-85A6-7D2753BDB354),
+      version(1.0),
+      helpstring("Represents a collection of selected rows in a GridEX control."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSSelectedItems : IDispatch {
+        [id(00000000), propget, helpstring("Returns a specific JSSelectedItem of the collection.")]
+        HRESULT Item(
+                        [in] long Index, 
+                        [out, retval] _JSSelectedItem** );
+        [id(0x68030000), propget, helpstring("Returns the number of objects in a collection.")]
+        HRESULT Count([out, retval] long* );
+        [id(0xfffffffc), propget, hidden]
+        HRESULT NewEnum([out, retval] IUnknown** );
+        [id(0x60030001), helpstring("Selects a row given its current position.")]
+        HRESULT Add([in] long RowPosition);
+        [id(0x60030002), helpstring("Selects a row its bookmark.")]
+        HRESULT AddBookmark([in] VARIANT Bookmark);
+        [id(0x60030003), helpstring("Selects a row given its original row index.")]
+        HRESULT AddRowIndex([in] long RowIndex);
+        [id(0x60030004), helpstring("Removes a specific member from the collection.")]
+        HRESULT Remove([in] long Index);
+        [id(0x60030005), helpstring("Deselects a row given its bookmark.")]
+        HRESULT RemoveBookmark([in] VARIANT Bookmark);
+        [id(0x60030006), helpstring("Deselects a row given its original row index.")]
+        HRESULT RemoveRowIndex([in] long RowIndex);
+        [id(0x60030007), helpstring("Deselects a row given its current row position.")]
+        HRESULT RemoveRowPosition([in] long RowPosition);
+        [id(0x60030008), helpstring("Removes all selected rows in the collection.")]
+        HRESULT Clear();
+    };
+
+    [
+      uuid(927A6AA3-9FE3-4AED-9DD3-4C8F1F6D414F),
+      version(1.0),
+      helpstring("Represents a collection of selected rows in a GridEX control."),
+      noncreatable
+    ]
+    coclass JSSelectedItems {
+        [default] interface _JSSelectedItems;
+    };
+
+    [
+      odl,
+      uuid(353967F3-72CA-4639-8D7F-B066D4C6EB5F),
+      version(1.0),
+      helpstring("Represents a selected row within a multi-select control."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSSelectedItem : IDispatch {
+        [id(0x68030003), propget, helpstring("Returns the bookmark of a selected row.")]
+        HRESULT Bookmark([out, retval] VARIANT* );
+        [id(0x68030002), propget, helpstring("Returns the original index of a selected row.")]
+        HRESULT RowIndex([out, retval] long* );
+        [id(0x68030001), propget, helpstring("Returns the current position of a selected row.")]
+        HRESULT RowPosition([out, retval] long* );
+        [id(0x68030000), propget, helpstring("Returns the type of a selected row.")]
+        HRESULT RowType([out, retval] jgexRowTypeConstants* );
+    };
+
+    [
+      uuid(8F59BED3-579C-4565-A83C-7532499A14CD),
+      version(1.0),
+      helpstring("Represents a selected row within a multi-select control."),
+      noncreatable
+    ]
+    coclass JSSelectedItem {
+        [default] interface _JSSelectedItem;
+    };
+
+    [
+      odl,
+      uuid(450A0507-9F61-49EB-9FF2-FF226FE0FDC7),
+      version(1.0),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSRetBoolean : IDispatch {
+        [id(00000000), propget]
+        HRESULT Value([out, retval] VARIANT_BOOL* );
+        [id(00000000), propput]
+        HRESULT Value([in] VARIANT_BOOL );
+    };
+
+    [
+      uuid(71DBEC2F-6909-4ADA-B18F-2C28F4871AE0),
+      version(1.0),
+      noncreatable
+    ]
+    coclass JSRetBoolean {
+        [default] interface _JSRetBoolean;
+    };
+
+    [
+      odl,
+      uuid(1939CFBE-1142-46D1-B8F1-A2948B049251),
+      version(1.0),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSRetVariant : IDispatch {
+        [id(00000000), propget]
+        HRESULT Value([out, retval] VARIANT* );
+        [id(00000000), propput]
+        HRESULT Value([in] VARIANT );
+    };
+
+    [
+      uuid(D13705E0-B229-45A3-BB79-531C1F66EF02),
+      version(1.0),
+      noncreatable
+    ]
+    coclass JSRetVariant {
+        [default] interface _JSRetVariant;
+    };
+
+    [
+      odl,
+      uuid(115FB12B-DA39-41C1-844F-2E27DFF3D356),
+      version(1.0),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSRetInteger : IDispatch {
+        [id(00000000), propget]
+        HRESULT Value([out, retval] short* );
+        [id(00000000), propput]
+        HRESULT Value([in] short );
+    };
+
+    [
+      uuid(3FAF1005-B26C-40BF-98D2-93B4607264E1),
+      version(1.0),
+      noncreatable
+    ]
+    coclass JSRetInteger {
+        [default] interface _JSRetInteger;
+    };
+
+    [
+      odl,
+      uuid(FB257B8B-4E0A-4372-B091-E6536D8A18C9),
+      version(1.0),
+      helpstring("Contains a collection of JSFormatStyle objects."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSFormatStyles : IDispatch {
+        [id(00000000), propget, helpstring("Returns a specific JSFormatStyle of the collection.")]
+        HRESULT Item(
+                        [in] VARIANT Index, 
+                        [out, retval] _JSFormatStyle** );
+        [id(0x68030000), propget, helpstring("Returns the number of objects in a collection.")]
+        HRESULT Count([out, retval] long* );
+        [id(0xfffffffc), propget, hidden]
+        HRESULT NewEnum([out, retval] IUnknown** );
+        [id(0x60030001), helpstring("Adds a JSFormatStyle object to the collection.")]
+        HRESULT Add(
+                        [in] BSTR Name, 
+                        [out, retval] _JSFormatStyle** );
+        [id(0x60030002), helpstring("Removes a specific member from the collection.")]
+        HRESULT Remove([in] VARIANT Index);
+        [id(0x60030003), helpstring("Removes all the JSFormatStyle objects from the collection.")]
+        HRESULT Clear();
+    };
+
+    [
+      uuid(D9B8C8DF-754B-42E2-8672-6C3C6AD2FB87),
+      version(1.0),
+      helpstring("Contains a collection of JSFormatStyle objects."),
+      noncreatable
+    ]
+    coclass JSFormatStyles {
+        [default] interface _JSFormatStyles;
+    };
+
+    [
+      odl,
+      uuid(915B04C7-25A0-48D3-A33F-288F0B3A9C09),
+      version(1.0),
+      helpstring("Represents a container for data, row and cell based formats."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSRowData : IDispatch {
+        [id(00000000), propget, helpstring("Returns/sets the value of a column.")]
+        HRESULT Value(
+                        [in] short ColIndex, 
+                        [out, retval] VARIANT* );
+        [id(00000000), propput, helpstring("Returns/sets the value of a column.")]
+        HRESULT Value(
+                        [in] short ColIndex, 
+                        [in] VARIANT );
+        [id(0x6803000e), propget, helpstring("Returns the bookmark of the row.")]
+        HRESULT Bookmark([out, retval] VARIANT* );
+        [id(0x6803000d), propget, helpstring("Returns the number of columns.")]
+        HRESULT ColCount([out, retval] short* );
+        [id(0x6803000c), propget, helpstring("Returns the group level of a row if it is a group row or 0 otherwise.")]
+        HRESULT GroupLevel([out, retval] short* );
+        [id(0x6803000b), propget, helpstring("Returns the row index of a row.")]
+        HRESULT RowIndex([out, retval] long* );
+        [id(0x6803000a), propget, helpstring("Returns/sets the index of the JSGridImage displayed in a cell.")]
+        HRESULT IconIndex(
+                        [in] short ColIndex, 
+                        [out, retval] short* );
+        [id(0x6803000a), propput, helpstring("Returns/sets the index of the JSGridImage displayed in a cell.")]
+        HRESULT IconIndex(
+                        [in] short ColIndex, 
+                        [in] short );
+        [id(0x68030009), propget, helpstring("Returns/sets the display value of a column.")]
+        HRESULT DisplayValue(
+                        [in] short ColIndex, 
+                        [out, retval] BSTR* );
+        [id(0x68030009), propput, helpstring("Returns/sets the display value of a column.")]
+        HRESULT DisplayValue(
+                        [in] short ColIndex, 
+                        [in] BSTR );
+        [id(0x68030008), propget, helpstring("Returns a value that represents the type of a JSRowData object.")]
+        HRESULT RowType([out, retval] jgexRowTypeConstants* );
+        [id(0x68030007), propget, helpstring("Returns/sets the name of the JSFormatStyle to be applied in all the cells in a row.")]
+        HRESULT RowStyle([out, retval] BSTR* );
+        [id(0x68030007), propput, helpstring("Returns/sets the name of the JSFormatStyle to be applied in all the cells in a row.")]
+        HRESULT RowStyle([in] BSTR );
+        [id(0x68030006), propget, helpstring("Returns/sets the name of the JSFormatStyle to be applied in a cell.")]
+        HRESULT CellStyle(
+                        [in] short ColIndex, 
+                        [out, retval] BSTR* );
+        [id(0x68030006), propput, helpstring("Returns/sets the name of the JSFormatStyle to be applied in a cell.")]
+        HRESULT CellStyle(
+                        [in] short ColIndex, 
+                        [in] BSTR );
+        [id(0x68030005), propget, helpstring("Returns the number of records in a JSRowData object representing a group row.")]
+        HRESULT RecordCount([out, retval] long* );
+        [id(0x68030004), propget, helpstring("Returns/sets the height, in twips, of a row.")]
+        HRESULT RowHeight([out, retval] long* );
+        [id(0x68030004), propput, helpstring("Returns/sets the height, in twips, of a row.")]
+        HRESULT RowHeight([in] long );
+        [id(0x68030003), propget, helpstring("Returns/sets the caption of a group row.")]
+        HRESULT GroupCaption([out, retval] BSTR* );
+        [id(0x68030003), propput, helpstring("Returns/sets the caption of a group row.")]
+        HRESULT GroupCaption([in] BSTR );
+        [id(0x68030002), propget, helpstring("Returns/sets the icon of a group row.")]
+        HRESULT GroupIconIndex([out, retval] short* );
+        [id(0x68030002), propput, helpstring("Returns/sets the icon of a group row.")]
+        HRESULT GroupIconIndex([in] short );
+        [id(0x68030001), propget, helpstring("Returns/sets the foreground picture of a cell.")]
+        HRESULT CellPicture(
+                        [in] short ColIndex, 
+                        [out, retval] Picture** );
+        [id(0x68030001), propputref, helpstring("Returns/sets the foreground picture of a cell.")]
+        HRESULT CellPicture(
+                        [in] short ColIndex, 
+                        [in] Picture* );
+        [id(0x68030000), propget, helpstring("Determines whether a preview row should be displayed in a row.")]
+        HRESULT PreviewRowVisible([out, retval] VARIANT_BOOL* );
+        [id(0x68030000), propput, helpstring("Determines whether a preview row should be displayed in a row.")]
+        HRESULT PreviewRowVisible([in] VARIANT_BOOL );
+        [id(0x6003000f), helpstring("Returns an array of record bookmarks in a group row.")]
+        HRESULT GetBookmarks([out, retval] VARIANT* );
+        [id(0x60030010), helpstring("Returns an array of row indexes in a group row.")]
+        HRESULT GetRowIndexes([out, retval] VARIANT* );
+        [id(0x60030011), helpstring("Returns the aggregate function result of the set of values contained in a specified column on a group.")]
+        HRESULT GetSubTotal(
+                        [in] short ColIndex, 
+                        [in] jgexAggregateFunctionConstants AggregateFunction, 
+                        [out, retval] VARIANT* );
+    };
+
+    [
+      uuid(2EDDAA80-1B5F-43A9-AA00-3FA4C6764CBC),
+      version(1.0),
+      helpstring("Represents a container for data, row and cell based formats."),
+      noncreatable
+    ]
+    coclass JSRowData {
+        [default] interface _JSRowData;
+    };
+
+    [
+      odl,
+      uuid(342204B2-D189-4B52-8A53-ED9FA6D2F156),
+      version(1.0),
+      helpstring("Contains format settings."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSFormatStyle : IDispatch {
+        [id(0x68030010), propget, helpstring("Returns a string that uniquely identifies a member in a JSFormatStyles collection.")]
+        HRESULT Name([out, retval] BSTR* );
+        [id(0x6803000f), propget, helpstring("Returns/sets the background color.")]
+        HRESULT BackColor([out, retval] OLE_COLOR* );
+        [id(0x6803000f), propput, helpstring("Returns/sets the background color.")]
+        HRESULT BackColor([in] OLE_COLOR );
+        [id(0x6803000e), propget, helpstring("Returns/sets the foreground color.")]
+        HRESULT ForeColor([out, retval] OLE_COLOR* );
+        [id(0x6803000e), propput, helpstring("Returns/sets the foreground color.")]
+        HRESULT ForeColor([in] OLE_COLOR );
+        [id(0x6803000d), propget, helpstring("Returns/sets font bold style.")]
+        HRESULT FontBold([out, retval] VARIANT_BOOL* );
+        [id(0x6803000d), propput, helpstring("Returns/sets font bold style.")]
+        HRESULT FontBold([in] VARIANT_BOOL );
+        [id(0x6803000c), propget, helpstring("Returns/sets font italic style.")]
+        HRESULT FontItalic([out, retval] VARIANT_BOOL* );
+        [id(0x6803000c), propput, helpstring("Returns/sets font italic style.")]
+        HRESULT FontItalic([in] VARIANT_BOOL );
+        [id(0x6803000b), propget, helpstring("Returns/sets font underline style.")]
+        HRESULT FontUnderline([out, retval] VARIANT_BOOL* );
+        [id(0x6803000b), propput, helpstring("Returns/sets font underline style.")]
+        HRESULT FontUnderline([in] VARIANT_BOOL );
+        [id(0x6803000a), propget, helpstring("Returns/sets font strikethrough style.")]
+        HRESULT FontStrikeThru([out, retval] VARIANT_BOOL* );
+        [id(0x6803000a), propput, helpstring("Returns/sets font strikethrough style.")]
+        HRESULT FontStrikeThru([in] VARIANT_BOOL );
+        [id(0x68030009), propget, helpstring("Returns/sets the size of the font.")]
+        HRESULT FontSize([out, retval] CURRENCY* );
+        [id(0x68030009), propput, helpstring("Returns/sets the size of the font.")]
+        HRESULT FontSize([in] CURRENCY );
+        [id(0x68030008), propget, helpstring("Returns/sets the typeface name of the font.")]
+        HRESULT FontName([out, retval] BSTR* );
+        [id(0x68030008), propput, helpstring("Returns/sets the typeface name of the font.")]
+        HRESULT FontName([in] BSTR );
+        [id(0x68030007), propget, helpstring("Returns/sets the character set used in the font.")]
+        HRESULT FontCharset([out, retval] short* );
+        [id(0x68030007), propput, helpstring("Returns/sets the character set used in the font.")]
+        HRESULT FontCharset([in] short );
+        [id(0x68030006), propget, helpstring("Determines the alignment of text in a JSFormatStyle object.")]
+        HRESULT TextAlignment([out, retval] jgexAlignmentConstants* );
+        [id(0x68030006), propput, helpstring("Determines the alignment of text in a JSFormatStyle object.")]
+        HRESULT TextAlignment([in] jgexAlignmentConstants );
+        [id(0x68030005), propget, helpstring("Returns/sets the background picture.")]
+        HRESULT BackgroundPicture([out, retval] Picture** );
+        [id(0x68030005), propputref, helpstring("Returns/sets the background picture.")]
+        HRESULT BackgroundPicture([in] Picture* );
+        [id(0x68030004), propget, helpstring("Returns/sets a picture of a JSFormatStyle object.")]
+        HRESULT Picture([out, retval] Picture** );
+        [id(0x68030004), propputref, helpstring("Returns/sets a picture of a JSFormatStyle object.")]
+        HRESULT Picture([in] Picture* );
+        [id(0x68030003), propget, helpstring("Determines the way a background picture is drawn.")]
+        HRESULT DrawModeBackGroundPicture([out, retval] jgexDrawModePictureBackgroundConstants* );
+        [id(0x68030003), propput, helpstring("Determines the way a background picture is drawn.")]
+        HRESULT DrawModeBackGroundPicture([in] jgexDrawModePictureBackgroundConstants );
+        [id(0x68030002), propget, helpstring("Determines the horizontal alignment of a picture in a JSFormatStyle object.")]
+        HRESULT PictureHorzAlignment([out, retval] jgexHorzPictureAlignmentConstants* );
+        [id(0x68030002), propput, helpstring("Determines the horizontal alignment of a picture in a JSFormatStyle object.")]
+        HRESULT PictureHorzAlignment([in] jgexHorzPictureAlignmentConstants );
+        [id(0x68030001), propget, helpstring("Determines the vertical alignment of a picture in a JSFormatStyle object.")]
+        HRESULT PictureVertAlignment([out, retval] jgexVertPictureAlignmentConstants* );
+        [id(0x68030001), propput, helpstring("Determines the vertical alignment of a picture in a JSFormatStyle object.")]
+        HRESULT PictureVertAlignment([in] jgexVertPictureAlignmentConstants );
+        [id(0x68030000), propget, helpstring("Determines how GridEX control draws cells with pictures.")]
+        HRESULT PictureDrawMode([out, retval] jgexPictureDrawModeConstants* );
+        [id(0x68030000), propput, helpstring("Determines how GridEX control draws cells with pictures.")]
+        HRESULT PictureDrawMode([in] jgexPictureDrawModeConstants );
+        [id(0x60030011), helpstring("Clears all properties in a JSFormatStyle object.")]
+        HRESULT Reset();
+    };
+
+    [
+      uuid(0A46E6DD-08F8-4EAE-86F5-AC0C6FB2F7C1),
+      version(1.0),
+      helpstring("Contains format settings."),
+      noncreatable
+    ]
+    coclass JSFormatStyle {
+        [default] interface _JSFormatStyle;
+    };
+
+    [
+      odl,
+      uuid(263CAFAE-4672-457F-93C9-FFC69CE390F6),
+      version(1.0),
+      helpstring("Encapsulates printer and print job properties to be used when a GridEX control is to going be printed."),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _JSPrinterProperties : IDispatch {
+        [id(0x68030021), propget, helpstring("Returns/sets the number of copies to be printed.")]
+        HRESULT Copies([out, retval] short* );
+        [id(0x68030021), propput, helpstring("Returns/sets the number of copies to be printed.")]
+        HRESULT Copies([in] short );
+        [id(0x68030020), propget, helpstring("Determines whether collation should be used when printing multiple copies.")]
+        HRESULT Collate([out, retval] VARIANT_BOOL* );
+        [id(0x68030020), propput, helpstring("Determines whether collation should be used when printing multiple copies.")]
+        HRESULT Collate([in] VARIANT_BOOL );
+        [id(0x6803001f), propget, helpstring("Returns/sets the printer resolution.")]
+        HRESULT PrintQuality([out, retval] short* );
+        [id(0x6803001f), propput, helpstring("Returns/sets the printer resolution.")]
+        HRESULT PrintQuality([in] short );
+        [id(0x6803001e), propget, helpstring("Returns/sets a value that determines whether a document should be printed in color or monochrome.")]
+        HRESULT ColorMode([out, retval] jgexPPColorModeConstants* );
+        [id(0x6803001e), propput, helpstring("Returns/sets a value that determines whether a document should be printed in color or monochrome.")]
+        HRESULT ColorMode([in] jgexPPColorModeConstants );
+        [id(0x6803001d), propget, helpstring("Returns the name of the device a driver supports.")]
+        HRESULT DeviceName([out, retval] BSTR* );
+        [id(0x6803001c), propget, helpstring("Returns the name of the printer's driver.")]
+        HRESULT DriverName([out, retval] BSTR* );
+        [id(0x6803001b), propget, helpstring("Determines whether documents are printed in portrait or landscape mode.")]
+        HRESULT Orientation([out, retval] jgexPPOrientationConstants* );
+        [id(0x6803001b), propput, helpstring("Determines whether documents are printed in portrait or landscape mode.")]
+        HRESULT Orientation([in] jgexPPOrientationConstants );
+        [id(0x6803001a), propget, helpstring("Returns/sets a value indicating the default paper bin on the printer from which paper is fed when printing.")]
+        HRESULT PaperBin([out, retval] jgexPPPaperBinConstants* );
+        [id(0x6803001a), propput, helpstring("Returns/sets a value indicating the default paper bin on the printer from which paper is fed when printing.")]
+        HRESULT PaperBin([in] jgexPPPaperBinConstants );
+        [id(0x68030019), propget, helpstring("Returns/sets the paper size for the current printer. ")]
+        HRESULT PaperSize([out, retval] short* );
+        [id(0x68030019), propput, helpstring("Returns/sets the paper size for the current printer. ")]
+        HRESULT PaperSize([in] short );
+        [id(0x68030018), propget, helpstring("Returns/sets the physical width, in twips, of the paper set up for the printing device.")]
+        HRESULT PaperWidth([out, retval] long* );
+        [id(0x68030018), propput, helpstring("Returns/sets the physical width, in twips, of the paper set up for the printing device.")]
+        HRESULT PaperWidth([in] long );
+        [id(0x68030017), propget, helpstring("Returns/sets the physical height, in twips, of the paper set up for the printing device.")]
+        HRESULT PaperHeight([out, retval] long* );
+        [id(0x68030017), propput, helpstring("Returns/sets the physical height, in twips, of the paper set up for the printing device.")]
+        HRESULT PaperHeight([in] long );
+        [id(0x68030016), propget, helpstring("Returns/sets the width, in twips, of the left margin.")]
+        HRESULT LeftMargin([out, retval] long* );
+        [id(0x68030016), propput, helpstring("Returns/sets the width, in twips, of the left margin.")]
+        HRESULT LeftMargin([in] long );
+        [id(0x68030015), propget, helpstring("Returns/sets the height, in twips, of the top margin.")]
+        HRESULT TopMargin([out, retval] long* );
+        [id(0x68030015), propput, helpstring("Returns/sets the height, in twips, of the top margin.")]
+        HRESULT TopMargin([in] long );
+        [id(0x68030014), propget, helpstring("Returns/sets the width, in twips, of the right margin.")]
+        HRESULT RightMargin([out, retval] long* );
+        [id(0x68030014), propput, helpstring("Returns/sets the width, in twips, of the right margin.")]
+        HRESULT RightMargin([in] long );
+        [id(0x68030013), propget, helpstring("Returns/sets the height, in twips, of the bottom margin.")]
+        HRESULT BottomMargin([out, retval] long* );
+        [id(0x68030013), propput, helpstring("Returns/sets the height, in twips, of the bottom margin.")]
+        HRESULT BottomMargin([in] long );
+        [id(0x68030012), propget, helpstring("Returns the width, in twips, of the printable area in a page.")]
+        HRESULT ClientWidth([out, retval] long* );
+        [id(0x68030011), propget, helpstring("Returns the height, in twips, of the printable area in a page.")]
+        HRESULT ClientHeight([out, retval] long* );
+        [id(0x68030010), propget, helpstring("Determines whether column headers should appear on each page.")]
+        HRESULT RepeatHeaders([out, retval] VARIANT_BOOL* );
+        [id(0x68030010), propput, helpstring("Determines whether column headers should appear on each page.")]
+        HRESULT RepeatHeaders([in] VARIANT_BOOL );
+        [id(0x6803000f), propget, helpstring("DEtermines whether the GridEX should scale printed output to fit all visible columns in a page.")]
+        HRESULT FitColumns([out, retval] VARIANT_BOOL* );
+        [id(0x6803000f), propput, helpstring("DEtermines whether the GridEX should scale printed output to fit all visible columns in a page.")]
+        HRESULT FitColumns([in] VARIANT_BOOL );
+        [id(0x6803000e), propget, helpstring("Determines whether system colors should be translated to black and white colors.")]
+        HRESULT TranslateColors([out, retval] VARIANT_BOOL* );
+        [id(0x6803000e), propput, helpstring("Determines whether system colors should be translated to black and white colors.")]
+        HRESULT TranslateColors([in] VARIANT_BOOL );
+        [id(0x6803000d), propget, helpstring("Returns/sets the distance, in twips, from the top edge of the paper to the top edge of the header.")]
+        HRESULT HeaderDistance([out, retval] long* );
+        [id(0x6803000d), propput, helpstring("Returns/sets the distance, in twips, from the top edge of the paper to the top edge of the header.")]
+        HRESULT HeaderDistance([in] long );
+        [id(0x6803000c), propget, helpstring("Returns/sets the distance, in twips, from the bottom edge of the paper to the top edge of the footer.")]
+        HRESULT FooterDistance([out, retval] long* );
+        [id(0x6803000c), propput, helpstring("Returns/sets the distance, in twips, from the bottom edge of the paper to the top edge of the footer.")]
+        HRESULT FooterDistance([in] long );
+        [id(0x6803000b), propget, helpstring("Returns/sets the string displayed in the page header.")]
+        HRESULT HeaderString(
+                        [in] jgexHeaderFooterPositionConstants Position, 
+                        [out, retval] BSTR* );
+        [id(0x6803000b), propput, helpstring("Returns/sets the string displayed in the page header.")]
+        HRESULT HeaderString(
+                        [in] jgexHeaderFooterPositionConstants Position, 
+                        [in] BSTR );
+        [id(0x6803000a), propget, helpstring("Returns/sets the string displayed in the page footer")]
+        HRESULT FooterString(
+                        [in] jgexHeaderFooterPositionConstants Position, 
+                        [out, retval] BSTR* );
+        [id(0x6803000a), propput, helpstring("Returns/sets the string displayed in the page footer")]
+        HRESULT FooterString(
+                        [in] jgexHeaderFooterPositionConstants Position, 
+                        [in] BSTR );
+        [id(0x68030009), propget, helpstring("Returns/sets the name of the document to be printed.")]
+        HRESULT DocumentName([out, retval] BSTR* );
+        [id(0x68030009), propput, helpstring("Returns/sets the name of the document to be printed.")]
+        HRESULT DocumentName([in] BSTR );
+        [id(0x68030008), propget, helpstring("Determines whether frozen columns should appear on each page.")]
+        HRESULT RepeatFrozenCols([out, retval] VARIANT_BOOL* );
+        [id(0x68030008), propput, helpstring("Determines whether frozen columns should appear on each page.")]
+        HRESULT RepeatFrozenCols([in] VARIANT_BOOL );
+        [id(0x68030007), propget, helpstring("Determines whether the control prints preview rows or not.")]
+        HRESULT PrintPreviewRows([out, retval] VARIANT_BOOL* );
+        [id(0x68030007), propput, helpstring("Determines whether the control prints preview rows or not.")]
+        HRESULT PrintPreviewRows([in] VARIANT_BOOL );
+        [id(0x68030006), propget, helpstring("Returns/sets the number of card columns to be printed in a page.")]
+        HRESULT CardColumnsPerPage([out, retval] long* );
+        [id(0x68030006), propput, helpstring("Returns/sets the number of card columns to be printed in a page.")]
+        HRESULT CardColumnsPerPage([in] long );
+        [id(0x68030005), propget, helpstring("Returns/sets a Font object used to draw page headers in a document.")]
+        HRESULT PageHeaderFont([out, retval] Font** );
+        [id(0x68030005), propputref, helpstring("Returns/sets a Font object used to draw page headers in a document.")]
+        HRESULT PageHeaderFont([in] Font* );
+        [id(0x68030004), propget, helpstring("Returns/sets a Font object used to draw page footers in a document.")]
+        HRESULT PageFooterFont([out, retval] Font** );
+        [id(0x68030004), propputref, helpstring("Returns/sets a Font object used to draw page footers in a document.")]
+        HRESULT PageFooterFont([in] Font* );
+        [id(0x68030003), propget, helpstring("Determines whether print progress dialog should be displayed when GridEX control is printing a document.")]
+        HRESULT PrintProgressDialog([out, retval] VARIANT_BOOL* );
+        [id(0x68030003), propput, helpstring("Determines whether print progress dialog should be displayed when GridEX control is printing a document.")]
+        HRESULT PrintProgressDialog([in] VARIANT_BOOL );
+        [id(0x68030002), propget, helpstring("Determines whether background color should be used to when printing.")]
+        HRESULT TransparentBackground([out, retval] VARIANT_BOOL* );
+        [id(0x68030002), propput, helpstring("Determines whether background color should be used to when printing.")]
+        HRESULT TransparentBackground([in] VARIANT_BOOL );
+        [id(0x68030001), propget, helpstring("Returns/sets measurement units to be used in the Page Setup dialog.")]
+        HRESULT MeasurementUnits([out, retval] jgexMeasurementUnitsConstants* );
+        [id(0x68030001), propput, helpstring("Returns/sets measurement units to be used in the Page Setup dialog.")]
+        HRESULT MeasurementUnits([in] jgexMeasurementUnitsConstants );
+        [id(0x68030000), propget, helpstring("Returns True if user pressed cancel in the Page Setup dialog.")]
+        HRESULT PageSetupCanceled([out, retval] VARIANT_BOOL* );
+        [id(0x60030022), helpstring("Changes printer's device name and driver.")]
+        HRESULT ChangePrinter(
+                        [in] BSTR DeviceName, 
+                        [in] BSTR DriverName, 
+                        [out, retval] VARIANT_BOOL* );
+        [id(0x60030023), helpstring("Displays the page setup dialog.")]
+        HRESULT PageSetup([in] long hWndOwner);
+    };
+
+    [
+      uuid(F99C0DE3-ACB2-47D9-A2E3-9A3B5AC8E524),
+      version(1.0),
+      helpstring("Encapsulates printer and print job properties to be used when a GridEX control is to going be printed."),
+      noncreatable
+    ]
+    coclass JSPrinterProperties {
+        [default] interface _JSPrinterProperties;
+    };
+
+    [
+      odl,
+      uuid(AF53F449-B0E8-46E0-AF6B-B185DB29C9C7),
+      version(1.0),
+      hidden,
+      dual,
+      nonextensible,
+      oleautomation
+    ]
+    interface _GridDesigner : IDispatch {
+    };
+
+    [
+      uuid(20DB9654-A30E-4469-A5CD-D661310F384A),
+      version(1.0),
+      noncreatable
+    ]
+    coclass GridDesigner {
+        [default] interface _GridDesigner;
+    };
+
+    [
+      uuid(8B6FADB1-49AC-4AF0-88B1-16C3C5A826CE),
+      version(1.0),
+      helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)"),
+      hidden,
+      nonextensible
+    ]
+    dispinterface __GridEX {
+        properties:
+        methods:
+            [id(0x00000001), helpstring("Occurs before the user enters edit mode by typing a character or clicking in a cell.")]
+            void BeforeColEdit(
+                            [in] short ColIndex, 
+                            [in] _JSRetBoolean* Cancel);
+            [id(0x00000002), helpstring("Occurs after data in the current cell is edited.")]
+            void AfterColEdit([in] short ColIndex);
+            [id(0x00000003), helpstring("Occurs before data is moved from the cell to the control's copy buffer.")]
+            void BeforeColUpdate(
+                            [in] long Row, 
+                            [in] short ColIndex, 
+                            [in] BSTR OldValue, 
+                            [in] _JSRetBoolean* Cancel);
+            [id(0x00000004), helpstring("Occurs as the result of a data access error.")]
+            void Error(
+                            [in] long ErrNumber, 
+                            [in] _JSRetBoolean* DisplayMessage);
+            [id(0x00000005), helpstring("Occurs before data is committed from to the database.")]
+            void BeforeUpdate([in] _JSRetBoolean* Cancel);
+            [id(0x00000006), helpstring("Occurs after data is moved from a cell  to the control's copy buffer.")]
+            void AfterColUpdate([in] short ColIndex);
+            [id(0x00000007), helpstring("Occurs after changes made by the user have been written to the database.")]
+            void AfterUpdate();
+            [id(0x00000008), helpstring("Occurs when the contents of the current cell have changed.")]
+            void Change();
+            [id(0x00000009), helpstring("Occurs when the user clicks on a column header.")]
+            void ColumnHeaderClick([in] _JSColumn* Column);
+            [id(0x0000000a), helpstring("Occurs when the user clicks on a header in the group by box.")]
+            void GroupByBoxHeaderClick([in] _JSGroup* Group);
+            [id(0x0000000b), helpstring("Occurs before a column position changes.")]
+            void BeforeColMove(
+                            [in] _JSColumn* Column, 
+                            [in] short NewPosition, 
+                            [in] _JSRetBoolean* Cancel);
+            [id(0x0000000c), helpstring("Occurs after the user has moved a column into a new position.")]
+            void AfterColMove();
+            [id(0x0000000d), helpstring("Occurs before the user begins a drag operation with a header in the column headers row.")]
+            void BeforeColumnDrag(
+                            [in] _JSColumn* Column, 
+                            [in] _JSRetBoolean* Cancel);
+            [id(0x0000000e), helpstring("Occurs before the user begins a drag operation with a group by box header.")]
+            void BeforeGroupDrag(
+                            [in] _JSGroup* Group, 
+                            [in] _JSRetBoolean* Cancel);
+            [id(0x0000000f), helpstring("Occurs after the user has changed, added or removed a group.")]
+            void AfterGroupChange();
+            [id(0x00000010), helpstring("Occurs before a change in the group settings is committed.")]
+            void BeforeGroupChange(
+                            [in] _JSGroup* Group, 
+                            [in] jgexGroupChange ChangeOperation, 
+                            [in] short GroupPosition, 
+                            [in] _JSRetBoolean* Cancel);
+            [id(0x00000011), helpstring("Occurs after the user deletes the selected record.")]
+            void AfterDelete();
+            [id(0x00000012), helpstring("Occurs before a delete operation begins.")]
+            void BeforeDelete([in] _JSRetBoolean* Cancel);
+            [id(0x00000013), helpstring("Occurs when unbound column data is needed for display.")]
+            void FetchData(
+                            [in] long RowIndex, 
+                            [in] short ColIndex, 
+                            [in] VARIANT RowBookmark, 
+                            [in] _JSRetVariant* Value);
+            [id(0x00000014), helpstring("Fetches the  icons index for cells.")]
+            void FetchIcon(
+                            [in] long RowIndex, 
+                            [in] short ColIndex, 
+                            [in] VARIANT RowBookmark, 
+                            [in] _JSRetInteger* IconIndex);
+            [id(0x00000015), helpstring("Occurs in Unbound mode, whenever a row of data is deleted.")]
+            void UnboundDelete(
+                            [in] long RowIndex, 
+                            [in] VARIANT Bookmark);
+            [id(0x00000016), helpstring("Occurs in an unbound GridEX control when a new row is added to it.")]
+            void UnboundAddNew(
+                            [in] _JSRetVariant* NewRowBookmark, 
+                            [in] _JSRowData* Values);
+            [id(0x00000017), helpstring("Occurs when an unbound GridEX control has an entire row of modified data to be written in the data set.")]
+            void UnboundUpdate(
+                            [in] long RowIndex, 
+                            [in] VARIANT Bookmark, 
+                            [in] _JSRowData* Values);
+            [id(0x00000018), helpstring("Occurs when the user presses and then releases a mouse button over the control.")]
+            void Click();
+            [id(0x00000019), helpstring("Occurs when the user presses and releases a mouse button two times over the control.")]
+            void DblClick();
+            [id(0x0000001a), helpstring("Occur when the user presses a key.")]
+            void KeyDown(
+                            [in, out] short* KeyCode, 
+                            [in, out] short* Shift);
+            [id(0x0000001b), helpstring("Occur when the user releases a key.")]
+            void KeyUp(
+                            [in, out] short* KeyCode, 
+                            [in, out] short* Shift);
+            [id(0x0000001c), helpstring("Occurs when the user presses a mouse button.")]
+            void MouseDown(
+                            [in, out] short* Button, 
+                            [in, out] short* Shift, 
+                            [in, out] single* X, 
+                            [in, out] single* Y);
+            [id(0x0000001d), helpstring("Occurs when the user moves the mouse.")]
+            void MouseMove(
+                            [in, out] short* Button, 
+                            [in, out] short* Shift, 
+                            [in, out] single* X, 
+                            [in, out] single* Y);
+            [id(0x0000001e), helpstring("Occurs when the user releases a mouse button.")]
+            void MouseUp(
+                            [in, out] short* Button, 
+                            [in, out] short* Shift, 
+                            [in, out] single* X, 
+                            [in, out] single* Y);
+            [id(0x0000001f), helpstring("Occurs when the user presses and releases an ANSI key.")]
+            void KeyPress([in, out] short* KeyAscii);
+            [id(0x00000020), helpstring("Occurs when the FirstItem property changes.")]
+            void FirstItemChange();
+            [id(0x00000021), helpstring("Occurs when the LeftCol property changes.")]
+            void LeftColChange();
+            [id(0x00000022), helpstring("Occurs when the current cell changes to a different cell.")]
+            void RowColChange(
+                            [in] long LastRow, 
+                            [in] short LastCol);
+            [id(0x00000023), helpstring("Occurs when a user resizes a column in a GridEX control.")]
+            void ColResize(
+                            [in] short ColIndex, 
+                            [in] long NewColWidth, 
+                            [in] _JSRetBoolean* Cancel);
+            [id(0x00000024), helpstring("Occurs when the user resizes rows.")]
+            void RowResize(
+                            [in] long NewRowHeight, 
+                            [in] _JSRetBoolean* Cancel);
+            [id(0x00000025), helpstring("Occurs when the user resizes cards.")]
+            void CardResize(
+                            [in] long NewCardWidth, 
+                            [in] _JSRetBoolean* Cancel);
+            [id(0x00000026), helpstring("Occurs before a drop down list appears.")]
+            void DropList([in] short ColIndex);
+            [id(0x00000027), helpstring("Occurs after the user has selected an entry in a drop down list.")]
+            void ListSelected(
+                            [in] short ColIndex, 
+                            [in] long ValueListIndex, 
+                            [in] VARIANT Value);
+            [id(0x00000028), helpstring("Occurs whenever an unbound GridEX control requires data for display, sorting or grouping.")]
+            void UnboundReadData(
+                            [in] long RowIndex, 
+                            [in] VARIANT Bookmark, 
+                            [in] _JSRowData* Values);
+            [id(0x00000029), helpstring("Occurs when the user attempts to drag the selected rows.")]
+            void RowDrag(
+                            [in] short Button, 
+                            [in] short Shift);
+            [id(0x0000002a), helpstring("Occurs when an edit operation is about to begin.")]
+            void InitCustomEdit(
+                            [in] short ColIndex, 
+                            [in] OLE_COLOR EditBackColor, 
+                            [in] OLE_COLOR EditForeColor, 
+                            [in] Font* EditFont);
+            [id(0x0000002b), helpstring("Occurs when a custom edit column is about to hide or show the cell editor.")]
+            void ShowCustomEdit(
+                            [in] short ColIndex, 
+                            [in] single EditLeft, 
+                            [in] single EditTop, 
+                            [in] single EditWidth, 
+                            [in] single EditHeight, 
+                            [in] VARIANT_BOOL EditVisible);
+            [id(0x0000002c), helpstring("Occurs when a custom edit operation is ended.")]
+            void EndCustomEdit([in] short ColIndex);
+            [id(0x0000002d), helpstring("Occurs when a drag action was either performed or canceled.")]
+            void OLECompleteDrag([in, out] long* Effect);
+            [id(0x0000002e), helpstring("Occurs when the source component determines that a drop can occur.")]
+            void OLEDragDrop(
+                            [in, out] _JSDataObject** Data, 
+                            [in, out] long* Effect, 
+                            [in, out] short* Button, 
+                            [in, out] short* Shift, 
+                            [in, out] single* X, 
+                            [in, out] single* Y);
+            [id(0x0000002f), helpstring("Occurs when one component is dragged over another.")]
+            void OLEDragOver(
+                            [in, out] _JSDataObject** Data, 
+                            [in, out] long* Effect, 
+                            [in, out] short* Button, 
+                            [in, out] short* Shift, 
+                            [in, out] single* X, 
+                            [in, out] single* Y, 
+                            [in, out] short* State);
+            [id(0x00000030), helpstring("Occurs at the source control of an OLE drag/drop operation when the mouse cursor needs to be changed.")]
+            void OLEGiveFeedback(
+                            [in, out] long* Effect, 
+                            [in, out] VARIANT_BOOL* DefaultCursors);
+            [id(0x00000031), helpstring("Occurs on a source component when a target component requests data that was not provided during the OLEStartDrag event.")]
+            void OLESetData(
+                            [in, out] _JSDataObject** Data, 
+                            [in, out] short* DataFormat);
+            [id(0x00000032), helpstring("Occurs when the OLEDrag method is performed and, data formats and drop effects need to be specified.")]
+            void OLEStartDrag(
+                            [in, out] _JSDataObject** Data, 
+                            [in, out] long* AllowedEffects);
+            [id(0x00000033), helpstring("Occurs before a selected record is deleted in a GridEX control.")]
+            void BeforeDeleteEX(
+                            [in] long RowIndex, 
+                            [in] VARIANT Bookmark, 
+                            [in] _JSRetBoolean* Cancel);
+            [id(0x00000034), helpstring("Occurs when the user presses a button in a cell.")]
+            void ColButtonClick([in] short ColIndex);
+            [id(0x00000035), helpstring("Occurs when The GridEX control loads a row.")]
+            void RowFormat([in, out] _JSRowData** RowBuffer);
+            [id(0x00000036), helpstring("Occurs before the GridEX control prints its contents.")]
+            void BeforePrinting(
+                            [in] long nPages, 
+                            [in] _JSRetBoolean* Cancel);
+            [id(0x00000037), helpstring("Occurs before the GridEX prints a page.")]
+            void BeforePrintPage(
+                            [in] long PageNumber, 
+                            [in] long nPages);
+            [id(0x00000038), helpstring("Occurs continuously while the GridEX control is printing a document.")]
+            void PrintingProgress(
+                            [in] single PrintProgress, 
+                            [in] _JSRetBoolean* Cancel);
+            [id(0x00000039), helpstring("Occurs when the text entered by the user in a combo column is not present in the list.")]
+            void NotInList(
+                            [in] short ColIndex, 
+                            [in] BSTR NewData, 
+                            [in] _JSRetBoolean* CancelUpdate);
+            [id(0x0000003a), helpstring("Occurs when the user selects a different range of rows.")]
+            void SelectionChange();
+    };
+
+    [
+      uuid(7A6D95D1-4F55-4A87-A808-16D390E56957),
+      version(1.0),
+      helpstring("Janus GridEX 2000 Print Preview Control (DAO 3.6 & ADO 2.x)"),
+      hidden,
+      nonextensible
+    ]
+    dispinterface __GEXPreview {
+        properties:
+        methods:
+            [id(0x00000001), helpstring("Occurs when the Close button, in the control's tool bar, has been clicked.")]
+            void OnCloseClick();
+            [id(0x00000002), helpstring("Occurs when the Print button, in the control's tool bar, has been clicked.")]
+            void OnPrintClick([in] _JSRetBoolean* UsePrintSetupDlg);
+            [id(0x00000003), helpstring("Occurs before paginating the document.")]
+            void BeforePaginating();
+            [id(0x00000004), helpstring("Occurs after paginating the document.")]
+            void AfterPaginating();
+            [id(0x00000005), helpstring("Occurs after the Zoom property changes.")]
+            void ZoomChanged();
+            [id(0x00000006)]
+            void PageChanged();
+    };
+
+    typedef [uuid(89AEA0AC-3F93-48B8-BDA4-E375197C77E2), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexNoButton = 0,
+        jgexButtonEllipsis = 1,
+        jgexButtonDownArrow = 2
+    } jgexButtonStyleConstants;
+
+    typedef [uuid(0B6176D5-86AC-46CC-A6CB-4298CB94272C), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexText = 0,
+        jgexIcon = 1,
+        jgexIconAndText = 2,
+        jgexCheckBox = 3
+    } jgexColumnTypeConstants;
+
+    typedef [uuid(0059BC60-4897-4FB0-B42C-47A52B3D88D0), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexEditCustom = 0xffffffff,
+        jgexEditNone = 0,
+        jgexEditTextBox = 1,
+        jgexEditCheckBox = 2,
+        jgexEditDropDown = 3,
+        jgexEditCalendarDropDown = 4,
+        jgexEditCombo = 5
+    } jgexEditTypeConstants;
+
+    typedef [uuid(FCFF4437-4AF9-4870-8E17-4A5EE95F1C25), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexNBAutomatic = 0,
+        jgexNBNull = 1,
+        jgexNBEmptyString = 2
+    } jgexNullBehaviorConstants;
+
+    typedef [uuid(656FFF3D-6813-401D-936F-9F79058A21DE), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexHPALeft = 0,
+        jgexHPACenter = 1,
+        jgexHPARight = 2,
+        jgexHPALeftOfText = 3,
+        jgexHPARightOfText = 4
+    } jgexHorzPictureAlignmentConstants;
+
+    typedef [uuid(076471F7-06AF-4C6A-8542-795E3EED672C), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexVPATop = 0,
+        jgexVPACenter = 1,
+        jgexVPABottom = 2,
+        jgexVPATopOfText = 3,
+        jgexVPABottomOfText = 4
+    } jgexVertPictureAlignmentConstants;
+
+    typedef [uuid(55700124-979C-4A6E-8814-A660C266BDB2), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexTextOnly = 0,
+        jgexPictureOnly = 1,
+        jgexPictureAndText = 2
+    } jgexPictureDrawModeConstants;
+
+    typedef [uuid(84D21DBA-A39A-41D4-B6CB-B05F247B4487), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexPSLetter = 1,
+        jgexPSLetterSmall = 2,
+        jgexPSTabloid = 3,
+        jgexPSLedger = 4,
+        jgexPSLegal = 5,
+        jgexPSStatement = 6,
+        jgexPSExecutive = 7,
+        jgexPSA3 = 8,
+        jgexPSA4 = 9,
+        jgexPSA4Small = 10,
+        jgexPSA5 = 11,
+        jgexPSB4 = 12,
+        jgexPSB5 = 13,
+        jgexPSFolio = 14,
+        jgexPSQuarto = 15,
+        jgexPS10x14 = 16,
+        jgexPS11x17 = 17,
+        jgexPSNote = 18,
+        jgexPSEnv9 = 19,
+        jgexPSEnv10 = 20,
+        jgexPSEnv11 = 21,
+        jgexPSEnv12 = 22,
+        jgexPSEnv14 = 23,
+        jgexPSCSheet = 24,
+        jgexPSDSheet = 25,
+        jgexPSESheet = 26,
+        jgexPSEnvDL = 27,
+        jgexPSEnvC5 = 28,
+        jgexPSEnvC3 = 29,
+        jgexPSEnvC4 = 30,
+        jgexPSEnvC6 = 31,
+        jgexPSEnvC65 = 32,
+        jgexPSEnvB4 = 33,
+        jgexPSEnvB5 = 34,
+        jgexPSEnvB6 = 35,
+        jgexPSEnvItaly = 36,
+        jgexPSEnvMonarch = 37,
+        jgexPSEnvPersonal = 38,
+        jgexPSFanfoldUS = 39,
+        jgexPSFanfoldStdGerman = 40,
+        jgexPSFanfoldLglGerman = 41,
+        jgexPSUser = 256
+    } jgexPaperSizeConstants;
+
+    typedef [uuid(ACF1A0C1-4CAE-4092-9765-5508445693EB), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexMUInches = 0,
+        jgexMUMilimeters = 1
+    } jgexMeasurementUnitsConstants;
+
+    typedef [uuid(FC41EA48-3B1F-4296-807F-C4C7B9DA56F5), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexHFCenter = 1,
+        jgexHFLeft = 2,
+        jgexHFRight = 3
+    } jgexHeaderFooterPositionConstants;
+
+    typedef [uuid(019C6745-49AC-4982-873C-621E9C417DBD), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexPPDraft = 0xffffffff,
+        jgexPPLow = 0xfffffffe,
+        jgexPPMedium = 0xfffffffd,
+        jgexPPHigh = 0xfffffffc
+    } jgexPPPrintQualityConstants;
+
+    typedef [uuid(BF153681-F488-420E-BCF8-A513C17A2A9A), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexPPCMMonochrome = 1,
+        jgexPPCMColor = 2
+    } jgexPPColorModeConstants;
+
+    typedef [uuid(F471F7B2-DD7E-4CC7-BD55-D813927B0FFC), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexPPPortrait = 1,
+        jgexPPLandscape = 2
+    } jgexPPOrientationConstants;
+
+    typedef [uuid(5911D1DB-9618-4E78-A2D1-74C041C42498), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexPPUpper = 1,
+        jgexPPLower = 2,
+        jgexPPMiddle = 3,
+        jgexPPManual = 4,
+        jgexPPEnvelope = 5,
+        jgexPPEnvManual = 6,
+        jgexPPAuto = 7,
+        jgexPPTractor = 8,
+        jgexPPSmallFmt = 9,
+        jgexPPLargeFmt = 10,
+        jgexPPLargeCapacity = 11,
+        jgexPPCassete = 14
+    } jgexPPPaperBinConstants;
+
+    typedef [uuid(1F28E821-34BA-4BEC-A72A-602688BF9302), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexZoomCurrentSize = 0,
+        jgexZoomOnePage = 1,
+        jgexZoomTwoPages = 2
+    } jgexZoomConstants;
+
+    typedef [uuid(4C4B5BD1-2CED-4BB9-AC63-1E4C03E4D742), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexGLBoth = 0xffffffff,
+        jgexGLNone = 0,
+        jgexGLVertical = 1,
+        jgexGLHorizontal = 2
+    } jgexGridLinesConstants;
+
+    typedef [uuid(61E7F102-2D55-45A7-B024-EC8193542B48), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexDGMExpanded = 0,
+        jgexDGMCollapsed = 1
+    } jgexDefaultGroupModeConstants;
+
+    typedef [uuid(486C50E8-BE88-4EE8-BDD4-9F51E68B96E9), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexGLSSolid = 0,
+        jgexGLSDashes = 1,
+        jgexGLSSmallDots = 2
+    } jgexGridLineStyleConstants;
+
+    typedef [uuid(F2A7E69C-8B54-439F-A364-2E14E0E1F783), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexDMCenter = 0,
+        jgexDMTile = 1,
+        jgexDMStretch = 2
+    } jgexDrawModePictureBackgroundConstants;
+
+    typedef [uuid(F198A8DE-BB3F-4528-8C6A-508EB7979B69), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexAppearanceFlat = 0,
+        jgexAppearanceSingle3DRaised = 1,
+        jgexAppearanceSingle3DSunken = 2,
+        jgexAppearance3DRaised = 3,
+        jgexAppearance3DSunken = 4
+    } jgexAppearanceConstants;
+
+    typedef [uuid(1B69942D-4D38-4266-8916-A17F4D73DE78), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexAggregateNone = 0,
+        jgexCount = 1,
+        jgexSum = 2,
+        jgexAvg = 3,
+        jgexMin = 4,
+        jgexMax = 5,
+        jgexStdDev = 6,
+        jgexValueCount = 7
+    } jgexAggregateFunctionConstants;
+
+    typedef [uuid(0F687E52-1BA5-4BD2-AF3A-B474683FEA53), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexCFText = 1,
+        jgexCFBitmap = 2,
+        jgexCFMetaFile = 3,
+        jgexCFEMetafile = 14,
+        jgexCFDIB = 8,
+        jgexCFPalette = 9,
+        jgexCFFiles = 15,
+        jgexCFRTF = 0xffffbf01
+    } jgexDataFormatConstants;
+
+    typedef [uuid(43525B3D-FE71-4DFE-99D2-C51749F68E43), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexDropEffectNone = 0,
+        jgexDropEffectCopy = 1,
+        jgexDropEffectMove = 2,
+        jgexDropEffectScroll = 0x80000000
+    } jgexOLEDropEffectConstants;
+
+    typedef [uuid(3DA799F7-2DD5-4208-8D62-3A8CE3AEC473), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexColumnNavigation = 0,
+        jgexControlNavigation = 1
+    } jgexTabKeyBehaviorConstants;
+
+    typedef [uuid(94CB3CE2-F3B0-4CD6-BF68-B04B4D4BA13C), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexEditModeOff = 0,
+        jgexEditModeOn = 1
+    } jgexEditModeConstants;
+
+    typedef [uuid(4932A036-9800-4721-9AEB-35DE28287E23), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexOleDropNone = 0,
+        jgexOleDropManual = 1
+    } jgexOleDropModeConstants;
+
+    typedef [uuid(5BC13836-ECD0-4B59-9441-A1ABA1A020B1), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexHSDouble3D = 0,
+        jgexHSNoBorder = 1,
+        jgexHSSingleFlat = 2,
+        jgexHSSingle3D = 3
+    } jgexHeaderStyleConstants;
+
+    typedef [uuid(DC996279-0CB8-48B8-91BC-AA9C1066B277), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexHTNoWhere = 0,
+        jgexHTGroupByBox = 1,
+        jgexHTColumnHeader = 2,
+        jgexHTRowHeader = 3,
+        jgexHTNewRow = 4,
+        jgexHTCell = 5,
+        jgexHTCard = 6,
+        jgexHTBackGround = 7
+    } jgexHitTestConstants;
+
+    typedef [uuid(9761F4BE-49EE-4D1C-AF35-DA240282AAFF), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexSortDescending = 0xffffffff,
+        jgexSortNone = 0,
+        jgexSortAscending = 1
+    } jgexSortOrderConstants;
+
+    typedef [uuid(078FE382-E74A-40ED-AC04-C6BA6760ED63), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexSortTypeString = 1,
+        jgexSortTypeNumeric = 2,
+        jgexSortTypeDate = 3,
+        jgexSortTypeDateTime = 4,
+        jgexSortTypeTime = 5
+    } jgexSortTypeConstants;
+
+    typedef [uuid(F0CA6568-A942-4B8E-A919-27A688231BD6), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexEntireRow = 0,
+        jgexSingleCell = 1
+    } jgexSelectionStyleConstants;
+
+    typedef [uuid(6AA4B366-A8B0-43B1-8E6E-E93C233CE43D), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexEqual = 0,
+        jgexNotEqual = 1,
+        jgexGreaterThan = 2,
+        jgexLessThan = 3,
+        jgexGreaterThanOrEqualTo = 4,
+        jgexLessThanOrEqualTo = 5,
+        jgexBetween = 6,
+        jgexNotBetween = 7,
+        jgexContains = 8,
+        jgexNotContains = 9
+    } jgexConditionOperatorConstants;
+
+    typedef [uuid(3AC7B66A-E08A-43F8-9831-A7DEFC56475D), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexLockReadOnly = 1,
+        jgexLockPessimistic = 2,
+        jgexLockOptimistic = 3,
+        jgexLockBatchOptimistic = 4
+    } jgexLockTypeConstants;
+
+    typedef [uuid(C686ADEF-1B44-4598-9599-8DEAD2944FFB), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexRSDAOTable = 1,
+        jgexRSDAODynaset = 2,
+        jgexRSDAOSnapshot = 4,
+        jgexRSADOKeyset = 1,
+        jgexRSADOStatic = 3
+    } jgexRecordsetTypeConstants;
+
+    typedef [uuid(74FC84BF-B439-424F-AD8A-FAA0E8D2C3FE), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexTable = 0,
+        jgexCard = 1
+    } jgexViewConstants;
+
+    typedef [uuid(49B64262-9613-4966-991B-076DC71A989E), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexGroupInsert = 0,
+        jgexGroupDelete = 1,
+        jgexGroupMove = 2
+    } jgexGroupChange;
+
+    typedef [uuid(5FB66EF4-F1CE-44AE-A6FE-223AECE48D4C), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexTop = 0,
+        jgexBottom = 1
+    } jgexNewRowPosConstants;
+
+    typedef [uuid(B022D894-2ED9-44D2-9F07-22E112925021), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexDAO = 0,
+        jgexADO = 1,
+        jgexUnbound = 99
+    } jgexDataModeConstants;
+
+    typedef [uuid(F9DD2076-CBE0-4B8D-8E10-0025155F8617), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexNone = 0,
+        jgexFixed = 1,
+        jgexSingle3D = 2,
+        jgexFlat = 3
+    } jgexBorderStyleConstants;
+
+    typedef [uuid(6053A7ED-BEC7-4282-BA4F-C8A0AF19B7A0), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexAlignLeft = 0,
+        jgexAlignCenter = 1,
+        jgexAlignRight = 2
+    } jgexAlignmentConstants;
+
+    typedef [uuid(2443CB89-7143-4A7A-8728-382E0C473343), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexRowTypeRecord = 0,
+        jgexRowTypeGroupHeader = 1,
+        jgexRowTypeGroupFooter = 2
+    } jgexRowTypeConstants;
+
+    typedef [uuid(BD03F408-2E54-4129-A069-13AEDC561F60), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexHideSelection = 0,
+        jgexHighLightInactive = 1,
+        jgexHighLightNormal = 2
+    } jgexHideSelectionConstants;
+
+    typedef [uuid(ED7E9254-8F32-4244-AA7C-EF0E8AD2C948), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexUseServer = 2,
+        jgexUseClient = 3
+    } jgexCursorLocationConstants;
+
+    typedef [uuid(0276E712-441F-4971-92AA-A9F25E4CFF29), version(1.0), helpstring("Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)")]
+    enum {
+        jgexNoGroupFooter = 0,
+        jgexCaptionGroupFooter = 1,
+        jgexTotalsGroupFooter = 2
+    } jgexGroupFooterStyleConstants;
+};
