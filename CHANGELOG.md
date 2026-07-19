@@ -63,6 +63,14 @@ All notable changes to this project will be documented in this file.
 - Recon findings for M3c defaults parity (probe vs our stubs): original defaults are `DataMode=jgexDAO`, `GroupByBoxVisible=True`, `RowHeaders=False`, `DefaultColumnWidth=1500`, `RowHeight=285`, `BackColorBkg=vbWindowBackground`, `HeaderStyle=0`, plus two default 1500tw columns on a fresh control
 - `mdTest.bas`: `TestSkip` for graceful "RESULT: PASSED (0 tests, skipped)" on machines without the original control license
 
+### Added (M3c -- defaults parity)
+
+- Control defaults aligned with the original (verified by diffing a runtime-created original's full snapshot against ours): `DataMode=jgexDAO`, `RecordsetType=jgexRSDAODynaset`, `CursorLocation=jgexUseServer`, `BorderStyle=jgexFixed`, `HideSelection=jgexHideSelection`, `GroupByBoxVisible=True`, `RowHeaders=False`, `AutomaticSort/ShowToolTips/ScrollToolTips/HoldSortSettings=False`, `DefaultColumnWidth=1500`, `RowHeight=285`, `CardWidth=3750`, `CardSpacing=180`, `PreviewRowIndent=600`, `PreviewRowLines=0`, `BackColorBkg=vbWindowBackground`, `BackColorGBBox/GridLinesColor/ForeColorInfoText=vb3DShadow`, `RowColorEven=&HC1D7B0`, `RowColorOdd=&HBFFFFF`, `RecordNavigatorString="Record:|of"`
+- Six built-in `FormatStyles` created on init (Default/OddRow/EvenRow/RowGroup/PreviewRow/SelectedRow with original colors); `JSFormatStyle.FontCharset` defaults to the system locale charset via a probing `StdFont`; `JSFmtConditions` defaults `GroupConditionCountTitle="Items"`/`ShowGroupConditionCount=True`; `JSPrinterProperties` defaults `ColorMode=jgexPPCMMonochrome`, `PrintQuality=-3`, `CardColumnsPerPage=2`, paper size/extent 0 and `RepeatFrozenCols=False` (fixed values -- empirically the original does *not* read the default printer DEVMODE)
+- `UserControl_InitProperties` creates the original's two default 1500tw columns on freshly placed controls (persisted/sited controls are unaffected)
+- `BoundColumnIndex`/`ReplaceColumnIndex` raise error 393 unless `ActAsDropDown` is set (matches original; they land in snapshot `$errors` identically); corpus canonicalization now strips `$errors`-listed props from *both* sides symmetrically
+- UserControl designer: 3D client-edge border + pixel `ScaleMode` so the client area matches the original's 396x256 in a 400x260 site
+
 ### Changed
 
 - README refreshed to current M2 state: milestone status, source-compatibility scope note, layout table covering `tools`/`test`/`doc/Help` and a Testing section for `test\ModelTests\make.bat`

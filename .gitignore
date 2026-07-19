@@ -17,5 +17,7 @@
 test/Snapshot/*.json
 test/ModelTests/*.json
 test/ModelTests/*.out.txt
+test/ModelTests/*.expected.txt
+test/ModelTests/*.actual.txt
 test/VisualDiff/*.out.txt
 test/VisualDiff/output/*

@@ -1483,19 +1483,31 @@ End Property
 
 Public Property Get BoundColumnIndex() As Variant
 Attribute BoundColumnIndex.VB_Description = "Returns/sets the index or key of the column used to supply a data value to another GridEX control."
+    If Not m_bActAsDropDown Then
+        Err.Raise 393 '--- available only when the control acts as dropdown
+    End If
     BoundColumnIndex = m_vBoundColumnIndex
 End Property
 
 Public Property Let BoundColumnIndex(ByVal vntValue As Variant)
+    If Not m_bActAsDropDown Then
+        Err.Raise 393
+    End If
     m_vBoundColumnIndex = vntValue
 End Property
 
 Public Property Get ReplaceColumnIndex() As Variant
 Attribute ReplaceColumnIndex.VB_Description = "Returns/sets the index or key of the column that replaces Id values in a DropDown GridEX Control."
+    If Not m_bActAsDropDown Then
+        Err.Raise 393 '--- available only when the control acts as dropdown
+    End If
     ReplaceColumnIndex = m_vReplaceColumnIndex
 End Property
 
 Public Property Let ReplaceColumnIndex(ByVal vntValue As Variant)
+    If Not m_bActAsDropDown Then
+        Err.Raise 393
+    End If
     m_vReplaceColumnIndex = vntValue
 End Property
 
@@ -2061,6 +2073,34 @@ Private Sub pvApplyHoldSort(HoldSortSettings As Variant)
     End If
 End Sub
 
+Private Sub pvInitFormatStyles()
+    '--- built-in styles present on a fresh original control
+    With m_oFormatStyles.Add("Default")
+        .BackColor = vbWindowBackground
+        .ForeColor = vbWindowText
+    End With
+    With m_oFormatStyles.Add("OddRow")
+        .BackColor = &HBFFFFF
+        .ForeColor = vbWindowText
+    End With
+    With m_oFormatStyles.Add("EvenRow")
+        .BackColor = &HC1D7B0
+        .ForeColor = vbWindowText
+    End With
+    With m_oFormatStyles.Add("RowGroup")
+        .BackColor = vbButtonFace
+        .ForeColor = vbButtonText
+    End With
+    With m_oFormatStyles.Add("PreviewRow")
+        .BackColor = vbWindowBackground
+        .ForeColor = &HFF0000
+    End With
+    With m_oFormatStyles.Add("SelectedRow")
+        .BackColor = vbHighlight
+        .ForeColor = vbHighlightText
+    End With
+End Sub
+
 '=========================================================================
 ' Interface IObjectSafety
 '=========================================================================
@@ -2096,54 +2136,59 @@ Private Sub UserControl_Initialize()
     m_clrForeColor = vbWindowText
     m_clrBackColorHeader = vbButtonFace
     m_clrForeColorHeader = vbButtonText
-    m_clrBackColorBkg = vbApplicationWorkspace
-    m_clrBackColorGBBox = vbButtonFace
+    m_clrBackColorBkg = vbWindowBackground
+    m_clrBackColorGBBox = vb3DShadow
     m_clrBackColorInfoText = vbButtonFace
-    m_clrForeColorInfoText = vbButtonText
+    m_clrForeColorInfoText = vb3DShadow
     m_clrBackColorRowGroup = vbButtonFace
     m_clrForeColorRowGroup = vbButtonText
-    m_clrRowColorEven = vbWindowBackground
-    m_clrRowColorOdd = vbWindowBackground
-    m_clrGridLinesColor = vbButtonFace
+    m_clrRowColorEven = &HC1D7B0
+    m_clrRowColorOdd = &HBFFFFF
+    m_clrGridLinesColor = vb3DShadow
     m_clrMaskColor = &HC0C0C0
     m_eGridLines = jgexGLBoth
     m_eGridLineStyle = jgexGLSSolid
     m_eHeaderStyle = jgexHSDouble3D
     m_eView = jgexTable
     m_eSelectionStyle = jgexEntireRow
-    m_eHideSelection = jgexHighLightInactive
+    m_eHideSelection = jgexHideSelection
     m_eNewRowPos = jgexTop
     m_eTabKeyBehavior = jgexColumnNavigation
     m_eDefaultGroupMode = jgexDGMExpanded
     m_eGroupFooterStyle = jgexNoGroupFooter
-    m_eDataMode = jgexADO
-    m_eRecordsetType = jgexRSADOKeyset
+    m_eDataMode = jgexDAO
+    m_eRecordsetType = jgexRSDAODynaset
     m_eLockType = jgexLockOptimistic
-    m_eCursorLocation = jgexUseClient
-    m_eBorderStyle = jgexSingle3D
-    m_lDefaultColumnWidth = 1000
+    m_eCursorLocation = jgexUseServer
+    m_eBorderStyle = jgexFixed
+    m_lDefaultColumnWidth = 1500
     m_lColumnHeaderHeight = 285
+    m_lRowHeight = 285
     m_lImageWidth = 16
     m_lImageHeight = 16
-    m_lCardWidth = 3000
-    m_lCardSpacing = 200
-    m_nPreviewRowLines = 2
+    m_lCardWidth = 3750
+    m_lCardSpacing = 180
+    m_lPreviewRowIndent = 600
     m_bColumnHeaders = True
-    m_bRowHeaders = True
+    m_bGroupByBoxVisible = True
     m_bAllowEdit = True
     m_bAllowColumnDrag = True
     m_bAllowCardSizing = True
     m_bCardBorders = True
     m_bShowEmptyFields = True
-    m_bShowToolTips = True
-    m_bScrollToolTips = True
-    m_bAutomaticSort = True
     m_bAutomaticArrange = True
-    m_bHoldSortSettings = True
     m_bRedraw = True
     m_sCalendarTodayText = "Today"
     m_sCalendarNoneText = "None"
     m_sGroupByBoxInfoText = "Drag a column header here to group by that column."
+    m_sRecordNavigatorString = "Record:|of"
+    pvInitFormatStyles
+End Sub
+
+Private Sub UserControl_InitProperties()
+    '--- a freshly placed control starts with two default empty columns
+    m_oColumns.Add(vbNullString).Width = m_lDefaultColumnWidth
+    m_oColumns.Add(vbNullString).Width = m_lDefaultColumnWidth
 End Sub
 
 Private Sub UserControl_Terminate()

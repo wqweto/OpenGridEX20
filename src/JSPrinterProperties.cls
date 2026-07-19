@@ -396,12 +396,10 @@ End Function
 
 Private Sub Class_Initialize()
     m_nCopies = 1
-    m_eColorMode = jgexPPCMColor
+    m_eColorMode = jgexPPCMMonochrome
     m_eOrientation = jgexPPPortrait
     m_ePaperBin = jgexPPAuto
-    m_nPaperSize = jgexPSA4
-    m_lPaperWidth = 11906
-    m_lPaperHeight = 16838
+    m_nPrintQuality = -3
     m_lLeftMargin = 1440
     m_lTopMargin = 1440
     m_lRightMargin = 1440
@@ -410,7 +408,6 @@ Private Sub Class_Initialize()
     m_lHeaderDistance = 720
     m_lFooterDistance = 720
     m_bPrintProgressDialog = True
-    m_lCardColumnsPerPage = 1
+    m_lCardColumnsPerPage = 2
     m_bPrintPreviewRows = True
-    m_bRepeatFrozenCols = True
 End Sub

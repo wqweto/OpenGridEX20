@@ -134,4 +134,6 @@ End Sub
 
 Private Sub Class_Initialize()
     Set m_cItems = New Collection
+    m_sGroupConditionCountTitle = "Items"
+    m_bShowGroupConditionCount = True
 End Sub

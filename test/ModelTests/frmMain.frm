@@ -153,6 +153,9 @@ End Sub
 
 Private Sub pvTestFormatStyles()
     With GridEX1.FormatStyles
+        AssertEquals "FormatStyles: 6 built-in styles", 6, .Count
+        AssertEquals "FormatStyles: built-in EvenRow color", &HC1D7B0, .Item("EvenRow").BackColor
+        .Clear
         .Add("Header").FontBold = True
         .Add "Totals"
         AssertEquals "FormatStyles.Count", 2, .Count
@@ -382,12 +385,12 @@ Private Sub pvTestUnbound()
         AssertEquals "Unbound: value refetched after Refetch", "R1C1", .GetRowData(1).Value(1)
         AssertEquals "Unbound: Refetch keeps bookmark", "bk3", .RowBookmark(3)
         '--- Rebind full-resets incl. bookmarks; sort cleared per param with
-        '--- HoldSortSettings property (default True) as the default
+        '--- HoldSortSettings property (original default False) as default
         .SortKeys.Add 1, jgexSortAscending
+        .Rebind True
+        AssertEquals "Unbound: Rebind True holds sort", 1, .SortKeys.Count
         .Rebind
-        AssertEquals "Unbound: Rebind holds sort by default", 1, .SortKeys.Count
-        .Rebind False
-        AssertEquals "Unbound: Rebind False clears sort", 0, .SortKeys.Count
+        AssertEquals "Unbound: Rebind clears sort by default", 0, .SortKeys.Count
         Assert "Unbound: Rebind clears bookmark", IsEmpty(.RowBookmark(3))
         '--- navigation state events with previous row/col in the args
         oForm.EventLog = vbNullString
@@ -452,13 +455,40 @@ EH:
     Assert "corpus error in " & sName & ": &H" & Hex$(Err.Number) & " " & Err.Description, False
 End Sub
 
+Private Sub pvStripErrors(oSide As Object, oOther As Object)
+    Dim oErr            As Object
+    Dim vKeys           As Variant
+    Dim lIdx            As Long
+    Dim sKey            As String
+
+    Set oErr = C2Obj(JsonValue(oSide, "/$errors"))
+    If Not oErr Is Nothing Then
+        vKeys = JsonKeys(oErr)
+        If IsArray(vKeys) Then
+            For lIdx = 0 To UBound(vKeys)
+                sKey = vKeys(lIdx)
+                If InStr(sKey, "[") > 0 Then
+                    sKey = Left$(sKey, InStr(sKey, "[") - 1)
+                End If
+                If LenB(sKey) <> 0 Then
+                    If Not IsEmpty(JsonValue(oSide, sKey)) Then
+                        JsonValue(oSide, sKey) = Empty
+                    End If
+                    If Not IsEmpty(JsonValue(oOther, sKey)) Then
+                        JsonValue(oOther, sKey) = Empty
+                    End If
+                End If
+            Next
+        End If
+        JsonValue(oSide, "/$errors") = Empty
+    End If
+End Sub
+
 Private Sub pvCanonProps(oExp As Object, oAct As Object)
     Dim vKeys           As Variant
     Dim lIdx            As Long
-    Dim oErr            As Object
     Dim oE              As Object
     Dim oA              As Object
-    Dim sKey            As String
     Dim lCount          As Long
 
     If oExp Is Nothing Or oAct Is Nothing Then
@@ -473,29 +503,10 @@ Private Sub pvCanonProps(oExp As Object, oAct As Object)
         Next
         Exit Sub
     End If
-    '--- drop props the original could not read at design time ($errors)
-    '--- from both sides before comparing
-    Set oErr = C2Obj(JsonValue(oExp, "/$errors"))
-    If Not oErr Is Nothing Then
-        vKeys = JsonKeys(oErr)
-        If IsArray(vKeys) Then
-            For lIdx = 0 To UBound(vKeys)
-                sKey = vKeys(lIdx)
-                If InStr(sKey, "[") > 0 Then
-                    sKey = Left$(sKey, InStr(sKey, "[") - 1)
-                End If
-                If LenB(sKey) <> 0 Then
-                    If Not IsEmpty(JsonValue(oExp, sKey)) Then
-                        JsonValue(oExp, sKey) = Empty
-                    End If
-                    If Not IsEmpty(JsonValue(oAct, sKey)) Then
-                        JsonValue(oAct, sKey) = Empty
-                    End If
-                End If
-            Next
-        End If
-        JsonValue(oExp, "/$errors") = Empty
-    End If
+    '--- drop props either side could not read ($errors) from both sides
+    '--- before comparing
+    pvStripErrors oExp, oAct
+    pvStripErrors oAct, oExp
     '--- StdFont quantizes bitmap font sizes (e.g. MS Sans Serif 7.8 reads
     '--- back as 8.25) so canon the expected size through a real StdFont
     If Not IsEmpty(JsonValue(oExp, "Charset")) And Not IsEmpty(JsonValue(oExp, "Size")) Then
