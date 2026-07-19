@@ -1,0 +1,1 @@
+{ "$schema": "opengex-visualdiff/1", "name": "headers-singleflat", "width": 400, "height": 260, "apply": "before-show", "props": { "GroupByBoxVisible": false, "HeaderStyle": 2, "Columns": [ { "Caption": "Alpha", "Width": 1500 }, { "Caption": "Beta", "Width": 1500 } ] } }

@@ -2126,7 +2126,7 @@ Private Sub pvPaintGroupByBox(ByVal hDC As Long, lY As Long)
     '--- info box is sized by the info text extent
     Call DrawText(hDC, StrPtr(m_sGroupByBoxInfoText), Len(m_sGroupByBoxInfoText), uRect, DT_SINGLELINE Or DT_CALCRECT)
     pvFillRect hDC, 4, lY + 5, 12 + uRect.Right, lY + 5 + lBoxH, m_clrBackColorInfoText
-    pvDrawText hDC, m_sGroupByBoxInfoText, 7, lY + 5, 7 + uRect.Right, lY + 5 + lBoxH, m_clrForeColorInfoText, jgexAlignLeft
+    pvDrawText hDC, m_sGroupByBoxInfoText, 7, lY + 5, 7 + uRect.Right, lY + 5 + lBoxH, m_clrForeColorInfoText, m_clrBackColorInfoText, jgexAlignLeft
     Call SelectObject(hDC, hPrevFont)
     lY = lY + lTotalH
 End Sub
@@ -2141,11 +2141,25 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
 
     lHdrH = m_lColumnHeaderHeight
     hPrevFont = pvSelectFont(hDC, m_oColumnHeaderFont)
-    '--- top highlight and bottom shadow/dark lines first; cell edges
-    '--- painted after overwrite them at the cell boundaries
-    pvLine hDC, 0, lY, ScaleWidth, lY, vb3DHighlight, PS_SOLID
-    pvLine hDC, 0, lY + lHdrH - 2, ScaleWidth, lY + lHdrH - 2, vb3DShadow, PS_SOLID
-    pvLine hDC, 0, lY + lHdrH - 1, ScaleWidth, lY + lHdrH - 1, vb3DDKShadow, PS_SOLID
+    '--- band frame lines first; cell edges painted after overwrite them
+    '--- at the cell boundaries
+    Select Case m_eHeaderStyle
+    Case jgexHSDouble3D
+        pvLine hDC, 0, lY, ScaleWidth, lY, vb3DHighlight, PS_SOLID
+        pvLine hDC, 0, lY + lHdrH - 2, ScaleWidth, lY + lHdrH - 2, vb3DShadow, PS_SOLID
+        pvLine hDC, 0, lY + lHdrH - 1, ScaleWidth, lY + lHdrH - 1, vb3DDKShadow, PS_SOLID
+    Case jgexHSSingleFlat
+        pvLine hDC, 0, lY, ScaleWidth, lY, vb3DDKShadow, PS_SOLID
+        pvLine hDC, 0, lY + lHdrH - 1, ScaleWidth, lY + lHdrH - 1, vb3DDKShadow, PS_SOLID
+    Case jgexHSSingle3D
+        pvLine hDC, 0, lY, ScaleWidth, lY, vb3DHighlight, PS_SOLID
+        pvLine hDC, 0, lY + lHdrH - 1, ScaleWidth, lY + lHdrH - 1, vb3DShadow, PS_SOLID
+    End Select
+    '--- corner cell above the row headers column
+    If m_bRowHeaders Then
+        pvPaintHeaderCell hDC, 0, lY, 18, lHdrH, vbNullString, jgexAlignLeft
+        lX = 18
+    End If
     For nIdx = 1 To m_oColumns.Count
         Set oCol = m_oColumns.ItemByPosition(nIdx)
         If oCol.Visible Then
@@ -2163,17 +2177,30 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
 End Sub
 
 Private Sub pvPaintHeaderCell(ByVal hDC As Long, ByVal lX As Long, ByVal lY As Long, ByVal lW As Long, ByVal lH As Long, sCaption As String, ByVal eAlign As jgexAlignmentConstants)
-    pvFillRect hDC, lX + 1, lY + 1, lX + lW - 2, lY + lH - 2, m_clrBackColorHeader
-    pvLine hDC, lX, lY, lX, lY + lH - 2, vb3DHighlight, PS_SOLID
-    pvLine hDC, lX + lW - 2, lY, lX + lW - 2, lY + lH - 2, vb3DShadow, PS_SOLID
-    pvLine hDC, lX + lW - 1, lY, lX + lW - 1, lY + lH, vb3DDKShadow, PS_SOLID
+    Select Case m_eHeaderStyle
+    Case jgexHSNoBorder
+        pvFillRect hDC, lX, lY, lX + lW, lY + lH, m_clrBackColorHeader
+    Case jgexHSSingleFlat
+        pvFillRect hDC, lX, lY + 1, lX + lW - 1, lY + lH - 1, m_clrBackColorHeader
+        pvLine hDC, lX + lW - 1, lY, lX + lW - 1, lY + lH, vb3DDKShadow, PS_SOLID
+    Case jgexHSSingle3D
+        pvFillRect hDC, lX + 1, lY + 1, lX + lW - 1, lY + lH - 1, m_clrBackColorHeader
+        pvLine hDC, lX, lY, lX, lY + lH - 1, vb3DHighlight, PS_SOLID
+        pvLine hDC, lX + lW - 1, lY, lX + lW - 1, lY + lH, vb3DShadow, PS_SOLID
+    Case Else
+        pvFillRect hDC, lX + 1, lY + 1, lX + lW - 2, lY + lH - 2, m_clrBackColorHeader
+        pvLine hDC, lX, lY, lX, lY + lH - 2, vb3DHighlight, PS_SOLID
+        pvLine hDC, lX + lW - 2, lY, lX + lW - 2, lY + lH - 2, vb3DShadow, PS_SOLID
+        pvLine hDC, lX + lW - 1, lY, lX + lW - 1, lY + lH, vb3DDKShadow, PS_SOLID
+    End Select
     If LenB(sCaption) <> 0 Then
-        pvDrawText hDC, sCaption, lX + 2, lY + 2, lX + lW - 2, lY + lH - 1, m_clrForeColorHeader, eAlign
+        pvDrawText hDC, sCaption, lX + 2, lY + 2, lX + lW - 2, lY + lH - 1, m_clrForeColorHeader, m_clrBackColorHeader, eAlign
     End If
 End Sub
 
 Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
     Dim lRowH           As Long
+    Dim lHdrW           As Long
     Dim lTotalW         As Long
     Dim lRow            As Long
     Dim lRowTop         As Long
@@ -2186,6 +2213,9 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
     Dim lPainted        As Long
 
     lRowH = m_lRowHeight
+    If m_bRowHeaders Then
+        lHdrW = 18
+    End If
     For nIdx = 1 To m_oColumns.Count
         Set oCol = m_oColumns.ItemByPosition(nIdx)
         If oCol.Visible Then
@@ -2193,7 +2223,7 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
         End If
     Next
     '--- background right of the columns down to the bottom
-    pvFillRect hDC, lTotalW, lY, ScaleWidth, ScaleHeight, m_clrBackColorBkg
+    pvFillRect hDC, lHdrW + lTotalW, lY, ScaleWidth, ScaleHeight, m_clrBackColorBkg
     If lRowH > 0 Then
         hPrevFont = pvSelectFont(hDC, m_oFont)
         For lRow = 1 To RowCount
@@ -2201,22 +2231,35 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
             If lRowTop >= ScaleHeight Then
                 Exit For
             End If
-            pvPaintDataRow hDC, lRow, lRowTop, lRowH, lTotalW
+            pvPaintDataRow hDC, lRow, lRowTop, lRowH, lHdrW, lTotalW
             lPainted = lRow
         Next
         Call SelectObject(hDC, hPrevFont)
     End If
     lRowsBottom = lY + lPainted * lRowH
-    '--- background below the last row
-    pvFillRect hDC, 0, lRowsBottom, lTotalW, ScaleHeight, m_clrBackColorBkg
-    If lPainted > 0 Then
+    If m_bEmptyRows Then
+        '--- empty rows continue the grid to the bottom edge
+        pvFillRect hDC, lHdrW, lRowsBottom, lHdrW + lTotalW, ScaleHeight, m_clrBackColor
+        If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLHorizontal Then
+            lRowTop = lRowsBottom
+            Do While lRowTop + lRowH - 1 < ScaleHeight
+                pvLine hDC, lHdrW, lRowTop + lRowH - 1, lHdrW + lTotalW, lRowTop + lRowH - 1, m_clrGridLinesColor, pvPenStyle()
+                lRowTop = lRowTop + lRowH
+            Loop
+        End If
+        lRowsBottom = ScaleHeight
+    Else
+        '--- background below the last row
+        pvFillRect hDC, 0, lRowsBottom, lHdrW + lTotalW, ScaleHeight, m_clrBackColorBkg
+    End If
+    If lPainted > 0 Or m_bEmptyRows Then
         '--- focus marquee on the current row; the XOR runs against the DC
         '--- background color which the original keeps at BackColor, and
         '--- vertical gridlines paint over the marquee dots
         If m_lRow >= 1 And m_lRow <= lPainted Then
-            uRect.Left = 0
+            uRect.Left = lHdrW
             uRect.Top = lY + (m_lRow - 1) * lRowH
-            uRect.Right = lTotalW - 1
+            uRect.Right = lHdrW + lTotalW - 1
             uRect.Bottom = uRect.Top + lRowH - 1
             Call SetBkColor(hDC, pvColor(m_clrBackColor))
             Call DrawFocusRect(hDC, uRect)
@@ -2227,14 +2270,14 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
                 Set oCol = m_oColumns.ItemByPosition(nIdx)
                 If oCol.Visible Then
                     lCum = lCum + ToPixels(oCol.Width)
-                    pvLine hDC, lCum - 1, lY, lCum - 1, lRowsBottom, m_clrGridLinesColor, pvPenStyle()
+                    pvLine hDC, lHdrW + lCum - 1, lY, lHdrW + lCum - 1, lRowsBottom, m_clrGridLinesColor, pvPenStyle()
                 End If
             Next
         End If
     End If
 End Sub
 
-Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lTotalW As Long)
+Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, ByVal lTotalW As Long)
     Dim bSelected       As Boolean
     Dim clrBack         As OLE_COLOR
     Dim clrText         As OLE_COLOR
@@ -2259,14 +2302,18 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         clrBack = m_clrBackColor
         clrText = m_clrForeColor
     End If
-    pvFillRect hDC, 0, lRowTop, lTotalW, lRowTop + lRowH, clrBack
+    If lHdrW > 0 Then
+        pvPaintRowHeader hDC, lRowTop, lRowH, lHdrW, bSelected
+    End If
+    pvFillRect hDC, lHdrW, lRowTop, lHdrW + lTotalW, lRowTop + lRowH, clrBack
+    lX = lHdrW
     For nIdx = 1 To m_oColumns.Count
         Set oCol = m_oColumns.ItemByPosition(nIdx)
         If oCol.Visible Then
             lW = ToPixels(oCol.Width)
             sText = pvCellText(lRow, oCol.Index)
             If LenB(sText) <> 0 Then
-                pvDrawText hDC, sText, lX + 2, lRowTop, lX + lW - 4, lRowTop + lRowH - 1, clrText, oCol.TextAlignment
+                pvDrawText hDC, sText, lX + 2, lRowTop, lX + lW - 4, lRowTop + lRowH - 1, clrText, clrBack, oCol.TextAlignment
             End If
             lX = lX + lW
         End If
@@ -2274,10 +2321,29 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
     If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLHorizontal Then
         If lRow = RowCount Then
             '--- the line under the last data row is drawn dark
-            pvLine hDC, 0, lRowTop + lRowH - 1, lTotalW, lRowTop + lRowH - 1, vb3DDKShadow, PS_SOLID
+            pvLine hDC, lHdrW, lRowTop + lRowH - 1, lHdrW + lTotalW, lRowTop + lRowH - 1, vb3DDKShadow, PS_SOLID
         Else
-            pvLine hDC, 0, lRowTop + lRowH - 1, lTotalW, lRowTop + lRowH - 1, m_clrGridLinesColor, pvPenStyle()
+            pvLine hDC, lHdrW, lRowTop + lRowH - 1, lHdrW + lTotalW, lRowTop + lRowH - 1, m_clrGridLinesColor, pvPenStyle()
         End If
+    End If
+End Sub
+
+Private Sub pvPaintRowHeader(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, ByVal bCurrent As Boolean)
+    Dim lIdx            As Long
+
+    '--- a Double3D header-like cell per row
+    pvFillRect hDC, 1, lRowTop + 1, lHdrW - 2, lRowTop + lRowH - 2, m_clrBackColorHeader
+    pvLine hDC, 0, lRowTop, lHdrW, lRowTop, vb3DHighlight, PS_SOLID
+    pvLine hDC, 0, lRowTop, 0, lRowTop + lRowH - 2, vb3DHighlight, PS_SOLID
+    pvLine hDC, 0, lRowTop + lRowH - 2, lHdrW, lRowTop + lRowH - 2, vb3DShadow, PS_SOLID
+    pvLine hDC, 0, lRowTop + lRowH - 1, lHdrW, lRowTop + lRowH - 1, vb3DDKShadow, PS_SOLID
+    pvLine hDC, lHdrW - 2, lRowTop, lHdrW - 2, lRowTop + lRowH - 2, vb3DShadow, PS_SOLID
+    pvLine hDC, lHdrW - 1, lRowTop, lHdrW - 1, lRowTop + lRowH - 1, vb3DDKShadow, PS_SOLID
+    '--- current row arrow marker
+    If bCurrent Then
+        For lIdx = 0 To 5
+            pvLine hDC, 6 + lIdx, lRowTop + 3 + lIdx, 6 + lIdx, lRowTop + 15 - lIdx, vbButtonText, PS_SOLID
+        Next
     End If
 End Sub
 
@@ -2351,7 +2417,7 @@ Private Sub pvLine(ByVal hDC As Long, ByVal lX1 As Long, ByVal lY1 As Long, ByVa
     Call DeleteObject(hPen)
 End Sub
 
-Private Sub pvDrawText(ByVal hDC As Long, sText As String, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long, ByVal clrText As OLE_COLOR, ByVal eAlign As jgexAlignmentConstants)
+Private Sub pvDrawText(ByVal hDC As Long, sText As String, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long, ByVal clrText As OLE_COLOR, ByVal clrBack As OLE_COLOR, ByVal eAlign As jgexAlignmentConstants)
     Dim uRect           As RECT
     Dim lFlags          As Long
 
@@ -2366,7 +2432,10 @@ Private Sub pvDrawText(ByVal hDC As Long, sText As String, ByVal lLeft As Long, 
     Case jgexAlignRight
         lFlags = lFlags Or DT_RIGHT
     End Select
-    Call SetBkMode(hDC, TRANSPARENT)
+    '--- opaque so glyph anti-aliasing blends against the known cell
+    '--- background exactly like the original
+    Call SetBkMode(hDC, OPAQUE)
+    Call SetBkColor(hDC, pvColor(clrBack))
     Call SetTextColor(hDC, pvColor(clrText))
     Call DrawText(hDC, StrPtr(sText), Len(sText), uRect, lFlags)
 End Sub

@@ -1,0 +1,1 @@
+{ "$schema": "opengex-visualdiff/1", "name": "hidden-column", "width": 400, "height": 260, "apply": "before-show", "props": { "Columns": [ { "Caption": "Alpha", "Width": 1500 }, { "Caption": "Ghost", "Width": 1500, "Visible": false }, { "Caption": "Beta", "Width": 1500 } ] }, "unbound": { "rows": [ [ "a1", "x", "b1" ], [ "a2", "x", "b2" ] ] } }

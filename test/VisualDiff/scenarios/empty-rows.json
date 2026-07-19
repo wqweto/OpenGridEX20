@@ -1,0 +1,1 @@
+{ "$schema": "opengex-visualdiff/1", "name": "empty-rows", "width": 400, "height": 260, "apply": "before-show", "props": { "EmptyRows": true, "Columns": [ { "Caption": "Alpha", "Width": 1500 }, { "Caption": "Beta", "Width": 1500 } ] } }
