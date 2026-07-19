@@ -62,6 +62,12 @@ Option Explicit
 DefObj A-Z
 
 '=========================================================================
+' Constants and member variables
+'=========================================================================
+
+Private m_oCanonFont                As New StdFont
+
+'=========================================================================
 ' Control events
 '=========================================================================
 
@@ -79,6 +85,7 @@ Private Sub Form_Load()
     pvTestRoundTrip
     pvTestRowData
     pvTestRowDataWeakRef
+    pvTestSnapshotCorpus
 QH:
     TestsDone
     Unload Me
@@ -127,6 +134,7 @@ Private Sub pvTestValueList()
     Dim oCol            As JSColumn
 
     Set oCol = GridEX1.Columns.Add("Values")
+    oCol.HasValueList = True
     With oCol.ValueList
         .Add 1, "One"
         .Add 2, "Two"
@@ -242,13 +250,13 @@ Private Sub pvTestRoundTrip()
     sJson1 = SnapshotToJson(GridEX2.Object, "GridEX", False)
     Assert "checkpoint export1", LenB(sJson1) > 0
     JsonParse sJson1, vDoc
-    Set oProps = JsonValue(pvToObj(vDoc), "props")
+    Set oProps = JsonValue(C2Obj(vDoc), "props")
     Assert "checkpoint parse", Not oProps Is Nothing
     ImportObject GridEX1.Object, "GridEX", oProps
     Assert "checkpoint import", True
     sJson2 = SnapshotToJson(GridEX1.Object, "GridEX", False)
-    pvSaveText App.Path & "\RoundTrip1.json", sJson1
-    pvSaveText App.Path & "\RoundTrip2.json", sJson2
+    WriteTextFile App.Path & "\RoundTrip1.json", sJson1
+    WriteTextFile App.Path & "\RoundTrip2.json", sJson2
     Assert "GridEX round-trip lossless", (sJson1 = sJson2)
     '--- GEXPreview pair
     With GEXPreview1
@@ -259,7 +267,7 @@ Private Sub pvTestRoundTrip()
     End With
     sJson1 = SnapshotToJson(GEXPreview1.Object, "GEXPreview", False)
     JsonParse sJson1, vDoc
-    Set oProps = JsonValue(pvToObj(vDoc), "props")
+    Set oProps = JsonValue(C2Obj(vDoc), "props")
     ImportObject GEXPreview2.Object, "GEXPreview", oProps
     sJson2 = SnapshotToJson(GEXPreview2.Object, "GEXPreview", False)
     Assert "GEXPreview round-trip lossless", (sJson1 = sJson2)
@@ -330,15 +338,117 @@ Private Sub pvTestRowDataWeakRef()
     AssertEquals "WeakRef: orphaned access raises 91", 91, lErr
 End Sub
 
-Private Function pvToObj(vValue As Variant) As Object
-    Set pvToObj = vValue
-End Function
+Private Sub pvTestSnapshotCorpus()
+    Const FUNC_NAME     As String = "pvTestSnapshotCorpus"
+    Dim vFile           As Variant
+    Dim sName           As String
+    Dim vDoc            As Variant
+    Dim oProps          As Object
+    Dim oProps2         As Object
+    Dim sClass          As String
+    Dim oForm           As frmWeak
+    Dim oCtl            As Object
+    Dim sJson1          As String
+    Dim sJson2          As String
+    Dim lCount          As Long
 
-Private Sub pvSaveText(sFile As String, sText As String)
-    Dim lFile           As Long
-
-    lFile = FreeFile
-    Open sFile For Output As #lFile
-    Print #lFile, sText;
-    Close #lFile
+    On Error GoTo EH
+    For Each vFile In EnumFiles(App.Path & "\..\snapshots", "*.json")
+        sName = Mid$(vFile, InStrRev(vFile, "\") + 1)
+        JsonParse ReadTextFile(CStr(vFile)), vDoc
+        If JsonValue(C2Obj(vDoc), "mode") = "persist" Then
+            sClass = JsonValue(C2Obj(vDoc), "class")
+            Set oProps = JsonValue(C2Obj(vDoc), "props")
+            '--- fresh control instances on a disposable host form
+            Set oForm = New frmWeak
+            Load oForm
+            If sClass = "GEXPreview" Then
+                Set oCtl = oForm.GEXPreview1.Object
+            Else
+                Set oCtl = oForm.GridEX1.Object
+            End If
+            ImportObject oCtl, sClass, oProps
+            Set oProps2 = JsonValue(JsonParseObject(SnapshotToJson(oCtl, sClass, False)), "props")
+            pvCanonProps oProps, oProps2
+            sJson1 = JsonDump(oProps)
+            sJson2 = JsonDump(oProps2)
+            If sJson1 <> sJson2 Then
+                WriteTextFile App.Path & "\" & sName & ".expected.txt", sJson1
+                WriteTextFile App.Path & "\" & sName & ".actual.txt", sJson2
+            End If
+            Assert "corpus round-trip " & sName, (sJson1 = sJson2)
+            Unload oForm
+            Set oForm = Nothing
+            lCount = lCount + 1
+        End If
+    Next
+    Assert "corpus contains snapshots", lCount > 0
+    Exit Sub
+EH:
+    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    Assert "corpus error in " & sName & ": &H" & Hex$(Err.Number) & " " & Err.Description, False
 End Sub
+
+Private Sub pvCanonProps(oExp As Object, oAct As Object)
+    Dim vKeys           As Variant
+    Dim lIdx            As Long
+    Dim oErr            As Object
+    Dim oE              As Object
+    Dim oA              As Object
+    Dim sKey            As String
+    Dim lCount          As Long
+
+    If oExp Is Nothing Or oAct Is Nothing Then
+        Exit Sub
+    End If
+    If JsonObjectType(oExp) = "array" Then
+        lCount = C2Lng(JsonValue(oExp, "-1"))
+        For lIdx = 0 To lCount - 1
+            Set oE = C2Obj(JsonValue(oExp, lIdx))
+            Set oA = C2Obj(JsonValue(oAct, lIdx))
+            pvCanonProps oE, oA
+        Next
+        Exit Sub
+    End If
+    '--- drop props the original could not read at design time ($errors)
+    '--- from both sides before comparing
+    Set oErr = C2Obj(JsonValue(oExp, "/$errors"))
+    If Not oErr Is Nothing Then
+        vKeys = JsonKeys(oErr)
+        If IsArray(vKeys) Then
+            For lIdx = 0 To UBound(vKeys)
+                sKey = vKeys(lIdx)
+                If InStr(sKey, "[") > 0 Then
+                    sKey = Left$(sKey, InStr(sKey, "[") - 1)
+                End If
+                If LenB(sKey) <> 0 Then
+                    If Not IsEmpty(JsonValue(oExp, sKey)) Then
+                        JsonValue(oExp, sKey) = Empty
+                    End If
+                    If Not IsEmpty(JsonValue(oAct, sKey)) Then
+                        JsonValue(oAct, sKey) = Empty
+                    End If
+                End If
+            Next
+        End If
+        JsonValue(oExp, "/$errors") = Empty
+    End If
+    '--- StdFont quantizes bitmap font sizes (e.g. MS Sans Serif 7.8 reads
+    '--- back as 8.25) so canon the expected size through a real StdFont
+    If Not IsEmpty(JsonValue(oExp, "Charset")) And Not IsEmpty(JsonValue(oExp, "Size")) Then
+        m_oCanonFont.Name = C2Str(JsonValue(oExp, "Name"))
+        m_oCanonFont.Size = C2Dbl(JsonValue(oExp, "Size"))
+        JsonValue(oExp, "Size") = CDbl(m_oCanonFont.Size)
+    End If
+    vKeys = JsonKeys(oExp)
+    If IsArray(vKeys) Then
+        For lIdx = 0 To UBound(vKeys)
+            Set oE = C2Obj(JsonValue(oExp, CStr(vKeys(lIdx))))
+            If Not oE Is Nothing Then
+                Set oA = C2Obj(JsonValue(oAct, CStr(vKeys(lIdx))))
+                pvCanonProps oE, oA
+            End If
+        Next
+    End If
+End Sub
+

@@ -3,6 +3,7 @@ Reference=*\G{00020430-0000-0000-C000-000000000046}#2.0#0#..\..\..\..\..\Windows
 Object={24F4AB9F-37F4-43D4-B383-FB6CD721B629}#1.0#0; OpenGridEX20.ocx
 Form=frmMain.frm
 Module=mdJson; ..\..\tools\common\mdJson.bas
+Module=mdUtils; ..\..\tools\common\mdUtils.bas
 Module=mdProfiles; ..\..\tools\common\mdProfiles.bas
 Module=mdSnapshot; ..\..\tools\common\mdSnapshot.bas
 Startup="frmMain"

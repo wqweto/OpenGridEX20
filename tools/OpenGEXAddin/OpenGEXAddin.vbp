@@ -5,6 +5,7 @@ Reference=*\G{AC0714F2-3D04-11D1-AE7D-00A0C90F26F4}#1.0#0#..\..\..\..\..\Program
 Class=cConnect; cConnect.cls
 Module=mdExport; mdExport.bas
 Module=mdJson; ..\common\mdJson.bas
+Module=mdUtils; ..\common\mdUtils.bas
 Module=mdProfiles; ..\common\mdProfiles.bas
 Module=mdSnapshot; ..\common\mdSnapshot.bas
 Startup="(None)"

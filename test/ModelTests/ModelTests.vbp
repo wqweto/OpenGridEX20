@@ -8,6 +8,7 @@ Module=mdJson; ..\..\tools\common\mdJson.bas
 Module=mdProfiles; ..\..\tools\common\mdProfiles.bas
 Module=mdSnapshot; ..\..\tools\common\mdSnapshot.bas
 Module=mdImport; ..\..\tools\common\mdImport.bas
+Module=mdUtils; ..\..\tools\common\mdUtils.bas
 Startup="frmMain"
 HelpFile=""
 Title="ModelTests"

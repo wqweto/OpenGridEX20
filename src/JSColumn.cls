@@ -124,10 +124,13 @@ End Property
 
 Public Property Get ValueList() As JSValueList
 Attribute ValueList.VB_Description = "Returns the JSValueList collection for the column."
-    If m_oValueList Is Nothing Then
-        Set m_oValueList = New JSValueList
+    '--- original returns Nothing until HasValueList is set
+    If m_bHasValueList Then
+        If m_oValueList Is Nothing Then
+            Set m_oValueList = New JSValueList
+        End If
+        Set ValueList = m_oValueList
     End If
-    Set ValueList = m_oValueList
 End Property
 
 Public Property Get Visible() As Boolean

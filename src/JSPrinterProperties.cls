@@ -303,6 +303,9 @@ End Property
 
 Public Property Get PageHeaderFont() As Font
 Attribute PageHeaderFont.VB_Description = "Returns/sets a Font object used to draw page headers in a document."
+    If m_oPageHeaderFont Is Nothing Then
+        Set m_oPageHeaderFont = pvDefaultFont()
+    End If
     Set PageHeaderFont = m_oPageHeaderFont
 End Property
 
@@ -312,6 +315,9 @@ End Property
 
 Public Property Get PageFooterFont() As Font
 Attribute PageFooterFont.VB_Description = "Returns/sets a Font object used to draw page footers in a document."
+    If m_oPageFooterFont Is Nothing Then
+        Set m_oPageFooterFont = pvDefaultFont()
+    End If
     Set PageFooterFont = m_oPageFooterFont
 End Property
 
@@ -371,6 +377,18 @@ End Function
 Public Sub PageSetup(ByVal hWndOwner As Long)
 Attribute PageSetup.VB_Description = "Displays the page setup dialog."
 End Sub
+
+'=========================================================================
+' Functions
+'=========================================================================
+
+Private Function pvDefaultFont() As Font
+    Dim oFont           As New StdFont
+
+    oFont.Name = "MS Sans Serif"
+    oFont.Size = 8.25
+    Set pvDefaultFont = oFont
+End Function
 
 '=========================================================================
 ' Base class events

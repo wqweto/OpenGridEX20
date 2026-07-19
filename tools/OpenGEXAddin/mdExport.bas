@@ -49,11 +49,11 @@ Public Sub ExportActiveProject(oVBE As VBIDE.VBE)
     If LenB(sErrors) <> 0 Then
         sSummary = sSummary & " (errors:" & sErrors & ")"
     End If
-    pvSaveText sOutDir & "\" & sSample & ".done", sSummary
+    WriteTextFile sOutDir & "\" & sSample & ".done", sSummary
     Exit Sub
 EH:
     Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
-    pvSaveText sOutDir & "\" & sSample & ".err", "Error &H" & Hex$(Err.Number) & " " & Err.Description & " [" & FUNC_NAME & "]"
+    WriteTextFile sOutDir & "\" & sSample & ".err", "Error &H" & Hex$(Err.Number) & " " & Err.Description & " [" & FUNC_NAME & "]"
 End Sub
 
 '=========================================================================
@@ -89,7 +89,7 @@ Private Function pvExportFormRaw(oComp As VBIDE.VBComponent, sOutDir As String, 
     Dim oJson           As Object
 
     On Error GoTo EH
-    aLines = Split(pvReadText(oComp.FileNames(1)), vbCrLf)
+    aLines = Split(ReadTextFile(oComp.FileNames(1)), vbCrLf)
     For lIdx = 0 To UBound(aLines)
         sLine = Trim$(aLines(lIdx))
         If LCase$(sLine) Like "begin gridex20.* *" Or LCase$(sLine) Like "begin opengridex20.* *" Then
@@ -107,7 +107,7 @@ Private Function pvExportFormRaw(oComp As VBIDE.VBComponent, sOutDir As String, 
                 JsonValue(oJson, "control") = sCtlName
                 JsonValue(oJson, "progid") = aParts(1)
                 Set JsonValue(oJson, "raw") = pvParseRawKeys(oComp.FileNames(1), sCtlName)
-                pvSaveText sOutDir & "\" & sSample & "_" & oComp.Name & "_" & sCtlName & ".json", JsonDump(oJson) & vbCrLf
+                WriteTextFile sOutDir & "\" & sSample & "_" & oComp.Name & "_" & sCtlName & ".json", JsonDump(oJson) & vbCrLf
                 pvExportFormRaw = pvExportFormRaw + 1
                 sErrors = sErrors & " " & oComp.Name & "!" & sCtlName & ": raw-only (designer failed)"
             End Select
@@ -145,7 +145,7 @@ Private Function pvExportControl(oCtl As VBIDE.VBControl, oComp As VBIDE.VBCompo
                 If Not oRaw Is Nothing Then
                     Set JsonValue(oJson, "raw") = oRaw
                 End If
-                pvSaveText sOutDir & "\" & sSample & "_" & oComp.Name & "_" & sCtlName & ".json", JsonDump(oJson) & vbCrLf
+                WriteTextFile sOutDir & "\" & sSample & "_" & oComp.Name & "_" & sCtlName & ".json", JsonDump(oJson) & vbCrLf
                 pvExportControl = 1
             End Select
         End Select
@@ -167,7 +167,7 @@ Private Function pvParseRawKeys(sFrmFile As String, sCtlName As String) As Objec
     Dim oJson           As Object
     Dim aParts()        As String
 
-    aLines = Split(pvReadText(sFrmFile), vbCrLf)
+    aLines = Split(ReadTextFile(sFrmFile), vbCrLf)
     '--- locate the control block i.e. `Begin GridEX20.GridEX GridEX1`
     For lIdx = 0 To UBound(aLines)
         sLine = Trim$(aLines(lIdx))
@@ -212,22 +212,3 @@ Private Function pvParseRawKeys(sFrmFile As String, sCtlName As String) As Objec
     Next
     Set pvParseRawKeys = oJson
 End Function
-
-Private Function pvReadText(sFile As String) As String
-    Dim lFile           As Long
-
-    lFile = FreeFile
-    Open sFile For Binary Access Read As #lFile
-    pvReadText = Space$(LOF(lFile))
-    Get #lFile, , pvReadText
-    Close #lFile
-End Function
-
-Private Sub pvSaveText(sFile As String, sText As String)
-    Dim lFile           As Long
-
-    lFile = FreeFile
-    Open sFile For Output As #lFile
-    Print #lFile, sText;
-    Close #lFile
-End Sub

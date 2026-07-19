@@ -19,6 +19,15 @@ Begin VB.Form frmWeak
       _ExtentX        =   5292
       _ExtentY        =   3528
    End
+   Begin OpenGridEX20.GEXPreview GEXPreview1
+      Height          =   800
+      Left            =   3180
+      TabIndex        =   1
+      Top             =   60
+      Width           =   1200
+      _ExtentX        =   2117
+      _ExtentY        =   1411
+   End
 End
 Attribute VB_Name = "frmWeak"
 Attribute VB_GlobalNameSpace = False
@@ -28,7 +37,8 @@ Attribute VB_Exposed = False
 '=========================================================================
 '
 ' Open GridEX 2000 Control
-' Disposable host form for the JSRowData weak reference test
+' Disposable host form for the JSRowData weak reference test and for
+' fresh control instances in the snapshot corpus round-trip test
 '
 '=========================================================================
 Option Explicit

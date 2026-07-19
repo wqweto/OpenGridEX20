@@ -47,8 +47,20 @@ Public Sub ImportObject(oObj As Object, sClass As String, oJson As Object)
         Exit Sub
     End If
     lCount = ProfileForClass(sClass, uProps)
+    '--- two passes: scalars first so gate props (e.g. HasValueList) are in
+    '--- effect before dependent compound props (e.g. ValueList) import
     For lIdx = 0 To lCount - 1
-        pvImportProp oObj, uProps(lIdx), oJson
+        Select Case uProps(lIdx).eKind
+        Case ucsPrkScalar, ucsPrkEnum, ucsPrkVariant
+            pvImportProp oObj, uProps(lIdx), oJson
+        End Select
+    Next
+    For lIdx = 0 To lCount - 1
+        Select Case uProps(lIdx).eKind
+        Case ucsPrkScalar, ucsPrkEnum, ucsPrkVariant
+        Case Else
+            pvImportProp oObj, uProps(lIdx), oJson
+        End Select
     Next
     '--- parameterized specials
     If sClass = "JSPrinterProperties" Then
@@ -73,8 +85,8 @@ Private Sub pvImportProp(oObj As Object, uProp As UcsProfileProp, oJson As Objec
 
     On Error GoTo EH
     '--- let-assigning an object-holding Variant invokes its default
-    '--- property, so always tunnel through pvAssignVariant
-    pvAssignVariant vValue, JsonValue(oJson, uProp.sProp)
+    '--- property, so always tunnel through AssignVariant
+    AssignVariant vValue, JsonValue(oJson, uProp.sProp)
     If IsEmpty(vValue) Or IsNull(vValue) Then
         Exit Sub
     End If
@@ -115,7 +127,7 @@ Private Sub pvImportProp(oObj As Object, uProp As UcsProfileProp, oJson As Objec
                 Else
                     '--- wrapped collection: own props first, then items
                     ImportObject oSub, uProp.sTypeName, oValue
-                    pvAssignVariant vValue, JsonValue(oValue, "items")
+                    AssignVariant vValue, JsonValue(oValue, "items")
                     If IsObject(vValue) Then
                         Set oValue = vValue
                         pvImportItems oSub, uProp.sItemClass, oValue
@@ -141,7 +153,7 @@ Private Sub pvImportItems(oColl As Object, sItemClass As String, oItems As Objec
     CallByName oColl, "Clear", VbMethod
     lCount = JsonValue(oItems, "-1")
     For lIdx = 0 To lCount - 1
-        pvAssignVariant vItem, JsonValue(oItems, lIdx)
+        AssignVariant vItem, JsonValue(oItems, lIdx)
         If sItemClass = "String" Then
             If Not (IsEmpty(vItem) Or IsNull(vItem)) Then
                 CallByName oColl, "Add", VbMethod, vItem
@@ -179,7 +191,7 @@ Private Function pvAddItem(oColl As Object, sItemClass As String, oItemJson As O
     Case "JSFormatStyle"
         Set pvAddItem = CallByName(oColl, "Add", VbMethod, C2Str(JsonValue(oItemJson, "Name")))
     Case "JSGridImage"
-        pvAssignVariant vValue, JsonValue(oItemJson, "Picture")
+        AssignVariant vValue, JsonValue(oItemJson, "Picture")
         If IsObject(vValue) Then
             Set oPicture = vValue
             Set oPicture = pvPictureFromJson(oPicture)
@@ -254,11 +266,3 @@ Private Function pvFromBase64(sText As String) As Byte()
     pvFromBase64 = oNode.nodeTypedValue
     oNode.Text = vbNullString
 End Function
-
-Private Sub pvAssignVariant(vDest As Variant, vSrc As Variant)
-    If IsObject(vSrc) Then
-        Set vDest = vSrc
-    Else
-        vDest = vSrc
-    End If
-End Sub

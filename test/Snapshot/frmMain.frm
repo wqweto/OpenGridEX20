@@ -46,22 +46,13 @@ Private Sub Form_Load()
     Const FUNC_NAME     As String = "Form_Load"
 
     On Error GoTo EH
-    pvSaveText App.Path & "\GridEX.json", SnapshotToJson(GridEX1.Object, "GridEX", False)
-    pvSaveText App.Path & "\GEXPreview.json", SnapshotToJson(GEXPreview1.Object, "GEXPreview", False)
+    WriteTextFile App.Path & "\GridEX.json", SnapshotToJson(GridEX1.Object, "GridEX", False)
+    WriteTextFile App.Path & "\GEXPreview.json", SnapshotToJson(GEXPreview1.Object, "GEXPreview", False)
 QH:
     Unload Me
     Exit Sub
 EH:
     Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
-    pvSaveText App.Path & "\SnapshotError.txt", "Error &H" & Hex$(Err.Number) & " " & Err.Description
+    WriteTextFile App.Path & "\SnapshotError.txt", "Error &H" & Hex$(Err.Number) & " " & Err.Description
     GoTo QH
-End Sub
-
-Private Sub pvSaveText(sFile As String, sText As String)
-    Dim lFile           As Long
-
-    lFile = FreeFile
-    Open sFile For Output As #lFile
-    Print #lFile, sText;
-    Close #lFile
 End Sub
