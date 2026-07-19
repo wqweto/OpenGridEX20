@@ -74,6 +74,11 @@ Public Function RunScenario(sProgId As String, oScenario As Object, baBits() As 
         pvFeedData sProgId
         DoEvents
     End If
+    '--- runtime props applied after the data feed (e.g. FirstItem)
+    If Not C2Obj(JsonValue(oScenario, "post")) Is Nothing Then
+        ImportObject m_oExt.Object, m_sClass, C2Obj(JsonValue(oScenario, "post"))
+        DoEvents
+    End If
     '--- capture the control window itself; fall back to the form client
     lHwnd = pvControlHwnd()
     If lHwnd = 0 Then

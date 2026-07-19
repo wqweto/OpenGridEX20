@@ -538,6 +538,7 @@ Attribute m_oColumnHeaderFont.VB_VarHelpID = -1
 Private WithEvents m_oFont          As StdFont
 Attribute m_oFont.VB_VarHelpID = -1
 Private m_bRowHeightSet             As Boolean
+Private m_bScrollUpdating           As Boolean
 Private m_lFirstItem                As Long
 Private m_eGridLines                As jgexGridLinesConstants
 Private m_clrGridLinesColor         As OLE_COLOR
@@ -970,9 +971,15 @@ Attribute FirstItem.VB_Description = "Returns/sets the row position of the first
 End Property
 
 Public Property Let FirstItem(ByVal lValue As Long)
+    If lValue < 1 Then
+        lValue = 1
+    ElseIf lValue > RowCount And RowCount > 0 Then
+        lValue = RowCount
+    End If
     If m_lFirstItem <> lValue Then
         m_lFirstItem = lValue
         RaiseEvent FirstItemChange
+        pvInvalidate
     End If
 End Property
 
@@ -1820,8 +1827,10 @@ Attribute Rebind.VB_Description = "Forces re-creation of the recordset."
     '--- binding positions the current cell on the first row/column
     If RowCount > 0 Then
         m_lRow = 1
+        m_lFirstItem = 1
     Else
         m_lRow = 0
+        m_lFirstItem = 0
     End If
     If m_oColumns.Count > 0 Then
         m_nCol = 1
@@ -2203,6 +2212,7 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
     Dim lHdrW           As Long
     Dim lTotalW         As Long
     Dim lRow            As Long
+    Dim lFirst          As Long
     Dim lRowTop         As Long
     Dim lRowsBottom     As Long
     Dim lCum            As Long
@@ -2224,15 +2234,19 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
     Next
     '--- background right of the columns down to the bottom
     pvFillRect hDC, lHdrW + lTotalW, lY, ScaleWidth, ScaleHeight, m_clrBackColorBkg
+    lFirst = m_lFirstItem
+    If lFirst < 1 Then
+        lFirst = 1
+    End If
     If lRowH > 0 Then
         hPrevFont = pvSelectFont(hDC, m_oFont)
-        For lRow = 1 To RowCount
-            lRowTop = lY + (lRow - 1) * lRowH
+        For lRow = lFirst To RowCount
+            lRowTop = lY + (lRow - lFirst) * lRowH
             If lRowTop >= ScaleHeight Then
                 Exit For
             End If
             pvPaintDataRow hDC, lRow, lRowTop, lRowH, lHdrW, lTotalW
-            lPainted = lRow
+            lPainted = lPainted + 1
         Next
         Call SelectObject(hDC, hPrevFont)
     End If
@@ -2256,9 +2270,9 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
         '--- focus marquee on the current row; the XOR runs against the DC
         '--- background color which the original keeps at BackColor, and
         '--- vertical gridlines paint over the marquee dots
-        If m_lRow >= 1 And m_lRow <= lPainted Then
+        If m_lRow >= lFirst And m_lRow < lFirst + lPainted Then
             uRect.Left = lHdrW
-            uRect.Top = lY + (m_lRow - 1) * lRowH
+            uRect.Top = lY + (m_lRow - lFirst) * lRowH
             uRect.Right = lHdrW + lTotalW - 1
             uRect.Bottom = uRect.Top + lRowH - 1
             Call SetBkColor(hDC, pvColor(m_clrBackColor))
@@ -2379,10 +2393,58 @@ Private Sub pvInvalidate()
 
     '--- tolerate refresh before the control window exists
     On Error GoTo EH
+    pvUpdateScrollBars
     UserControl.Refresh
     Exit Sub
 EH:
     Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+End Sub
+
+Private Sub pvUpdateScrollBars()
+    Dim lTopH           As Long
+    Dim lAvailH         As Long
+    Dim lStyle          As Long
+    Dim lNewStyle       As Long
+    Dim uSi             As SCROLLINFO
+
+    If m_bScrollUpdating Then
+        Exit Sub
+    End If
+    m_bScrollUpdating = True
+    If m_bGroupByBoxVisible Then
+        lTopH = m_lColumnHeaderHeight + 14
+    End If
+    If m_bColumnHeaders Then
+        lTopH = lTopH + m_lColumnHeaderHeight
+    End If
+    lStyle = GetWindowLong(UserControl.hWnd, GWL_STYLE)
+    lNewStyle = lStyle And Not WS_VSCROLL
+    If m_lRowHeight > 0 And RowCount > 0 Then
+        If RowCount * m_lRowHeight > ScaleHeight - lTopH Then
+            lNewStyle = lNewStyle Or WS_VSCROLL
+        End If
+    End If
+    If lNewStyle <> lStyle Then
+        Call SetWindowLong(UserControl.hWnd, GWL_STYLE, lNewStyle)
+        Call SetWindowPos(UserControl.hWnd, 0, 0, 0, 0, 0, SWP_NOSIZE Or SWP_NOMOVE Or SWP_NOZORDER Or SWP_FRAMECHANGED)
+    End If
+    If (lNewStyle And WS_VSCROLL) <> 0 Then
+        lAvailH = ScaleHeight - lTopH
+        With uSi
+            .cbSize = Len(uSi)
+            .fMask = SIF_RANGE Or SIF_PAGE Or SIF_POS
+            .nMin = 0
+            .nMax = RowCount - 1
+            If m_lRowHeight > 0 Then
+                .nPage = lAvailH \ m_lRowHeight
+            End If
+            If m_lFirstItem > 0 Then
+                .nPos = m_lFirstItem - 1
+            End If
+        End With
+        Call SetScrollInfo(UserControl.hWnd, SB_VERT, uSi, 1)
+    End If
+    m_bScrollUpdating = False
 End Sub
 
 Private Function pvColor(ByVal clrValue As OLE_COLOR) As Long

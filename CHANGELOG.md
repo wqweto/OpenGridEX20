@@ -81,6 +81,12 @@ All notable changes to this project will be documented in this file.
 - Corpus grown to 14 scenarios, all verifying pixel-identical: header styles `jgexHSNoBorder` (flat fill only), `jgexHSSingleFlat` (1px dark frame + full-height separators) and `jgexHSSingle3D` (1px raised white/shadow), `EmptyRows` continuation grid to the bottom edge, row headers (18px Double3D corner + per-row cells with the black current-row triangle at x+6..11), hidden columns, large anti-aliased fonts and a group-by-box-less layout; text now draws with an OPAQUE background against the known fill color so glyph anti-aliasing blends byte-identical to the original (TRANSPARENT blending differed by one unit on AA edges); `partial-rows` deferred to M3d (the original shows a scrollbar, shrinking its client area)
 - Default heights are font-dependent like the original (probed live with 5 fonts): row height defaults to `tmHeight + 3` of `Font` floored at 19px and an explicit `RowHeight` survives later font changes, while `ColumnHeaderHeight` is always recalculated to `tmHeight + 6` of `ColumnHeaderFont` on its font's change; implemented via `WithEvents StdFont` members reacting to `FontChanged` with a shared GDI `FontTextHeight` helper in `mdGlobals.bas`, refresh routed through a window-safe `pvInvalidate`; `ImportObject` now applies fonts before scalars so imported explicit heights override the recalc (mirrors propbag load order)
 
+### Added (M3d -- scrolling, first slice)
+
+- Vertical scrollbar as a real non-client `WS_VSCROLL` style toggled when rows overflow the data area (client shrinks exactly like the original), with `SetScrollInfo` range/page/pos kept in sync; recursion-guarded against the style-change resize feedback
+- Painting starts at `FirstItem` (partial last row clipped naturally); `FirstItem` let clamps to valid range, fires `FirstItemChange` and repaints; `Rebind` homes it to 1
+- VisualDiff `post` scenario section applies runtime props after the data feed (used for `FirstItem`); corpus at 16 scenarios all pixel-identical incl. restored `partial-rows` (scrollbar client shrink) and `scrolled` (`FirstItem=4`) -- both passed on first verify
+
 ### Changed
 
 - README refreshed to current M2 state: milestone status, source-compatibility scope note, layout table covering `tools`/`test`/`doc/Help` and a Testing section for `test\ModelTests\make.bat`

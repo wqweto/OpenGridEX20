@@ -41,12 +41,34 @@ Public Const DT_VCENTER                 As Long = 4
 Public Const DT_SINGLELINE              As Long = &H20
 Public Const DT_CALCRECT                As Long = &H400
 Public Const DT_NOPREFIX                As Long = &H800
+Public Const GWL_STYLE                  As Long = -16
+Public Const WS_VSCROLL                 As Long = &H200000
+Public Const WS_HSCROLL                 As Long = &H100000
+Public Const SB_HORZ                    As Long = 0
+Public Const SB_VERT                    As Long = 1
+Public Const SIF_RANGE                  As Long = 1
+Public Const SIF_PAGE                   As Long = 2
+Public Const SIF_POS                    As Long = 4
+Public Const SWP_NOSIZE                 As Long = 1
+Public Const SWP_NOMOVE                 As Long = 2
+Public Const SWP_NOZORDER               As Long = 4
+Public Const SWP_FRAMECHANGED           As Long = &H20
 
 Public Type RECT
     Left                    As Long
     Top                     As Long
     Right                   As Long
     Bottom                  As Long
+End Type
+
+Public Type SCROLLINFO
+    cbSize                  As Long
+    fMask                   As Long
+    nMin                    As Long
+    nMax                    As Long
+    nPage                   As Long
+    nPos                    As Long
+    nTrackPos               As Long
 End Type
 
 Public Type TEXTMETRICW
@@ -89,6 +111,10 @@ Public Declare Function DrawFocusRect Lib "user32" (ByVal hDC As Long, lpRect As
 Public Declare Function GetDC Lib "user32" (ByVal hWnd As Long) As Long
 Public Declare Function ReleaseDC Lib "user32" (ByVal hWnd As Long, ByVal hDC As Long) As Long
 Public Declare Function GetTextMetrics Lib "gdi32" Alias "GetTextMetricsW" (ByVal hDC As Long, lpMetrics As TEXTMETRICW) As Long
+Public Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long) As Long
+Public Declare Function SetWindowLong Lib "user32" Alias "SetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long, ByVal dwNewLong As Long) As Long
+Public Declare Function SetWindowPos Lib "user32" (ByVal hWnd As Long, ByVal hWndInsertAfter As Long, ByVal X As Long, ByVal Y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long
+Public Declare Function SetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal fnBar As Long, lpsi As SCROLLINFO, ByVal fRedraw As Long) As Long
 
 '=========================================================================
 ' Functions
