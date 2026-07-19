@@ -36,6 +36,7 @@ DefObj A-Z
 Private WithEvents m_oExt           As VBControlExtender
 Attribute m_oExt.VB_VarHelpID = -1
 Private m_oUnboundRows              As Object
+Private m_sClass                    As String
 
 '=========================================================================
 ' Methods
@@ -67,6 +68,12 @@ Public Function RunScenario(sProgId As String, oScenario As Object, baBits() As 
         Show
     End If
     DoEvents
+    '--- data rows are always fed after the display initialized: neither
+    '--- control can be switched to a data mode before it has a window
+    If Not m_oUnboundRows Is Nothing Then
+        pvFeedData sProgId
+        DoEvents
+    End If
     '--- capture the control window itself; fall back to the form client
     lHwnd = pvControlHwnd()
     If lHwnd = 0 Then
@@ -116,27 +123,114 @@ End Function
 ' Functions
 '=========================================================================
 
+Public Function DumpState() As String
+    DumpState = SnapshotToJson(m_oExt.Object, m_sClass, False)
+End Function
+
+'=========================================================================
+' Functions
+'=========================================================================
+
 Private Sub pvCreateAndApply(sProgId As String, oScenario As Object)
     Dim oProps          As Object
-    Dim sClass          As String
-    Dim lItemCount      As Long
 
+    m_sClass = Split(sProgId, ".")(1)
     Set m_oExt = Controls.Add(sProgId, "ctlGrid")
     m_oExt.Move 0, 0, ScaleWidth, ScaleHeight
     m_oExt.Visible = True
     Set oProps = C2Obj(JsonValue(oScenario, "props"))
     If Not oProps Is Nothing Then
-        sClass = Split(sProgId, ".")(1)
-        ImportObject m_oExt.Object, sClass, oProps
+        pvApplyProps oProps
+        '--- the original resets the column layout when its display first
+        '--- initializes over the (empty) recordset; HoldFields preserves
+        '--- the imported columns (samples persist this as MethodHoldFields)
+        pvTryCall "HoldFields"
     End If
-    '--- unbound data: DataMode/ItemCount applied outside the profile
-    '--- import as the original control may reject them at runtime
-    If Not m_oUnboundRows Is Nothing Then
+End Sub
+
+Private Sub pvFeedData(sProgId As String)
+    Dim lItemCount      As Long
+
+    '--- the original control cannot switch DataMode/ItemCount at runtime,
+    '--- so it is fed a fabricated ADO recordset (columns preserved via
+    '--- HoldFields); our control uses the unbound pipeline
+    If LCase$(Split(sProgId, ".")(0)) = "opengridex20" Then
         lItemCount = C2Lng(JsonValue(m_oUnboundRows, "-1"))
         pvTrySet "DataMode", 99
         pvTrySet "ItemCount", lItemCount
         pvTryCall "Rebind"
+    Else
+        pvFeedAdoRows
     End If
+End Sub
+
+Private Sub pvFeedAdoRows()
+    Const FUNC_NAME     As String = "pvFeedAdoRows"
+    Const adVarChar     As Long = 200
+    Dim oRs             As Object
+    Dim oRow            As Object
+    Dim lCount          As Long
+    Dim lIdx            As Long
+    Dim nCol            As Integer
+    Dim nColCount       As Integer
+
+    On Error GoTo EH
+    lCount = C2Lng(JsonValue(m_oUnboundRows, "-1"))
+    Set oRow = C2Obj(JsonValue(m_oUnboundRows, 0))
+    nColCount = C2Lng(JsonValue(oRow, "-1"))
+    Set oRs = CreateObject("ADODB.Recordset")
+    For nCol = 1 To nColCount
+        oRs.Fields.Append "F" & nCol, adVarChar, 255
+    Next
+    oRs.Open
+    For lIdx = 0 To lCount - 1
+        Set oRow = C2Obj(JsonValue(m_oUnboundRows, lIdx))
+        oRs.AddNew
+        For nCol = 1 To nColCount
+            oRs.Fields(nCol - 1).Value = C2Str(JsonValue(oRow, nCol - 1))
+        Next
+    Next
+    oRs.Update
+    oRs.MoveFirst
+    '--- held columns display nothing unless they map to recordset fields
+    Set oRow = C2Obj(CallByName(m_oExt.Object, "Columns", VbGet))
+    For nCol = 1 To nColCount
+        If nCol > C2Lng(CallByName(oRow, "Count", VbGet)) Then
+            Exit For
+        End If
+        CallByName C2Obj(CallByName(oRow, "Item", VbGet, nCol)), "DataField", VbLet, "F" & nCol
+    Next
+    CallByName m_oExt.Object, "HoldFields", VbMethod
+    CallByName m_oExt.Object, "ADORecordset", VbSet, oRs
+    Exit Sub
+EH:
+    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    pvLogError "adofeed: &H" & Hex$(Err.Number) & " " & Err.Description
+End Sub
+
+Private Sub pvApplyProps(oProps As Object)
+    Const FUNC_NAME     As String = "pvApplyProps"
+
+    On Error GoTo EH
+    ImportObject m_oExt.Object, m_sClass, oProps
+    Exit Sub
+EH:
+    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    '--- surface import errors in the runner log (Debug.Print is invisible
+    '--- in the compiled exe)
+    pvLogError "import: &H" & Hex$(Err.Number) & " " & Err.Description
+End Sub
+
+Private Sub pvLogError(sText As String)
+    Dim lFile           As Long
+
+    If LenB(Dir$(App.Path & "\output", vbDirectory)) = 0 Then
+        MkDir App.Path & "\output"
+    End If
+    lFile = FreeFile
+    Open App.Path & "\output\host-errors.log" For Append As #lFile
+    Print #lFile, sText
+    Close #lFile
 End Sub
 
 Private Sub pvTrySet(sProp As String, ByVal vValue As Variant)

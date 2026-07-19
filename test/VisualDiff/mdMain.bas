@@ -73,23 +73,24 @@ Public Sub Main()
             If Not oForm.RunScenario(sProgId, C2Obj(vDoc), baBits, lWidth, lHeight) Then
                 Assert sMode & " " & sName & " (capture failed)", False
             Else
-                sGolden = App.Path & "\golden\" & sName & ".bmp"
+                sGolden = App.Path & "\golden\" & sName & ".png"
                 Select Case sMode
                 Case "record"
-                    SaveBmp sGolden, lWidth, lHeight, baBits
-                    Assert "record " & sName, True
+                    Assert "record " & sName, SavePng(sGolden, lWidth, lHeight, baBits)
+                Case "dump"
+                    pvEnsureOutputDir
+                    WriteTextFile App.Path & "\output\" & sName & ".dump.json", oForm.DumpState()
+                    Assert "dump " & sName, True
                 Case "selftest", "verify"
-                    If Not LoadBmp(sGolden, lGoldenW, lGoldenH, baGolden) Then
+                    If Not LoadPng(sGolden, lGoldenW, lGoldenH, baGolden) Then
                         Assert sMode & " " & sName & " (no golden)", False
                     ElseIf lGoldenW <> lWidth Or lGoldenH <> lHeight Then
                         Assert sMode & " " & sName & " (golden size mismatch)", False
                     Else
                         lDiff = DiffBits(baGolden, baBits, lWidth, lHeight, sReport)
                         If lDiff > 0 Then
-                            If LenB(Dir$(App.Path & "\output", vbDirectory)) = 0 Then
-                                MkDir App.Path & "\output"
-                            End If
-                            SaveBmp App.Path & "\output\" & sName & ".actual.bmp", lWidth, lHeight, baBits
+                            pvEnsureOutputDir
+                            SavePng App.Path & "\output\" & sName & ".actual.png", lWidth, lHeight, baBits
                         End If
                         Assert sMode & " " & sName & IIf(lDiff > 0, " diff=" & lDiff & "px " & sReport, vbNullString), lDiff = 0
                     End If
@@ -105,6 +106,12 @@ EH:
     Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
     Assert "Unhandled error &H" & Hex$(Err.Number) & " " & Err.Description & " in " & sName, False
     TestsDone
+End Sub
+
+Private Sub pvEnsureOutputDir()
+    If LenB(Dir$(App.Path & "\output", vbDirectory)) = 0 Then
+        MkDir App.Path & "\output"
+    End If
 End Sub
 
 Private Function pvAddLicense(sProgId As String) As Boolean

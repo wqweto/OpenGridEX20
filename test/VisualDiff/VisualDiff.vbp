@@ -8,6 +8,7 @@ Module=mdUtils; ..\..\tools\common\mdUtils.bas
 Module=mdJson; ..\..\tools\common\mdJson.bas
 Module=mdProfiles; ..\..\tools\common\mdProfiles.bas
 Module=mdImport; ..\..\tools\common\mdImport.bas
+Module=mdSnapshot; ..\..\tools\common\mdSnapshot.bas
 Startup="Sub Main"
 HelpFile=""
 Title="VisualDiff"

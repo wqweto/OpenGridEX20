@@ -87,6 +87,7 @@ Private Sub pvImportProp(oObj As Object, uProp As UcsProfileProp, oJson As Objec
     '--- let-assigning an object-holding Variant invokes its default
     '--- property, so always tunnel through AssignVariant
     AssignVariant vValue, JsonValue(oJson, uProp.sProp)
+    pvTrace uProp.sClass & "." & uProp.sProp & " kind=" & uProp.eKind & " vt=" & VarType(vValue)
     If IsEmpty(vValue) Or IsNull(vValue) Then
         Exit Sub
     End If
@@ -201,6 +202,20 @@ Private Function pvAddItem(oColl As Object, sItemClass As String, oItemJson As O
         End If
     End Select
 End Function
+
+Private Sub pvTrace(sText As String)
+    Dim sFile           As String
+    Dim lFile           As Long
+
+    '--- diagnostics only: set OPENGEX_IMPORT_TRACE to a file path
+    sFile = Environ$("OPENGEX_IMPORT_TRACE")
+    If LenB(sFile) <> 0 Then
+        lFile = FreeFile
+        Open sFile For Append As #lFile
+        Print #lFile, sText
+        Close #lFile
+    End If
+End Sub
 
 Private Sub pvImportFont(oFont As Object, oJson As Object)
     Dim vValue          As Variant

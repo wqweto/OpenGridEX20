@@ -1,11 +1,14 @@
 VERSION 5.00
 Begin VB.UserControl GridEX
+   Appearance      =   1  '3D
+   BorderStyle     =   1  'Fixed Single
    ClientHeight    =   2880
    ClientLeft      =   0
    ClientTop       =   0
    ClientWidth     =   3840
-   ScaleHeight     =   2880
-   ScaleWidth      =   3840
+   ScaleHeight     =   192
+   ScaleMode       =   3  'Pixel
+   ScaleWidth      =   256
 End
 Attribute VB_Name = "GridEX"
 Attribute VB_GlobalNameSpace = False
