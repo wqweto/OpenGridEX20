@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- `doc/Help`: repaired 37 syntax lines across 16 files where CHM conversion collapsed bold/italic markers into `***`/`****` runs that rendered as literal asterisks (e.g. `**GetData** **(***format* **As Integer)**`); parentheses normalized to the plain-paren convention used by the rest of the docs, plus the fused `RowIndex` syntax line in `Methods.md` split and its parameter italicized
 - `mdJson.bas`: `JsonDump` now emits `{}` for `Nothing` objects (respecting `CompoundChars`) instead of an empty string that produced malformed JSON when a `Nothing` value was stored inside a document
 
 ### Added (M2 -- object model)
@@ -34,6 +35,9 @@ All notable changes to this project will be documented in this file.
 - `tools/common/mdImport.bas`: profile-driven snapshot import (per-collection `Add` mappings, `C2Str`/`pvAssignVariant` Variant handling, contextual error re-raise)
 - `test/ModelTests`: 40 assertions over collection semantics plus GridEX/GEXPreview export->import->export round-trips -- all passing losslessly
 - Coding style additions applied project-wide: `DefObj A-Z`, section separator banners
+- `tools/OpenGEXAddin`: export-only VB6 add-in (`IDTExtensibility2`, no UI) that snapshots every `GridEX20.*`/`OpenGridEX20.*` control on the active project's form designers via the shared engine, augmented with a `raw` section of flattened `.frm` propbag keys (`IntProp*`, `Column(n)` frx refs, `MethodHoldFields`, ...); activates only when `OPENGEX_SNAPSHOT_DIR` is set so it stays dormant in normal IDE sessions
+- `tools/OpenGEXAddin/export.ps1` batch driver: flips the add-in to load-on-startup in `vbaddin.ini` (both `%WINDIR%` and VirtualStore copies), launches the VB6 IDE per original Janus sample project, waits for the done-marker and kills the IDE; two frx-less damaged samples (Unbound Array/UDTs) fall back to raw-only capture
+- `test/snapshots`: design-time snapshot corpus recorded from the original control -- 28 JSONs from 20 sample projects (ADO 1-5, Advanced, Combo DropDowns, Custom Edit, Icon columns, OLE Drag, Preview Rows, 3 Print/PrintPreview, Unbound 1/2/Array/UDTs/Collection, FormatStyles)
 
 ### Changed
 

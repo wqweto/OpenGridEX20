@@ -1,0 +1,45 @@
+{
+    "$schema": "opengex-snapshot/1",
+    "class": "GEXPreview",
+    "mode": "persist",
+    "props": {
+        "ToolbarFont": {
+            "Name": "MS Sans Serif",
+            "Size": 7.8,
+            "Bold": false,
+            "Italic": false,
+            "Underline": false,
+            "Strikethrough": false,
+            "Charset": 204
+        },
+        "ToolbarVisible": true,
+        "PageSetupText": "Page Set&up...",
+        "PrintText": "&Print...",
+        "CloseButtonText": "&Close",
+        "BackColor": -2147483633,
+        "$errors": { "Zoom": 394 }
+    },
+    "sample": "Advanced-Sample",
+    "form": "frmPrintPreview",
+    "control": "GEXPreview1",
+    "progid": "GridEX20.GEXPreview",
+    "raw": {
+        "Height": "6885",
+        "Left": "75",
+        "TabIndex": "0",
+        "Top": "15",
+        "Width": "7980",
+        "_ExtentX": "14076",
+        "_ExtentY": "12144",
+        "ToolbarFont.Name": "\"MS Sans Serif\"",
+        "ToolbarFont.Size": "8.25",
+        "ToolbarFont.Charset": "0",
+        "ToolbarFont.Weight": "400",
+        "ToolbarFont.Underline": "0   'False",
+        "ToolbarFont.Italic": "0   'False",
+        "ToolbarFont.Strikethrough": "0   'False",
+        "PageSetupText": "\"Page Set&up...\"",
+        "PrintText": "\"&Print...\"",
+        "CloseButtonText": "\"&Close\""
+    }
+}

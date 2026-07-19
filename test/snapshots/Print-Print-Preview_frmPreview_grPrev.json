@@ -1,0 +1,45 @@
+{
+    "$schema": "opengex-snapshot/1",
+    "class": "GEXPreview",
+    "mode": "persist",
+    "props": {
+        "ToolbarFont": {
+            "Name": "Tahoma",
+            "Size": 8.4,
+            "Bold": false,
+            "Italic": false,
+            "Underline": false,
+            "Strikethrough": false,
+            "Charset": 204
+        },
+        "ToolbarVisible": true,
+        "PageSetupText": "Page Set&up...",
+        "PrintText": "&Print...",
+        "CloseButtonText": "&Close",
+        "BackColor": -2147483633,
+        "$errors": { "Zoom": 394 }
+    },
+    "sample": "Print-Print-Preview",
+    "form": "frmPreview",
+    "control": "grPrev",
+    "progid": "GridEX20.GEXPreview",
+    "raw": {
+        "Height": "4755",
+        "Left": "240",
+        "TabIndex": "0",
+        "Top": "600",
+        "Width": "6210",
+        "_ExtentX": "10954",
+        "_ExtentY": "8387",
+        "ToolbarFont.Name": "\"Tahoma\"",
+        "ToolbarFont.Size": "8.25",
+        "ToolbarFont.Charset": "0",
+        "ToolbarFont.Weight": "400",
+        "ToolbarFont.Underline": "0   'False",
+        "ToolbarFont.Italic": "0   'False",
+        "ToolbarFont.Strikethrough": "0   'False",
+        "PageSetupText": "\"Page Set&up...\"",
+        "PrintText": "\"&Print...\"",
+        "CloseButtonText": "\"&Close\""
+    }
+}
