@@ -18,10 +18,31 @@ Attribute VB_Exposed = True
 '
 '=========================================================================
 Option Explicit
+DefObj A-Z
+
+'=========================================================================
+' Constants and member variables
+'=========================================================================
+
+Private m_bValue                    As Boolean
+
+'=========================================================================
+' Properties
+'=========================================================================
 
 Public Property Get Value() As Boolean
 Attribute Value.VB_UserMemId = 0
+    Value = m_bValue
 End Property
 
 Public Property Let Value(ByVal bValue As Boolean)
+    m_bValue = bValue
 End Property
+
+'=========================================================================
+' Methods
+'=========================================================================
+
+Friend Sub frInit(ByVal bValue As Boolean)
+    m_bValue = bValue
+End Sub

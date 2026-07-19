@@ -53,14 +53,14 @@ Public Type UcsProfileProp
     bRuntimeOnly                    As Boolean
 End Type
 
-Private m_uProps()                  As UcsProfileProp
+Private m_aProps()                  As UcsProfileProp
 Private m_lCount                    As Long
 
 Public Sub ProfilesInit()
     If m_lCount > 0 Then
         Exit Sub
     End If
-    ReDim m_uProps(0 To 266) As UcsProfileProp
+    ReDim m_aProps(0 To 266) As UcsProfileProp
     pvAdd "JSColumn", "Key", ucsPrkScalar, "String", "", False, False
     pvAdd "JSColumn", "HeaderAlignment", ucsPrkEnum, "jgexAlignmentConstants", "", True, False
     pvAdd "JSColumn", "HeaderIcon", ucsPrkScalar, "Integer", "", True, False
@@ -336,15 +336,15 @@ Public Function ProfileForClass(sClass As String, uProps() As UcsProfileProp) As
     ProfilesInit
     ReDim uProps(0 To m_lCount - 1) As UcsProfileProp
     For lIdx = 0 To m_lCount - 1
-        If m_uProps(lIdx).sClass = sClass Then
-            uProps(ProfileForClass) = m_uProps(lIdx)
+        If m_aProps(lIdx).sClass = sClass Then
+            uProps(ProfileForClass) = m_aProps(lIdx)
             ProfileForClass = ProfileForClass + 1
         End If
     Next
 End Function
 
 Private Sub pvAdd(sClass As String, sProp As String, ByVal eKind As UcsPropKindEnum, sTypeName As String, sItemClass As String, ByVal bCanWrite As Boolean, ByVal bRuntimeOnly As Boolean)
-    With m_uProps(m_lCount)
+    With m_aProps(m_lCount)
         .sClass = sClass
         .sProp = sProp
         .eKind = eKind

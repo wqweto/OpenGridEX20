@@ -18,10 +18,31 @@ Attribute VB_Exposed = True
 '
 '=========================================================================
 Option Explicit
+DefObj A-Z
+
+'=========================================================================
+' Constants and member variables
+'=========================================================================
+
+Private m_nValue                    As Integer
+
+'=========================================================================
+' Properties
+'=========================================================================
 
 Public Property Get Value() As Integer
 Attribute Value.VB_UserMemId = 0
+    Value = m_nValue
 End Property
 
 Public Property Let Value(ByVal nValue As Integer)
+    m_nValue = nValue
 End Property
+
+'=========================================================================
+' Methods
+'=========================================================================
+
+Friend Sub frInit(ByVal nValue As Integer)
+    m_nValue = nValue
+End Sub

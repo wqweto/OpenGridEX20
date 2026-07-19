@@ -19,20 +19,52 @@ Attribute VB_Description = "Represents a group level in a GridEX control."
 '
 '=========================================================================
 Option Explicit
+DefObj A-Z
+
+'=========================================================================
+' Constants and member variables
+'=========================================================================
+
+Private m_nIndex                    As Integer
+Private m_eSortOrder                As jgexSortOrderConstants
+Private m_nColIndex                 As Integer
+
+'=========================================================================
+' Properties
+'=========================================================================
 
 Public Property Get Index() As Integer
 Attribute Index.VB_Description = "Returns a value that represents the index of the JSGroup in the JSGroups collection."
+    Index = m_nIndex
 End Property
 
 Public Property Get SortOrder() As jgexSortOrderConstants
+    SortOrder = m_eSortOrder
 End Property
 
 Public Property Let SortOrder(ByVal eValue As jgexSortOrderConstants)
+    m_eSortOrder = eValue
 End Property
 
 Public Property Get ColIndex() As Integer
 Attribute ColIndex.VB_Description = "Returns/sets the index of the grouped column."
+    ColIndex = m_nColIndex
 End Property
 
 Public Property Let ColIndex(ByVal nValue As Integer)
+    m_nColIndex = nValue
 End Property
+
+'=========================================================================
+' Methods
+'=========================================================================
+
+Friend Sub frInit(ByVal nIndex As Integer, ByVal nColIndex As Integer, ByVal eSortOrder As jgexSortOrderConstants)
+    m_nIndex = nIndex
+    m_nColIndex = nColIndex
+    m_eSortOrder = eSortOrder
+End Sub
+
+Friend Sub frSetIndex(ByVal nIndex As Integer)
+    m_nIndex = nIndex
+End Sub

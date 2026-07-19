@@ -15,3 +15,5 @@
 *.ocx
 *.oca
 test/Snapshot/*.json
+test/ModelTests/*.json
+test/ModelTests/*.out.txt

@@ -18,3 +18,4 @@ Attribute VB_Exposed = True
 '
 '=========================================================================
 Option Explicit
+DefObj A-Z

@@ -18,10 +18,31 @@ Attribute VB_Exposed = True
 '
 '=========================================================================
 Option Explicit
+DefObj A-Z
+
+'=========================================================================
+' Constants and member variables
+'=========================================================================
+
+Private m_vValue                    As Variant
+
+'=========================================================================
+' Properties
+'=========================================================================
 
 Public Property Get Value() As Variant
 Attribute Value.VB_UserMemId = 0
+    Value = m_vValue
 End Property
 
 Public Property Let Value(ByVal vntValue As Variant)
+    m_vValue = vntValue
 End Property
+
+'=========================================================================
+' Methods
+'=========================================================================
+
+Friend Sub frInit(vValue As Variant)
+    m_vValue = vValue
+End Sub

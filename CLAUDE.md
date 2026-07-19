@@ -6,6 +6,7 @@
 - Don't need DAO binding implemented
 - This is source-compatible implementation
 - In next version this will be translated VB6->VC6 for performance
+- Keep all API declares/consts as public in `mdGlobals.bas`
 
 ## Coding Style for this project
 
@@ -13,17 +14,21 @@
 - Use `On Error GoTo EH` where needed; in the handler `Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"`
 - One blank line between procedures
 - One blank line between the `Dim` block and the first executable line inside a procedure; no other blank lines inside a procedure body
-- Comments only where the VB6 diverges non-obviously from the C (e.g. unsigned workarounds)
-- Use hungarian notation: `s` - String, `l` - Long, `n` - Integer, `b` - Boolean, `o` - Object, `c` - Collection, `d` - Date, `dbl` - Double, `sng` - Single, `byt` - Byte, `u` - UDTs, `h` - Handles (incl. hResult), `cy` - Currency, `e` - Enums, `p` - interface pointers
-- Use `ba` prefix for byte arrays and `a` for all other arrays regardless of element type
+- Use hungarian notation: `s` - String, `l` - Long, `n` - Integer, `b` - Boolean, `o` - Object, `c` - Collection, `d` - Date, `dbl` - Double, `sng` - Single, `byt` - Byte, `u` - UDTs, `h` - Handles (incl. hResult), `cy` - Currency, `e` - Enums, `clr` - OLE_COLOR
+- Use `p` for interface "pointers" i.e. anything declared `As IVBXxxx` incl. weak references
+- Use `ba` prefix for byte arrays
+- Use `a` for arrays without element type prefix i.e. `m_aRows` instead of `m_auRows`
 - Use `m_` prefix for member variables and `g_` for global ones
 - Use `md` prefix for standard modules, `c` for classes, `frm` for forms, `ctx` for user-controls
+- Use `Ucs` for enums/UDTs names, use `ucsXxx` for enum entries where Xxx is a unique prefix
+- For UDT members stop using hungarian notation i.e. `uRow.Values(1)` not `aValues`
 - Declare all variables at the beginning of the procedure, separated from the code by a blank line
 - One local variable declaration per line, data-type aligned at column 25
 - Align API consts data-types at column 45
 - Align module variables data-types at column 37
 - Declare API consts local to a routine if not used in any other routine
 - API declares use "dllname" without the .dll suffix, always Unicode versions (aliased to names without the W suffix)
+- Use LongPtr with API declares i.e. for VB6 use enum hack
 - Separate logical sections inside a procedure with `'---` comments, not blank lines
 - Start comments with `'---` instead of a single `'`, except for a comment banner at the start of a procedure/module
 - Put only one statement per logical line i.e. don't use : to separate multiple statements
@@ -39,3 +44,6 @@
 - Use `pv` prefix for private procedures and `fr` for friend ones
 - Use `lIdx`, `lJdx`, etc. instead of single-letter index variable `i`, `j`, etc.
 - ReDim uses explicit data-type i.e. `ReDim aName(0 To 100) As String`
+- Write code which works with `Break on All Errors` setting in the IDE i.e. don't depend on `On Error Resume Next` for normal workflow
+- Put `DefObj A-Z` on all modules so untyped vars/params do not remain of Variant type
+- Put `API`, `Constants and member variables`, `Error management`, `Properties`, `Methods`, `Functions`, `Control events`, `Base class events`, `Interface Xxx` separators in all modules

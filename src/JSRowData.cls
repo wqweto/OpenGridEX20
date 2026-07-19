@@ -19,101 +19,150 @@ Attribute VB_Description = "Represents a container for data, row and cell based 
 '
 '=========================================================================
 Option Explicit
+DefObj A-Z
+
+'=========================================================================
+' Constants and member variables
+'=========================================================================
+
+'--- weak ref (no AddRef) to the owning control which stores all row data
+Private m_pOwner                    As GridEX
+Private m_lRowIndex                 As Long
+
+'=========================================================================
+' Properties
+'=========================================================================
 
 Public Property Get Value(ByVal ColIndex As Integer) As Variant
 Attribute Value.VB_UserMemId = 0
 Attribute Value.VB_Description = "Returns/sets the value of a column."
+    If m_pOwner Is Nothing Then
+        Err.Raise 91 '--- Object variable or With block variable not set
+    End If
+    Value = m_pOwner.frRowValue(m_lRowIndex, ColIndex)
 End Property
 
 Public Property Let Value(ByVal ColIndex As Integer, ByVal vntValue As Variant)
+    If m_pOwner Is Nothing Then
+        Err.Raise 91 '--- Object variable or With block variable not set
+    End If
+    m_pOwner.frRowValue(m_lRowIndex, ColIndex) = vntValue
 End Property
 
 Public Property Get Bookmark() As Variant
 Attribute Bookmark.VB_Description = "Returns the bookmark of the row."
+    Bookmark = m_pOwner.frRowBookmark(m_lRowIndex)
 End Property
 
 Public Property Get ColCount() As Integer
 Attribute ColCount.VB_Description = "Returns the number of columns."
+    ColCount = m_pOwner.frRowColCount
 End Property
 
 Public Property Get GroupLevel() As Integer
 Attribute GroupLevel.VB_Description = "Returns the group level of a row if it is a group row or 0 otherwise."
+    GroupLevel = m_pOwner.frRowGroupLevel(m_lRowIndex)
 End Property
 
 Public Property Get RowIndex() As Long
 Attribute RowIndex.VB_Description = "Returns the row index of a row."
+    RowIndex = m_lRowIndex
 End Property
 
 Public Property Get IconIndex(ByVal ColIndex As Integer) As Integer
 Attribute IconIndex.VB_Description = "Returns/sets the index of the JSGridImage displayed in a cell."
+    IconIndex = m_pOwner.frRowIconIndex(m_lRowIndex, ColIndex)
 End Property
 
 Public Property Let IconIndex(ByVal ColIndex As Integer, ByVal nValue As Integer)
+    m_pOwner.frRowIconIndex(m_lRowIndex, ColIndex) = nValue
 End Property
 
 Public Property Get DisplayValue(ByVal ColIndex As Integer) As String
 Attribute DisplayValue.VB_Description = "Returns/sets the display value of a column."
+    DisplayValue = m_pOwner.frRowDisplayValue(m_lRowIndex, ColIndex)
 End Property
 
 Public Property Let DisplayValue(ByVal ColIndex As Integer, ByVal sValue As String)
+    m_pOwner.frRowDisplayValue(m_lRowIndex, ColIndex) = sValue
 End Property
 
 Public Property Get RowType() As jgexRowTypeConstants
 Attribute RowType.VB_Description = "Returns a value that represents the type of a JSRowData object."
+    RowType = m_pOwner.frRowType(m_lRowIndex)
 End Property
 
 Public Property Get RowStyle() As String
 Attribute RowStyle.VB_Description = "Returns/sets the name of the JSFormatStyle to be applied in all the cells in a row."
+    RowStyle = m_pOwner.frRowStyle(m_lRowIndex)
 End Property
 
 Public Property Let RowStyle(ByVal sValue As String)
+    m_pOwner.frRowStyle(m_lRowIndex) = sValue
 End Property
 
 Public Property Get CellStyle(ByVal ColIndex As Integer) As String
 Attribute CellStyle.VB_Description = "Returns/sets the name of the JSFormatStyle to be applied in a cell."
+    CellStyle = m_pOwner.frRowCellStyle(m_lRowIndex, ColIndex)
 End Property
 
 Public Property Let CellStyle(ByVal ColIndex As Integer, ByVal sValue As String)
+    m_pOwner.frRowCellStyle(m_lRowIndex, ColIndex) = sValue
 End Property
 
 Public Property Get RecordCount() As Long
 Attribute RecordCount.VB_Description = "Returns the number of records in a JSRowData object representing a group row."
+    RecordCount = m_pOwner.frRowRecordCount(m_lRowIndex)
 End Property
 
 Public Property Get RowHeight() As Long
 Attribute RowHeight.VB_Description = "Returns/sets the height, in twips, of a row."
+    RowHeight = m_pOwner.frRowHeight(m_lRowIndex)
 End Property
 
 Public Property Let RowHeight(ByVal lValue As Long)
+    m_pOwner.frRowHeight(m_lRowIndex) = lValue
 End Property
 
 Public Property Get GroupCaption() As String
 Attribute GroupCaption.VB_Description = "Returns/sets the caption of a group row."
+    GroupCaption = m_pOwner.frRowGroupCaption(m_lRowIndex)
 End Property
 
 Public Property Let GroupCaption(ByVal sValue As String)
+    m_pOwner.frRowGroupCaption(m_lRowIndex) = sValue
 End Property
 
 Public Property Get GroupIconIndex() As Integer
 Attribute GroupIconIndex.VB_Description = "Returns/sets the icon of a group row."
+    GroupIconIndex = m_pOwner.frRowGroupIconIndex(m_lRowIndex)
 End Property
 
 Public Property Let GroupIconIndex(ByVal nValue As Integer)
+    m_pOwner.frRowGroupIconIndex(m_lRowIndex) = nValue
 End Property
 
 Public Property Get CellPicture(ByVal ColIndex As Integer) As Picture
 Attribute CellPicture.VB_Description = "Returns/sets the foreground picture of a cell."
+    Set CellPicture = m_pOwner.frRowCellPicture(m_lRowIndex, ColIndex)
 End Property
 
 Public Property Set CellPicture(ByVal ColIndex As Integer, ByVal oValue As Picture)
+    Set m_pOwner.frRowCellPicture(m_lRowIndex, ColIndex) = oValue
 End Property
 
 Public Property Get PreviewRowVisible() As Boolean
 Attribute PreviewRowVisible.VB_Description = "Determines whether a preview row should be displayed in a row."
+    PreviewRowVisible = m_pOwner.frRowPreviewRowVisible(m_lRowIndex)
 End Property
 
 Public Property Let PreviewRowVisible(ByVal bValue As Boolean)
+    m_pOwner.frRowPreviewRowVisible(m_lRowIndex) = bValue
 End Property
+
+'=========================================================================
+' Methods
+'=========================================================================
 
 Public Function GetBookmarks() As Variant
 Attribute GetBookmarks.VB_Description = "Returns an array of record bookmarks in a group row."
@@ -126,3 +175,23 @@ End Function
 Public Function GetSubTotal(ByVal ColIndex As Integer, ByVal AggregateFunction As jgexAggregateFunctionConstants) As Variant
 Attribute GetSubTotal.VB_Description = "Returns the aggregate function result of the set of values contained in a specified column on a group."
 End Function
+
+'= friend ================================================================
+
+Friend Sub frInit(ByVal oCtl As GridEX, ByVal lRowIndex As Long)
+    Call CopyMemory(m_pOwner, oCtl, PTR_SIZE)
+    m_lRowIndex = lRowIndex
+End Sub
+
+Friend Sub frTerm()
+    Call CopyMemory(m_pOwner, NULL_PTR, PTR_SIZE)
+End Sub
+
+'=========================================================================
+' Base class events
+'=========================================================================
+
+Private Sub Class_Terminate()
+    '--- zero the raw pointer or VB6 releases a control it never AddRef-ed
+    frTerm
+End Sub
