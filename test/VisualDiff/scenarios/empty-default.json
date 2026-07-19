@@ -1,0 +1,14 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "empty-default",
+    "width": 400,
+    "height": 260,
+    "apply": "before-show",
+    "props": {
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1200 },
+            { "Caption": "Beta", "Width": 1500 },
+            { "Caption": "Gamma", "Width": 1200 }
+        ]
+    }
+}

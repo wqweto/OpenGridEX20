@@ -1,0 +1,15 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "no-headers-no-rowheaders",
+    "width": 400,
+    "height": 260,
+    "apply": "before-show",
+    "props": {
+        "ColumnHeaders": false,
+        "RowHeaders": false,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1400 },
+            { "Caption": "Beta", "Width": 1400 }
+        ]
+    }
+}

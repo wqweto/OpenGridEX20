@@ -1,0 +1,18 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "gridlines-dots-colors",
+    "width": 400,
+    "height": 260,
+    "apply": "before-show",
+    "props": {
+        "GridLines": -1,
+        "GridLineStyle": 2,
+        "GridLinesColor": 255,
+        "BackColor": 12648384,
+        "BackColorBkg": 8421504,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1200 },
+            { "Caption": "Beta", "Width": 1200 }
+        ]
+    }
+}

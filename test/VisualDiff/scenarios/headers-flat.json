@@ -1,0 +1,15 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "headers-flat",
+    "width": 400,
+    "height": 260,
+    "apply": "before-show",
+    "props": {
+        "HeaderStyle": 0,
+        "ColumnHeaderHeight": 400,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1400, "HeaderAlignment": 2 },
+            { "Caption": "Beta", "Width": 1400 }
+        ]
+    }
+}

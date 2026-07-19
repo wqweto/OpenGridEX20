@@ -52,6 +52,14 @@ All notable changes to this project will be documented in this file.
 - Navigation events: `Row`/`Col` lets fire `RowColChange(LastRow, LastCol)` with the previous position on actual change only; `FirstItem` fires `FirstItemChange`
 - `test/ModelTests`: 24 new assertions (110 total) driving a fresh control on the `frmWeak` host (which doubles as event sink writing an ordered `EventLog`): fetch-once per row, lazy refetch per row/bookmark, bookmark round-trip into the event, `Refetch` vs `Rebind` reset scope, sort-hold semantics and exact navigation event sequences
 
+### Added (M3b -- VisualDiff harness + golden corpus)
+
+- `test/VisualDiff`: pixel-diff harness with no compile-time OCX reference -- the control under test (original `GridEX20.GridEX` or our `OpenGridEX20.GridEX`) is created at runtime via `Licenses.Add`/`Controls.Add`, scenario props applied through the shared import engine, unbound rows fed late-bound through `VBControlExtender.ObjectEvent`, and the control window blitted from its *own client DC at (0,0)* to 24bpp DIB (`GetClientRect`-sized) -- no screen coordinate mapping, so DPI virtualization on high-DPI displays (e.g. 120%) cannot offset or rescale the capture; capture-until-stable loop defeats paint races
+- JSON scenarios (`scenarios/*.json`, `opengex-visualdiff/1`): window size, `before-show`/`after-show` apply ordering, snapshot-style `props` and optional `unbound.rows` data; initial set of 6 (defaults, flat headers, no headers/row headers, gridline style + colors, even/odd unbound rows, after-show unbound)
+- Modes: `record` (golden corpus from the original control), `selftest` (fresh original capture vs golden must diff to zero -- passes 6/6), `verify` (our control vs golden, gated by `make.bat`); `record.bat` = record + selftest; diff failures report pixel count + bounding box and save `output\<name>.actual.bmp`
+- M3b exit reached: 6 goldens recorded (`golden/*.bmp` committed), harness self-validates; `verify` currently fails all 6 by design -- our control paints nothing yet, which is the M3c red baseline
+- `mdTest.bas`: `TestSkip` for graceful "RESULT: PASSED (0 tests, skipped)" on machines without the original control license
+
 ### Changed
 
 - README refreshed to current M2 state: milestone status, source-compatibility scope note, layout table covering `tools`/`test`/`doc/Help` and a Testing section for `test\ModelTests\make.bat`

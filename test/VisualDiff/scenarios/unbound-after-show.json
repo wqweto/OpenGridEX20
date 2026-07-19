@@ -1,0 +1,21 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "unbound-after-show",
+    "width": 400,
+    "height": 260,
+    "apply": "after-show",
+    "props": {
+        "GridLines": -1,
+        "Columns": [
+            { "Caption": "Key", "Width": 1200 },
+            { "Caption": "Value", "Width": 2000 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "one", "first row" ],
+            [ "two", "second row" ],
+            [ "three", "third row" ]
+        ]
+    }
+}

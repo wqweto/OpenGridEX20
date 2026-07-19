@@ -53,3 +53,8 @@ Public Sub TestsDone()
     End If
     Close #m_lFile
 End Sub
+
+Public Sub TestSkip(sReason As String)
+    Print #m_lFile, "RESULT: PASSED (0 tests, skipped: " & sReason & ")"
+    Close #m_lFile
+End Sub

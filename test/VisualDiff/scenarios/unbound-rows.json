@@ -1,0 +1,26 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "unbound-rows",
+    "width": 400,
+    "height": 260,
+    "apply": "before-show",
+    "props": {
+        "UseEvenOddColor": true,
+        "RowColorEven": 16775920,
+        "RowColorOdd": 16777215,
+        "Columns": [
+            { "Caption": "Product", "Width": 1800 },
+            { "Caption": "Qty", "Width": 900, "TextAlignment": 1 },
+            { "Caption": "Price", "Width": 1200 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "Chai", 39, "18.00" ],
+            [ "Chang", 17, "19.00" ],
+            [ "Aniseed Syrup", 13, "10.00" ],
+            [ "Ikura", 31, "31.00" ],
+            [ "Tofu", 35, "23.25" ]
+        ]
+    }
+}
