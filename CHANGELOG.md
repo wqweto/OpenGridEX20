@@ -43,6 +43,15 @@ All notable changes to this project will be documented in this file.
 - Model fidelity fixes surfaced by the corpus: `JSColumn.ValueList` returns `Nothing` until `HasValueList` is set (matches original), `JSPrinterProperties.PageHeaderFont`/`PageFooterFont` lazily create default fonts instead of returning `Nothing`, and `ImportObject` now imports in two passes (scalars first) so gate props like `HasValueList` are in effect before dependent compound props
 - `tools/common/mdUtils.bas`: shared `C2Obj`/`C2Dbl`/`C2Lng` non-failing Variant coercions (modeled after `C2Str`, no `On Error Resume Next` helpers in consumers) plus `AssignVariant`/`ReadTextFile`/`WriteTextFile`/`EnumFiles` replacing per-project private copies in ModelTests, Snapshot and the add-in
 
+### Added (M3a -- unbound data pipeline)
+
+- `ROADMAP.md`: M3 split into M3a (unbound data pipeline, no pixels), M3b (VisualDiff harness + golden recorder), M3c (static table painting) and M3d (scrolling + input); card view explicitly out of M3 scope
+- Unbound fetch pipeline: in `DataMode = jgexUnbound` any cell accessor lazily fires `UnboundReadData(RowIndex, Bookmark, Values)` once per row -- the `Values` buffer is the row's own `JSRowData` wrapper so the handler writes straight into control storage; re-entrant reads inside the handler do not re-fire (`Fetched` flag set first)
+- Cache invalidation: `Rebind` full-resets rows (values, bookmarks, row props) and `Refetch` resets values only (bookmarks survive); both honor the `HoldSortSettings` property (default True) as default for their optional parameter, clearing `SortKeys`/`Groups` when not held; `RefreshRowIndex`/`RefreshRowBookmark` mark a single row for lazy refetch
+- `RowBookmark(rowindex)` get/let backed by row storage and passed to `UnboundReadData`; `RowIndex(position)` returns the 1:1 original index (0 for group rows), `IsGroupItem` checks the stored `RowType`
+- Navigation events: `Row`/`Col` lets fire `RowColChange(LastRow, LastCol)` with the previous position on actual change only; `FirstItem` fires `FirstItemChange`
+- `test/ModelTests`: 24 new assertions (110 total) driving a fresh control on the `frmWeak` host (which doubles as event sink writing an ordered `EventLog`): fetch-once per row, lazy refetch per row/bookmark, bookmark round-trip into the event, `Refetch` vs `Rebind` reset scope, sort-hold semantics and exact navigation event sequences
+
 ### Changed
 
 - README refreshed to current M2 state: milestone status, source-compatibility scope note, layout table covering `tools`/`test`/`doc/Help` and a Testing section for `test\ModelTests\make.bat`

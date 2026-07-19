@@ -85,6 +85,7 @@ Private Sub Form_Load()
     pvTestRoundTrip
     pvTestRowData
     pvTestRowDataWeakRef
+    pvTestUnbound
     pvTestSnapshotCorpus
 QH:
     TestsDone
@@ -336,6 +337,68 @@ Private Sub pvTestRowDataWeakRef()
     lErr = Err.Number
     On Error GoTo 0
     AssertEquals "WeakRef: orphaned access raises 91", 91, lErr
+End Sub
+
+Private Sub pvTestUnbound()
+    Dim oForm           As frmWeak
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add "Alpha"
+        .Columns.Add "Beta"
+        .DataMode = jgexUnbound
+        .ItemCount = 3
+        AssertEquals "Unbound: RowCount = ItemCount", 3, .RowCount
+        AssertEquals "Unbound: RowIndex maps 1:1", 2, .RowIndex(2)
+        '--- first cell read of a row fires UnboundReadData exactly once
+        oForm.EventLog = vbNullString
+        AssertEquals "Unbound: fetched value", "R2C1", .GetRowData(2).Value(1)
+        AssertEquals "Unbound: fetch fired once", "Read(2);", oForm.EventLog
+        AssertEquals "Unbound: second col cached", "R2C2", .GetRowData(2).Value(2)
+        AssertEquals "Unbound: no refire on cached row", "Read(2);", oForm.EventLog
+        AssertEquals "Unbound: other row fetches on demand", "R1C2", .GetRowData(1).Value(2)
+        AssertEquals "Unbound: fetch log per row", "Read(2);Read(1);", oForm.EventLog
+        '--- RefreshRowIndex marks one row for lazy refetch
+        oForm.EventLog = vbNullString
+        .RefreshRowIndex 2
+        AssertEquals "Unbound: refresh is lazy", vbNullString, oForm.EventLog
+        AssertEquals "Unbound: refetched value", "R2C1", .GetRowData(2).Value(1)
+        AssertEquals "Unbound: refetch fired for row 2", "Read(2);", oForm.EventLog
+        AssertEquals "Unbound: row 1 still cached", "R1C1", .GetRowData(1).Value(1)
+        AssertEquals "Unbound: row 1 not refetched", "Read(2);", oForm.EventLog
+        '--- bookmarks round-trip, reach the event and key RefreshRowBookmark
+        .RowBookmark(3) = "bk3"
+        AssertEquals "Unbound: RowBookmark get", "bk3", .RowBookmark(3)
+        oForm.EventLog = vbNullString
+        AssertEquals "Unbound: fetch row 3", "R3C2", .GetRowData(3).Value(2)
+        AssertEquals "Unbound: bookmark passed to event", "Read(3)bk3;", oForm.EventLog
+        oForm.EventLog = vbNullString
+        .RefreshRowBookmark "bk3"
+        AssertEquals "Unbound: bookmark refetch", "R3C1", .GetRowData(3).Value(1)
+        AssertEquals "Unbound: bookmark refetch log", "Read(3)bk3;", oForm.EventLog
+        '--- Refetch resets data on all rows but keeps bookmarks
+        .Refetch
+        AssertEquals "Unbound: value refetched after Refetch", "R1C1", .GetRowData(1).Value(1)
+        AssertEquals "Unbound: Refetch keeps bookmark", "bk3", .RowBookmark(3)
+        '--- Rebind full-resets incl. bookmarks; sort cleared per param with
+        '--- HoldSortSettings property (default True) as the default
+        .SortKeys.Add 1, jgexSortAscending
+        .Rebind
+        AssertEquals "Unbound: Rebind holds sort by default", 1, .SortKeys.Count
+        .Rebind False
+        AssertEquals "Unbound: Rebind False clears sort", 0, .SortKeys.Count
+        Assert "Unbound: Rebind clears bookmark", IsEmpty(.RowBookmark(3))
+        '--- navigation state events with previous row/col in the args
+        oForm.EventLog = vbNullString
+        .Row = 2
+        .Col = 2
+        .Row = 2
+        .FirstItem = 2
+        .FirstItem = 2
+        AssertEquals "Unbound: nav event order", "RowCol(0,0);RowCol(2,0);First;", oForm.EventLog
+    End With
+    Unload oForm
 End Sub
 
 Private Sub pvTestSnapshotCorpus()

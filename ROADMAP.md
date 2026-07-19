@@ -47,18 +47,50 @@ inventoried.
 
 Exit: sample JSON round-trips losslessly through our object model.
 
-## M3 -- Unbound engine + table view
+## M3 -- Unbound engine + table view (split into a-d)
 
-- Window plumbing, scrollbars, double-buffered painting, row cache from
-  `ItemCount` + `UnboundReadData`, column headers, gridlines, selection,
-  even/odd colors, keyboard/mouse navigation, core events
-- `test\VisualDiff.vbp` harness: fixed-size twin form, runtime-scripted scenarios
-  (JSON), BitBlt capture to DIB, pixel diff with cluster report, sentinel A/B
-  footprint tests, simultaneous-sentinel paint map, record vs verify modes,
-  before-show/after-show application ordering modes; MS Sans Serif for AA-free runs
-- Record golden corpus from original control
+### M3a -- Unbound data pipeline (no pixels)
+
+- `DataMode`/`ItemCount` wiring and the `UnboundReadData`/`UnboundAddNew`/
+  `UnboundDelete`/`UnboundUpdate` events feeding the control row cache
+  (`m_aRows` + `JSRowData` wrappers from M2); cache invalidation via
+  `Rebind`/`Refetch`/`Refresh`
+- Row/col navigation state (`Row`, `Col`, `FirstItem`, `RowCount`, bookmarks)
+  with correct event ordering (`RowColChange`, `FirstItemChange`,
+  `SelectionChange`)
+
+Exit: scripted unbound scenarios in `test\ModelTests` populate and read back
+the cache with event sequences matching the original control.
+
+### M3b -- VisualDiff harness + golden recorder (tooling only)
+
+- `test\VisualDiff.vbp` harness built against the *original* control first:
+  fixed-size twin form, runtime-scripted scenarios (JSON), BitBlt capture to
+  DIB, pixel diff with cluster report, sentinel A/B footprint tests,
+  simultaneous-sentinel paint map, record vs verify modes, before-show/
+  after-show application ordering modes; MS Sans Serif for AA-free runs
+- Record initial golden corpus from the original control
+
+Exit: goldens recorded for the initial scenario set; harness self-validates
+(original vs original captures diff to zero).
+
+### M3c -- Static table painting
+
+- Window plumbing, double-buffered painting: background, borders, column
+  headers, gridlines and line styles, cell text from the row cache, even/odd
+  colors, static selection rendering -- developed golden-first, scenario by
+  scenario against the M3b corpus
+
+Exit: static paint scenarios pass pixel diff against the golden corpus.
+
+### M3d -- Scrolling + input
+
+- Scrollbars, `ContinuousScroll`, keyboard/mouse navigation, live selection,
+  core events (`Click`, `DblClick`, `RowColChange`, `SelectionChange`, key
+  events), `LeftCol`/`FirstItem` tracking
 
 Exit: Unbound 1/2/Array/UDTs/Collection samples run; paint-map scenario passes.
+(Table view only -- card view intentionally out of M3 scope.)
 
 ## M4 -- Sorting and grouping
 

@@ -37,9 +37,37 @@ Attribute VB_Exposed = False
 '=========================================================================
 '
 ' Open GridEX 2000 Control
-' Disposable host form for the JSRowData weak reference test and for
-' fresh control instances in the snapshot corpus round-trip test
+' Disposable host form for the JSRowData weak reference test, for fresh
+' control instances in the snapshot corpus round-trip test and as event
+' sink for the unbound data pipeline test (appends to EventLog)
 '
 '=========================================================================
 Option Explicit
 DefObj A-Z
+
+'=========================================================================
+' Constants and member variables
+'=========================================================================
+
+Public EventLog                     As String
+
+'=========================================================================
+' Control events
+'=========================================================================
+
+Private Sub GridEX1_UnboundReadData(ByVal RowIndex As Long, ByVal Bookmark As Variant, ByVal Values As JSRowData)
+    Dim nIdx            As Integer
+
+    EventLog = EventLog & "Read(" & RowIndex & ")" & C2Str(Bookmark) & ";"
+    For nIdx = 1 To Values.ColCount
+        Values(nIdx) = "R" & RowIndex & "C" & nIdx
+    Next
+End Sub
+
+Private Sub GridEX1_RowColChange(ByVal LastRow As Long, ByVal LastCol As Integer)
+    EventLog = EventLog & "RowCol(" & LastRow & "," & LastCol & ");"
+End Sub
+
+Private Sub GridEX1_FirstItemChange()
+    EventLog = EventLog & "First;"
+End Sub

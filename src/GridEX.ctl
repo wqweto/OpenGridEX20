@@ -621,6 +621,7 @@ Private Type UcsRowData
     GroupCaption            As String
     GroupIconIndex          As Integer
     PreviewRowVisible       As Boolean
+    Fetched                 As Boolean
     CellCount               As Integer
     Cells()                 As UcsCellData
     RowData                 As JSRowData
@@ -727,7 +728,13 @@ Attribute Col.VB_Description = "Returns or sets the active column."
 End Property
 
 Public Property Let Col(ByVal nValue As Integer)
-    m_nCol = nValue
+    Dim nLastCol        As Integer
+
+    If m_nCol <> nValue Then
+        nLastCol = m_nCol
+        m_nCol = nValue
+        RaiseEvent RowColChange(m_lRow, nLastCol)
+    End If
 End Property
 
 Public Property Get BackColorRowGroup() As OLE_COLOR
@@ -950,7 +957,10 @@ Attribute FirstItem.VB_Description = "Returns/sets the row position of the first
 End Property
 
 Public Property Let FirstItem(ByVal lValue As Long)
-    m_lFirstItem = lValue
+    If m_lFirstItem <> lValue Then
+        m_lFirstItem = lValue
+        RaiseEvent FirstItemChange
+    End If
 End Property
 
 Public Property Get GridLines() As jgexGridLinesConstants
@@ -1000,9 +1010,13 @@ End Property
 
 Public Property Get RowBookmark(ByVal RowIndex As Long) As Variant
 Attribute RowBookmark.VB_Description = "Returns/sets a value containing a bookmark for a row."
+    pvEnsureRow RowIndex
+    RowBookmark = m_aRows(RowIndex).Bookmark
 End Property
 
 Public Property Let RowBookmark(ByVal RowIndex As Long, ByVal vntValue As Variant)
+    pvEnsureRow RowIndex
+    m_aRows(RowIndex).Bookmark = vntValue
 End Property
 
 Public Property Get Row() As Long
@@ -1011,7 +1025,13 @@ Attribute Row.VB_Description = "Returns/sets the current row/card position."
 End Property
 
 Public Property Let Row(ByVal lValue As Long)
-    m_lRow = lValue
+    Dim lLastRow        As Long
+
+    If m_lRow <> lValue Then
+        lLastRow = m_lRow
+        m_lRow = lValue
+        RaiseEvent RowColChange(lLastRow, m_nCol)
+    End If
 End Property
 
 Public Property Get ErrorText() As String
@@ -1589,52 +1609,52 @@ Friend Property Get frRowColCount() As Integer
 End Property
 
 Friend Property Get frRowValue(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As Variant
-    pvEnsureRowCells lRowIndex
+    pvFetchRow lRowIndex
     frRowValue = m_aRows(lRowIndex).Cells(nColIndex).Value
 End Property
 
 Friend Property Let frRowValue(ByVal lRowIndex As Long, ByVal nColIndex As Integer, ByVal vntValue As Variant)
-    pvEnsureRowCells lRowIndex
+    pvFetchRow lRowIndex
     m_aRows(lRowIndex).Cells(nColIndex).Value = vntValue
 End Property
 
 Friend Property Get frRowIconIndex(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As Integer
-    pvEnsureRowCells lRowIndex
+    pvFetchRow lRowIndex
     frRowIconIndex = m_aRows(lRowIndex).Cells(nColIndex).IconIndex
 End Property
 
 Friend Property Let frRowIconIndex(ByVal lRowIndex As Long, ByVal nColIndex As Integer, ByVal nValue As Integer)
-    pvEnsureRowCells lRowIndex
+    pvFetchRow lRowIndex
     m_aRows(lRowIndex).Cells(nColIndex).IconIndex = nValue
 End Property
 
 Friend Property Get frRowDisplayValue(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As String
-    pvEnsureRowCells lRowIndex
+    pvFetchRow lRowIndex
     frRowDisplayValue = m_aRows(lRowIndex).Cells(nColIndex).DisplayValue
 End Property
 
 Friend Property Let frRowDisplayValue(ByVal lRowIndex As Long, ByVal nColIndex As Integer, ByVal sValue As String)
-    pvEnsureRowCells lRowIndex
+    pvFetchRow lRowIndex
     m_aRows(lRowIndex).Cells(nColIndex).DisplayValue = sValue
 End Property
 
 Friend Property Get frRowCellStyle(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As String
-    pvEnsureRowCells lRowIndex
+    pvFetchRow lRowIndex
     frRowCellStyle = m_aRows(lRowIndex).Cells(nColIndex).CellStyle
 End Property
 
 Friend Property Let frRowCellStyle(ByVal lRowIndex As Long, ByVal nColIndex As Integer, ByVal sValue As String)
-    pvEnsureRowCells lRowIndex
+    pvFetchRow lRowIndex
     m_aRows(lRowIndex).Cells(nColIndex).CellStyle = sValue
 End Property
 
 Friend Property Get frRowCellPicture(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As Picture
-    pvEnsureRowCells lRowIndex
+    pvFetchRow lRowIndex
     Set frRowCellPicture = m_aRows(lRowIndex).Cells(nColIndex).CellPicture
 End Property
 
 Friend Property Set frRowCellPicture(ByVal lRowIndex As Long, ByVal nColIndex As Integer, ByVal oValue As Picture)
-    pvEnsureRowCells lRowIndex
+    pvFetchRow lRowIndex
     Set m_aRows(lRowIndex).Cells(nColIndex).CellPicture = oValue
 End Property
 
@@ -1722,6 +1742,8 @@ End Sub
 
 Public Sub Refetch(Optional HoldSortSettings As Variant)
 Attribute Refetch.VB_Description = "Forces a GridEX control to refresh its contents without re-opening the recordset. "
+    pvResetRows False
+    pvApplyHoldSort HoldSortSettings
 End Sub
 
 Public Sub PrintGrid(Optional UsePrintSetupDlg As Boolean, Optional PrintSelectedItems As Boolean)
@@ -1746,6 +1768,13 @@ End Sub
 
 Public Function RowIndex(ByVal RowPosition As Long) As Long
 Attribute RowIndex.VB_Description = "Returns the original index of a row."
+    '--- no grouping/sorting yet: position maps 1:1 to original index;
+    '--- group rows will return 0 once grouping lands
+    If RowPosition >= 1 And RowPosition <= RowCount Then
+        If Not IsGroupItem(RowPosition) Then
+            RowIndex = RowPosition
+        End If
+    End If
 End Function
 
 Public Sub RefreshGroups(Optional ByVal AllCollapsed As Boolean)
@@ -1758,10 +1787,15 @@ End Sub
 
 Public Sub Rebind(Optional HoldSortSettings As Variant)
 Attribute Rebind.VB_Description = "Forces re-creation of the recordset."
+    pvResetRows True
+    pvApplyHoldSort HoldSortSettings
 End Sub
 
 Public Function IsGroupItem(ByVal Row As Long) As Boolean
 Attribute IsGroupItem.VB_Description = "Returns True if the specified row is a group row."
+    If Row >= 1 And Row <= m_lRowsUBound Then
+        IsGroupItem = (m_aRows(Row).RowType <> jgexRowTypeRecord)
+    End If
 End Function
 
 Public Sub Refresh()
@@ -1843,10 +1877,23 @@ End Sub
 
 Public Sub RefreshRowBookmark(ByVal Bookmark As Variant)
 Attribute RefreshRowBookmark.VB_Description = "Refreshes data of the record that matches the Bookmark."
+    Dim lIdx            As Long
+
+    For lIdx = 1 To m_lRowsUBound
+        If Not IsEmpty(m_aRows(lIdx).Bookmark) Then
+            If m_aRows(lIdx).Bookmark = Bookmark Then
+                pvResetRow lIdx, False
+                Exit For
+            End If
+        End If
+    Next
 End Sub
 
 Public Sub RefreshRowIndex(ByVal RowIndex As Long)
 Attribute RefreshRowIndex.VB_Description = "Refreshes data of the record that matches the index."
+    If RowIndex >= 1 And RowIndex <= m_lRowsUBound Then
+        pvResetRow RowIndex, False
+    End If
 End Sub
 
 Public Function GroupRowLevel(ByVal RowPosition As Long) As Integer
@@ -1947,6 +1994,68 @@ Private Sub pvEnsureRowCells(ByVal lRowIndex As Long)
             .CellCount = nColCount
         End If
     End With
+End Sub
+
+Private Sub pvFetchRow(ByVal lRowIndex As Long)
+    Dim oRowData        As JSRowData
+
+    pvEnsureRowCells lRowIndex
+    '--- in unbound mode cell data is supplied lazily by the client app
+    '--- through the UnboundReadData event, once per row until reset
+    If m_eDataMode <> jgexUnbound Then
+        Exit Sub
+    End If
+    If lRowIndex > m_lItemCount Then
+        Exit Sub
+    End If
+    If Not m_aRows(lRowIndex).Fetched Then
+        '--- mark first so reads from inside the handler do not re-fire
+        m_aRows(lRowIndex).Fetched = True
+        Set oRowData = GetRowData(lRowIndex)
+        RaiseEvent UnboundReadData(lRowIndex, m_aRows(lRowIndex).Bookmark, oRowData)
+    End If
+End Sub
+
+Private Sub pvResetRow(ByVal lRowIndex As Long, ByVal bFullReset As Boolean)
+    With m_aRows(lRowIndex)
+        .Fetched = False
+        If .CellCount > 0 Then
+            ReDim .Cells(1 To .CellCount) As UcsCellData
+        End If
+        If bFullReset Then
+            .Bookmark = Empty
+            .RowType = jgexRowTypeRecord
+            .GroupLevel = 0
+            .RecordCount = 0
+            .RowHeight = m_lRowHeight
+            .RowStyle = vbNullString
+            .GroupCaption = vbNullString
+            .GroupIconIndex = 0
+            .PreviewRowVisible = True
+        End If
+    End With
+End Sub
+
+Private Sub pvResetRows(ByVal bFullReset As Boolean)
+    Dim lIdx            As Long
+
+    For lIdx = 1 To m_lRowsUBound
+        pvResetRow lIdx, bFullReset
+    Next
+End Sub
+
+Private Sub pvApplyHoldSort(HoldSortSettings As Variant)
+    Dim bHold           As Boolean
+
+    If IsMissing(HoldSortSettings) Then
+        bHold = m_bHoldSortSettings
+    Else
+        bHold = CBool(HoldSortSettings)
+    End If
+    If Not bHold Then
+        m_oSortKeys.Clear
+        m_oGroups.Clear
+    End If
 End Sub
 
 '=========================================================================
