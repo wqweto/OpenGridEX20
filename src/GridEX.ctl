@@ -533,8 +533,11 @@ Private m_eNewRowPos                As jgexNewRowPosConstants
 Private m_lItemCount                As Long
 Private m_eDataMode                 As jgexDataModeConstants
 Private m_nLeftCol                  As Integer
-Private m_oColumnHeaderFont         As Font
-Private m_oFont                     As Font
+Private WithEvents m_oColumnHeaderFont As StdFont
+Attribute m_oColumnHeaderFont.VB_VarHelpID = -1
+Private WithEvents m_oFont          As StdFont
+Attribute m_oFont.VB_VarHelpID = -1
+Private m_bRowHeightSet             As Boolean
 Private m_lFirstItem                As Long
 Private m_eGridLines                As jgexGridLinesConstants
 Private m_clrGridLinesColor         As OLE_COLOR
@@ -651,8 +654,10 @@ Public Property Get RowHeight() As Long
 End Property
 
 Public Property Let RowHeight(ByVal lValue As Long)
-    '--- stored in pixels; snapped to nearest like the original
+    '--- stored in pixels; snapped to nearest like the original; an
+    '--- explicit height survives later font changes
     m_lRowHeight = ToPixels(lValue)
+    m_bRowHeightSet = True
 End Property
 
 Public Property Get hWndEdit() As Long
@@ -945,6 +950,7 @@ End Property
 
 Public Property Set ColumnHeaderFont(ByVal oValue As Font)
     Set m_oColumnHeaderFont = oValue
+    m_oColumnHeaderFont_FontChanged vbNullString
 End Property
 
 Public Property Get Font() As Font
@@ -955,6 +961,7 @@ End Property
 
 Public Property Set Font(ByVal oValue As Font)
     Set m_oFont = oValue
+    m_oFont_FontChanged vbNullString
 End Property
 
 Public Property Get FirstItem() As Long
@@ -1764,7 +1771,7 @@ Public Sub Refetch(Optional HoldSortSettings As Variant)
 Attribute Refetch.VB_Description = "Forces a GridEX control to refresh its contents without re-opening the recordset. "
     pvResetRows False
     pvApplyHoldSort HoldSortSettings
-    UserControl.Refresh
+    pvInvalidate
 End Sub
 
 Public Sub PrintGrid(Optional UsePrintSetupDlg As Boolean, Optional PrintSelectedItems As Boolean)
@@ -1821,7 +1828,7 @@ Attribute Rebind.VB_Description = "Forces re-creation of the recordset."
     Else
         m_nCol = 0
     End If
-    UserControl.Refresh
+    pvInvalidate
 End Sub
 
 Public Function IsGroupItem(ByVal Row As Long) As Boolean
@@ -1833,7 +1840,7 @@ End Function
 
 Public Sub Refresh()
 Attribute Refresh.VB_Description = "Forces a complete repaint of a GridEX control."
-    UserControl.Refresh
+    pvInvalidate
 End Sub
 
 Public Sub HoldFields()
@@ -2301,6 +2308,17 @@ Private Function pvPenStyle() As Long
     End Select
 End Function
 
+Private Sub pvInvalidate()
+    Const FUNC_NAME     As String = "pvInvalidate"
+
+    '--- tolerate refresh before the control window exists
+    On Error GoTo EH
+    UserControl.Refresh
+    Exit Sub
+EH:
+    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+End Sub
+
 Private Function pvColor(ByVal clrValue As OLE_COLOR) As Long
     Call OleTranslateColor(clrValue, 0, pvColor)
 End Function
@@ -2478,6 +2496,23 @@ Private Sub UserControl_InitProperties()
     m_oColumns.Add(vbNullString).Width = ToTwips(m_lDefaultColumnWidth)
 End Sub
 
+Private Sub m_oFont_FontChanged(ByVal PropertyName As String)
+    '--- default row height follows the data font unless explicitly set
+    If Not m_bRowHeightSet Then
+        m_lRowHeight = FontTextHeight(m_oFont) + 3
+        If m_lRowHeight < 19 Then
+            m_lRowHeight = 19
+        End If
+    End If
+    pvInvalidate
+End Sub
+
+Private Sub m_oColumnHeaderFont_FontChanged(ByVal PropertyName As String)
+    '--- header height always follows the header font
+    m_lColumnHeaderHeight = FontTextHeight(m_oColumnHeaderFont) + 6
+    pvInvalidate
+End Sub
+
 Private Sub UserControl_Paint()
     Const FUNC_NAME     As String = "UserControl_Paint"
 
@@ -2489,7 +2524,7 @@ EH:
 End Sub
 
 Private Sub UserControl_Resize()
-    UserControl.Refresh
+    pvInvalidate
 End Sub
 
 Private Sub UserControl_Terminate()

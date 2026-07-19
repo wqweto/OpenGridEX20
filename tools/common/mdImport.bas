@@ -47,8 +47,16 @@ Public Sub ImportObject(oObj As Object, sClass As String, oJson As Object)
         Exit Sub
     End If
     lCount = ProfileForClass(sClass, uProps)
-    '--- two passes: scalars first so gate props (e.g. HasValueList) are in
-    '--- effect before dependent compound props (e.g. ValueList) import
+    '--- three passes: fonts first because font changes recalc dependent
+    '--- metrics (e.g. RowHeight/ColumnHeaderHeight) which explicit scalar
+    '--- values must then override; scalars before compound props so gate
+    '--- props (e.g. HasValueList) are in effect for dependents
+    For lIdx = 0 To lCount - 1
+        Select Case uProps(lIdx).eKind
+        Case ucsPrkFont
+            pvImportProp oObj, uProps(lIdx), oJson
+        End Select
+    Next
     For lIdx = 0 To lCount - 1
         Select Case uProps(lIdx).eKind
         Case ucsPrkScalar, ucsPrkEnum, ucsPrkVariant
@@ -57,7 +65,7 @@ Public Sub ImportObject(oObj As Object, sClass As String, oJson As Object)
     Next
     For lIdx = 0 To lCount - 1
         Select Case uProps(lIdx).eKind
-        Case ucsPrkScalar, ucsPrkEnum, ucsPrkVariant
+        Case ucsPrkFont, ucsPrkScalar, ucsPrkEnum, ucsPrkVariant
         Case Else
             pvImportProp oObj, uProps(lIdx), oJson
         End Select
