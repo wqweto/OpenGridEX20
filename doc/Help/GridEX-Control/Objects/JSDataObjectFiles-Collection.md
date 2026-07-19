@@ -45,7 +45,7 @@ Returns an specific file name of the **JSDataObjectFiles** collection.
 
 ### Syntax
 
- *object*.**Item(***index***)**  
+ *object*.**Item**(*index*)  
  The **Item** property syntax has the following parts:
 
 | Part | Description |

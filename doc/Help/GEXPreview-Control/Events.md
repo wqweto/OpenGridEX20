@@ -6,7 +6,7 @@ Occurs when paginating of a document has finished.
 
 ### Syntax
 
- **Private Sub** *object*_**AfterPaginating****(** [ *index* **As Integer** ]**)**  
+ **Private Sub** *object*_**AfterPaginating** ( [ *index* **As Integer** ])  
  The **AfterPaginating** event syntax has these parts:
 
 | Part | Description |
@@ -28,7 +28,7 @@ Occurs when the **GEXPreview** control is about to paginate the document.
 
 ### Syntax
 
- **Private Sub** *object*_**BeforePaginating****(** [ *index* **As Integer** ]**)**  
+ **Private Sub** *object*_**BeforePaginating** ( [ *index* **As Integer** ])  
  The **BeforePaginating** event syntax has these parts:
 
 | Part | Description |
@@ -51,7 +51,7 @@ Occurs when the "Close" button, in the **GEXPreview** control's tool bar, has be
 
 ### Syntax
 
- **Private Sub** *object*_**OnCloseClick (** [ *index* **As Integer** ]**)**  
+ **Private Sub** *object*_**OnCloseClick** ( [ *index* **As Integer** ])  
  The **OnCloseClick** event syntax has these parts:
 
 | Part | Description |
@@ -74,7 +74,7 @@ Occurs when the "**Close**" button, in the **GEXPreview** control's tool bar, ha
 
 ### Syntax
 
- **Private Sub** *object*_**OnPrintClick (** [ *index* **As Integer**, ] *useprintsetupdlg***)**  
+ **Private Sub** *object*_**OnPrintClick** ( [ *index* **As Integer**, ] *useprintsetupdlg*)  
  The **OnPrintClick** event syntax has these parts:
 
 | Part | Description |
@@ -106,7 +106,7 @@ Occurs when the current page in a **GEXPreview** control changes.
 
 ### Syntax
 
- **Private Sub** *object*_**PageChanged****(** [ *index* **As Integer** ]**)**  
+ **Private Sub** *object*_**PageChanged** ( [ *index* **As Integer** ])  
  The **PageChanged** event syntax has these parts:
 
 | Part | Description |
@@ -128,7 +128,7 @@ Occurs when the Zoom property in a GEXPreview control changes.
 
 ### Syntax
 
- **Private Sub** *object*_**ZoomChanged (** [ *index* **As Integer** ]**)**  
+ **Private Sub** *object*_**ZoomChanged** ( [ *index* **As Integer** ])  
  The **ZoomChanged** event syntax has these parts:
 
 | Part | Description |

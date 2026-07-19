@@ -58,7 +58,7 @@ Returns a specific **JSSelectedItem** object in the **JSSelectedItems** collecti
 
 ### Syntax
 
- *object*.**Item(***index***)**  
+ *object*.**Item**(*index*)  
  The **Item** property syntax has the following parts:
 
 | Part | Description |

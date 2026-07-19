@@ -58,7 +58,7 @@ Returns a specific **JSSortKey** of the **JSSortKeys** collection.
 
 ### Syntax
 
- *object*.**Item(***index***)**  
+ *object*.**Item**(*index*)  
  The **Item** property syntax has the following parts:
 
 | Part | Description |

@@ -6,7 +6,7 @@ Occurs just before the user enters edit mode by typing a character or clicking i
 
 ### Syntax
 
- **Private Sub** *object*_**BeforeColEdit(**[ *index* **As Integer**,] **ByVal** *colindex* **As Integer**, **ByVal** *cancel* **As JSRetBoolean)**  
+ **Private Sub** *object*_**BeforeColEdit**([ *index* **As Integer**,] **ByVal** *colindex* **As Integer**, **ByVal** *cancel* **As JSRetBoolean**)  
  The **BeforeColEdit** event syntax has these parts:
 
 | Part | Description |
@@ -38,7 +38,7 @@ Occurs after the user has dropped a column into a new position.
 
 ### Syntax
 
- **Private Sub** *object*_**AfterColMove (**[ *index* **As Integer** ]**)**  
+ **Private Sub** *object*_**AfterColMove** ([ *index* **As Integer** ])  
  The **AfterColMove** event syntax has these parts:
 
 | Part | Description |
@@ -62,7 +62,7 @@ Occurs after data is moved from a cell in the **GridEX** control to the control'
 
 ### Syntax
 
- **Private Sub** *object*_**AfterColUpdate(**[ *index* **As Integer**, ] **ByVal** *colindex* **As Integer)**  
+ **Private Sub** *object*_**AfterColUpdate**([ *index* **As Integer**, ] **ByVal** *colindex* **As Integer**)  
  The **AfterColUpdate** event syntax has these parts:
 
 | Part | Description |
@@ -86,7 +86,7 @@ Occurs after the user deletes the selected records in the **GridEX** control.
 
 ### Syntax
 
- **Private Sub** *object*_**AfterDelete(**[ *index* **As Integer** ]**)**  
+ **Private Sub** *object*_**AfterDelete**([ *index* **As Integer** ])  
  The **AfterDelete** event syntax has these parts:
 
 | Part | Description |
@@ -108,7 +108,7 @@ Occurs after the user has changed, added or removed a group in the **GridEX** Co
 
 ### Syntax
 
- **Private Sub** *object*_**AfterGroupChange(**[ *index* **As Integer** ]**)**  
+ **Private Sub** *object*_**AfterGroupChange**([ *index* **As Integer** ])  
  The **AfterGroupChange** event syntax has these parts:
 
 | Part | Description |
@@ -130,7 +130,7 @@ Occurs after changes made by the user have been written to the database from a *
 
 ### Syntax
 
- **Private Sub** *object*_**AfterUpdate(**[ *index* **As Integer** ]**)**  
+ **Private Sub** *object*_**AfterUpdate**([ *index* **As Integer** ])  
  The **AfterUpdate** event syntax has these parts:
 
 | Part | Description |
@@ -152,7 +152,7 @@ Occurs just before the user enters edit mode by typing a character or clicking i
 
 ### Syntax
 
- **Private Sub** *object*_**BeforeColEdit(**[ *index* **As Integer**,] **ByVal** *colindex* **As Integer**, **ByVal** *cancel* **As JSRetBoolean)**  
+ **Private Sub** *object*_**BeforeColEdit**([ *index* **As Integer**,] **ByVal** *colindex* **As Integer**, **ByVal** *cancel* **As JSRetBoolean**)  
  The **BeforeColEdit** event syntax has these parts:
 
 | Part | Description |
@@ -185,7 +185,7 @@ Occurs before the **GridEX** control repaints after the user has dropped a colum
 
 ### Syntax
 
- **Private Sub** *object*_**BeforeColMove(**[ *index* **As Integer**, ] *column* **As JSColumn**, **ByVal** *newposition* **As Integer**, **ByVal** *cancel* **As JSRetBoolean)**  
+ **Private Sub** *object*_**BeforeColMove**([ *index* **As Integer**, ] *column* **As JSColumn**, **ByVal** *newposition* **As Integer**, **ByVal** *cancel* **As JSRetBoolean**)  
  The **BeforeColMove** event syntax has these parts:
 
 | Part | Description |
@@ -222,7 +222,7 @@ Occurs before the user begins a drag operation with a header in the column heade
 
 ### Syntax
 
- **Private Sub** *object*_**BeforeColumnDrag (** [ *index* **As Integer**,] *column* **As JSColumn**, **ByVal** *cancel* **As JSRetBoolean)**  
+ **Private Sub** *object*_**BeforeColumnDrag** ( [ *index* **As Integer**,] *column* **As JSColumn**, **ByVal** *cancel* **As JSRetBoolean**)  
  The **BeforeColumnDrag** event syntax has these parts:
 
 | Part | Description |
@@ -257,7 +257,7 @@ Occurs after editing is completed in a cell, but before data is moved from the c
 
 ### Syntax
 
- **Private Sub** *object*_**BeforeColUpdate(** [ *index* **As Integer**,] **ByVal** *row* **As Long**, **ByVal** *colindex* **As Integer**, **ByVal** *oldvalue* **As String**, **ByVal** *cancel* **As JSRetBoolean)**  
+ **Private Sub** *object*_**BeforeColUpdate**( [ *index* **As Integer**,] **ByVal** *row* **As Long**, **ByVal** *colindex* **As Integer**, **ByVal** *oldvalue* **As String**, **ByVal** *cancel* **As JSRetBoolean**)  
  The **BeforeColUpdate** event syntax has these parts:
 
 | Part | Description |
@@ -294,7 +294,7 @@ Occurs before a delete operation begins in a **GridEX** control.
 
 ### Syntax
 
- **Private Sub** *object*_**BeforeDelete (** [ *index* **As Integer**,] **ByVal** *cancel* **As JSRetBoolean)**  
+ **Private Sub** *object*_**BeforeDelete** ( [ *index* **As Integer**,] **ByVal** *cancel* **As JSRetBoolean**)  
  The **BeforeDelete** event syntax has these parts:
 
 | Part | Description |
@@ -330,7 +330,7 @@ Occurs before a selected record is deleted in a **GridEX** control.
 
 ### Syntax
 
- **Private Sub** *object*_**BeforeDeleteEX (** [ *index* **As Integer**,] **ByVal** *rowindex* **As Long**, **ByVal** *bookmark* **As Variant**, **ByVal** *cancel* **As JSRetBoolean)**  
+ **Private Sub** *object*_**BeforeDeleteEX** ( [ *index* **As Integer**,] **ByVal** *rowindex* **As Long**, **ByVal** *bookmark* **As Variant**, **ByVal** *cancel* **As JSRetBoolean**)  
  The **BeforeDeleteEX** event syntax has these parts:
 
 | Part | Description |
@@ -365,7 +365,7 @@ Occurs after the user has changed, added or removed a group in the **GridEX** co
 
 ### Syntax
 
- **Private Sub** *object*_**BeforeGroupChange(** [ *index* **As Integer**,] **ByVal** *group* **As JSGroup**, **ByVal** *changeoperation* **As jsgexGroupChange**, **ByVal** *groupposition* **As Integer**, **ByVal** *cancel* **As JSRetBoolean)**  
+ **Private Sub** *object*_**BeforeGroupChange**( [ *index* **As Integer**,] **ByVal** *group* **As JSGroup**, **ByVal** *changeoperation* **As jsgexGroupChange**, **ByVal** *groupposition* **As Integer**, **ByVal** *cancel* **As JSRetBoolean**)  
  The **BeforeGroupChange** event syntax has these parts:
 
 | Part | Description |
@@ -409,7 +409,7 @@ Occurs before the user begins a drag operation with a column header in the “gr
 
 ### Syntax
 
- **Private Sub** *object_***BeforeGroupDrag(** [ *index* **As Integer**, ] **ByVal** *group* **As JSGroup**, **ByVal** *cancel* **As JSRetBoolean)**  
+ **Private Sub** *object*_**BeforeGroupDrag**( [ *index* **As Integer**, ] **ByVal** *group* **As JSGroup**, **ByVal** *cancel* **As JSRetBoolean**)  
  The **BeforeGroupDrag** event syntax has these parts:
 
 | Part | Description |
@@ -443,7 +443,7 @@ Occurs before the **GridEX** control prints its contents.
 
 ### Syntax
 
- **Private Sub** *object*_**BeforePrinting(** [ *index* **As Integer**, ] **ByVal** *npages* **As Long**, **ByVal** *cancel* **As JSRetBoolean)**  
+ **Private Sub** *object*_**BeforePrinting**( [ *index* **As Integer**, ] **ByVal** *npages* **As Long**, **ByVal** *cancel* **As JSRetBoolean**)  
  The **BeforePrinting** event syntax has these parts:
 
 | Part | Description |
@@ -477,7 +477,7 @@ Occurs before the **GridEX** prints a page.
 
 ### Syntax
 
- **Private Sub** *object*_**BeforePrintPage(**[ *index* **As Integer**, ] **ByVal** *pagenumber* **As Long**, **ByVal** *nPages* **As Long)**  
+ **Private Sub** *object*_**BeforePrintPage**([ *index* **As Integer**, ] **ByVal** *pagenumber* **As Long**, **ByVal** *nPages* **As Long**)  
  The **BeforePrintPage** event syntax has these parts:
 
 | Part | Description |
@@ -502,7 +502,7 @@ Occurs before data is committed from a **GridEX** control to the database.
 
 ### Syntax
 
- **Private Sub***object*_**BeforeUpdate(** [ *index* **As Integer**,] **ByVal** *cancel* **As JSRetBoolean)**  
+ **Private Sub** *object*_**BeforeUpdate**( [ *index* **As Integer**,] **ByVal** *cancel* **As JSRetBoolean**)  
  The **BeforeUpdate** event syntax has these parts:
 
 | Part | Description |
@@ -537,7 +537,7 @@ Occurs when the user changes the **CardWith** by dragging the bar draw between c
 
 ### Syntax
 
- **Private Sub** *object*_**CardResize(**[ *index* **As Integer**,] **ByVal** *newcardwidth* **As Long**, **ByVal** *cancel* **As JSRetBoolean)**
+ **Private Sub** *object*_**CardResize**([ *index* **As Integer**,] **ByVal** *newcardwidth* **As Long**, **ByVal** *cancel* **As JSRetBoolean**)
 
 The **CardResize** event syntax has these parts:
 
@@ -572,7 +572,7 @@ Occurs when the contents of the current cell have changed.
 
 ### Syntax
 
- **Private Sub** *object*_**Change(** [ *index* **As Integer** ] **)**  
+ **Private Sub** *object*_**Change**( [ *index* **As Integer** ] )  
  The **Change** event syntax has these parts:
 
 | Part | Description |
@@ -593,7 +593,7 @@ Occurs when the user presses and then releases a mouse button over an object
 
 ### Syntax
 
- **Private Sub** *object*_**Click(** [ *index* **As Integer**]**)**  
+ **Private Sub** *object*_**Click**( [ *index* **As Integer**])  
  The Click event syntax has these parts:
 
 | Part | Description |
@@ -618,7 +618,7 @@ Occurs when the user has clicked a button in a cell.
 
 ### Syntax
 
- **Private Sub** *object*_**ColButtonClick (**[ *index* **As Integer**, ] **ByVal** *colindex* **As Integer)**  
+ **Private Sub** *object*_**ColButtonClick** ([ *index* **As Integer**, ] **ByVal** *colindex* **As Integer**)  
  The **ColButtonClick** event syntax has these parts:
 
 | Part | Description |
@@ -642,7 +642,7 @@ Occurs when a user resizes a column in a **GridEX** control.
 
 ### Syntax
 
- **Private Sub** *object*_**ColResize(**[ *index* **As Integer**,] **ByVal** *colindex* **As Integer**, **ByVal** *newcolwidth* **As Long**, **ByVal** *cancel* **As JSRetBoolean)**  
+ **Private Sub** *object*_**ColResize**([ *index* **As Integer**,] **ByVal** *colindex* **As Integer**, **ByVal** *newcolwidth* **As Long**, **ByVal** *cancel* **As JSRetBoolean**)  
  The **ColResize** event syntax has these parts:
 
 | Part | Description |
@@ -676,7 +676,7 @@ Occurs when the user clicks on the header for a particular column of a **GridEX*
 
 ### Syntax
 
- **Private Sub** *object*_**ColumnHeaderClick(**[ *index* **As Integer**,] **ByVal** *column* **As JSColumn)**  
+ **Private Sub** *object*_**ColumnHeaderClick**([ *index* **As Integer**,] **ByVal** *column* **As JSColumn**)  
  The **ColumnHeaderClick** event syntax has these parts:
 
 | Part | Description |
@@ -715,7 +715,7 @@ Occurs when the user presses and releases a mouse button two times in succession
 
 ### Syntax
 
- **Private Sub** *object*_**DblClick(**[ *index* **As Integer** ]**)**
+ **Private Sub** *object*_**DblClick**([ *index* **As Integer** ])
 
 | Part | Description |
 | --- | --- |
@@ -739,7 +739,7 @@ Occurs before a drop down list appears.
 
 ### Syntax
 
- **Private Sub***object*_**DropList(**[ *index* **As Integer**,] **ByVal** *colindex* **As Integer)**  
+ **Private Sub** *object*_**DropList**([ *index* **As Integer**,] **ByVal** *colindex* **As Integer**)  
  The **DropList** event syntax has these parts:
 
 | Part | Description |
@@ -762,7 +762,7 @@ Occurs when a custom edit operation is ended. This event is only raised for colu
 
 ### Syntax
 
- **Private Sub** *object*_**EndCustomEdit (**[ *index* **As Integer**, ] **ByVal** *colindex* **As Integer)**  
+ **Private Sub** *object*_**EndCustomEdit** ([ *index* **As Integer**, ] **ByVal** *colindex* **As Integer**)  
  The **EndCustomEdit** event syntax has these parts:
 
 | Part | Description |
@@ -786,7 +786,7 @@ Occurs as the result of a data access error.
 
 ### Syntax
 
- **Private Sub** *object*_**Error(**[ *index***As Integer**,] **ByVal** *errnumber* **As Long**, *displaymessage* **As Boolean)**  
+ **Private Sub** *object*_**Error**([ *index* **As Integer**,] **ByVal** *errnumber* **As Long**, *displaymessage* **As Boolean**)  
  The **Error** event syntax has these parts:
 
 | Part | Description |
@@ -823,7 +823,7 @@ Fetches unbound column data when the **GridEX** is in DAO or ADO mode.
 
 ### Syntax
 
- **Private Sub** *object*_**FetchData(**[ *index* **As Integer**,] **ByVal** *rowindex* **As Long**, **ByVal** *colindex* **As Integer**, **ByVal** *rowbookmark* **As Variant**, **ByVal** *value* **As JSRetVariant)**  
+ **Private Sub** *object*_**FetchData**([ *index* **As Integer**,] **ByVal** *rowindex* **As Long**, **ByVal** *colindex* **As Integer**, **ByVal** *rowbookmark* **As Variant**, **ByVal** *value* **As JSRetVariant**)  
  The **FetchData** event syntax has these parts:
 
 | Part | Description |
@@ -868,7 +868,7 @@ Fetches icons for any column whose **FetchIcon** property is set to **True**.
 
 ### Syntax
 
- **Private Sub***object*_**FetchIcon(**[ *index* **As Integer**,] **ByVal** *rowindex* **As Long**, **ByVal** *colindex* **As Integer**, **ByVal** *rowbookmark* **As Variant**, **ByVal** *iconindex* **As JSRetInteger)**  
+ **Private Sub** *object*_**FetchIcon**([ *index* **As Integer**,] **ByVal** *rowindex* **As Long**, **ByVal** *colindex* **As Integer**, **ByVal** *rowbookmark* **As Variant**, **ByVal** *iconindex* **As JSRetInteger**)  
  The **FetchIcon** event syntax has these parts:
 
 | Part | Description |
@@ -920,7 +920,7 @@ Fired when the **FirstItem** property changes.
 
 ### Syntax
 
- **Private Sub** *object*_**FirstItemChange(**[ *index* **As Integer**]**)**  
+ **Private Sub** *object*_**FirstItemChange**([ *index* **As Integer**])  
  The **FirstItemChange** event syntax has these parts:
 
 | Part | Description |
@@ -941,7 +941,7 @@ Occurs when the user clicks on a header group of a **GridEX** control.
 
 ### Syntax
 
- **Private Sub** *object*_**GroupByBoxHeaderClick(**[ index **As Integer**,] *group* **As JSGroup)**  
+ **Private Sub** *object*_**GroupByBoxHeaderClick**([ index **As Integer**,] *group* **As JSGroup**)  
  The **GroupByBoxHeaderClick** event syntax has these parts:
 
 | Part | Description |
@@ -978,7 +978,7 @@ Occurs when an edit operation is about to begin in a custom edit column.
 
 ### Syntax
 
- **Private Sub** *object*_**InitCustomEdit (**[ *index* **As Integer**, ] **ByVal** *colindex* **As Integer**, **ByVal** *editbackcolor* **As OLE_COLOR**, **ByVal** *editforecolor* **As OLE_COLOR**, **ByVal** *editfont* **As StdFont)**  
+ **Private Sub** *object*_**InitCustomEdit** ([ *index* **As Integer**, ] **ByVal** *colindex* **As Integer**, **ByVal** *editbackcolor* **As OLE_COLOR**, **ByVal** *editforecolor* **As OLE_COLOR**, **ByVal** *editfont* **As StdFont**)  
  The **InitCustomEdit** event syntax has these parts:
 
 | Part | Description |
@@ -1006,7 +1006,7 @@ Occur when the user presses (**KeyDown**) a key while an object has the focus.
 
 ### Syntax
 
- **Private Sub** *object*_**KeyDown(** [ *index* **As Integer**,] *keycode* **As Integer**, *shift* **As Integer)**  
+ **Private Sub** *object*_**KeyDown**( [ *index* **As Integer**,] *keycode* **As Integer**, *shift* **As Integer**)  
  The **KeyDown** event syntax has these parts:
 
 | Part | Description |
@@ -1045,7 +1045,7 @@ Occurs when the user presses and releases an ANSI key.
 
 ### Syntax
 
- **Private Sub** *object*_**KeyPress(** [ *index* **As Integer**,] *keyascii* **As Integer)**  
+ **Private Sub** *object*_**KeyPress**( [ *index* **As Integer**,] *keyascii* **As Integer**)  
  The **KeyPress** event syntax has these parts:
 
 | Part | Description |
@@ -1071,7 +1071,7 @@ Occur when the user releases (**KeyUp**) a key while an object has the focus.
 
 ### Syntax
 
- **Private Sub** *object*_**KeyUp(** [ *index* **As Integer**,] *keycode* **As Integer**, *shift* **As Integer)**  
+ **Private Sub** *object*_**KeyUp**( [ *index* **As Integer**,] *keycode* **As Integer**, *shift* **As Integer**)  
  The **KeyUp** event syntax has these parts:
 
 | Part | Description |
@@ -1110,7 +1110,7 @@ Fired when the **LeftCol** property changes.
 
 ### Syntax
 
- **Private Sub** *object*_**LeftColChange(**[ *index* **As Integer** ] **)**  
+ **Private Sub** *object*_**LeftColChange**([ *index* **As Integer** ] )  
  The **LeftColChange** event syntax has these parts:
 
 | Part | Description |
@@ -1132,7 +1132,7 @@ Occurs after the user has selected an entry in a drop down list.
 
 ### Syntax
 
- **Private Sub** *object*_**ListSelected(** [ *index* **As Integer**,] **ByVal** *colindex* **As Integer**, **ByVal** *valuelistindex* **As Long**, **ByVal** *value* **As Variant)**  
+ **Private Sub** *object*_**ListSelected**( [ *index* **As Integer**,] **ByVal** *colindex* **As Integer**, **ByVal** *valuelistindex* **As Long**, **ByVal** *value* **As Variant**)  
  The **ListSelected** event syntax has these parts:
 
 | Part | Description |
@@ -1168,7 +1168,7 @@ Occur when the user presses (**MouseDown**) a mouse button.
 
 ### Syntax
 
- **Private Sub** *object*_**MouseDown(**[ *index* **As Integer**,] *button* **As Integer**, *shift* **As Integer**, *x* **As Single**, *y* **As Single)**  
+ **Private Sub** *object*_**MouseDown**([ *index* **As Integer**,] *button* **As Integer**, *shift* **As Integer**, *x* **As Single**, *y* **As Single**)  
  The **MouseDown** event syntax has these parts:
 
 | Part | Description |
@@ -1194,7 +1194,7 @@ Occurs when the user moves the mouse over the control, or outside the boundaries
 
 ### Syntax
 
- **Private Sub** *object*_**MouseMove(** [ *index* **As Integer**,] *button* **As Integer**, *shift* **As Integer**, *x* **As Single**, *y* **As Single)**  
+ **Private Sub** *object*_**MouseMove**( [ *index* **As Integer**,] *button* **As Integer**, *shift* **As Integer**, *x* **As Single**, *y* **As Single**)  
  The **MouseMove** event syntax has these parts:
 
 | Part | Description |
@@ -1219,7 +1219,7 @@ Occur when the user releases (**MouseUp**) a mouse button.
 
 ### Syntax
 
- **Private Sub** *object*_**MouseUp(**[ *index* **As Integer**,] *button* **As Integer**, *shift* **As Integer**, *x* **As Single**, *y* **As Single)**  
+ **Private Sub** *object*_**MouseUp**([ *index* **As Integer**,] *button* **As Integer**, *shift* **As Integer**, *x* **As Single**, *y* **As Single**)  
  The **MouseUp** event syntax has these parts:
 
 | Part | Description |
@@ -1245,7 +1245,7 @@ Occurs when the text entered by the user in a combo column is not present in the
 
 ### Syntax
 
- **Private Sub** *object*_**NotInList(**[ *index* **As Integer**,] **ByVal** *colindex* **As Integer**, **ByVal** *newdata* **As String**, **ByVal** *cancelupdate* **As JSRetBoolean)**  
+ **Private Sub** *object*_**NotInList**([ *index* **As Integer**,] **ByVal** *colindex* **As Integer**, **ByVal** *newdata* **As String**, **ByVal** *cancelupdate* **As JSRetBoolean**)  
  The **NotInList** event syntax has these parts:
 
 | Part | Description |
@@ -1279,7 +1279,7 @@ Occurs when a source component is dropped onto a target component, informing the
 
 ### Syntax
 
- **Private Sub** *object*_**OLECompleteDrag (**[ *index* **As Integer**,] *effect* **As Long)**  
+ **Private Sub** *object*_**OLECompleteDrag** ([ *index* **As Integer**,] *effect* **As Long**)  
  The **OLECompleteDrag** event syntax has these parts:
 
 | Part | Description |
@@ -1313,7 +1313,7 @@ Occurs when a source component is dropped onto a target component when the sourc
 
 ### Syntax
 
- **Private Sub** *object*_**OLEDragDrop(**[ *index* **As Integer**,] *data* **As JSDataObject**, *effect* **As Long**, *button* **As Integer**, *shift* **As Integer**, *x* **As Single**, *y* **As Single)**  
+ **Private Sub** *object*_**OLEDragDrop**([ *index* **As Integer**,] *data* **As JSDataObject**, *effect* **As Long**, *button* **As Integer**, *shift* **As Integer**, *x* **As Single**, *y* **As Single**)  
  The **OLEDragDrop** event syntax has these parts:
 
 | Part | Description |
@@ -1361,7 +1361,7 @@ Occurs when one component is dragged over another.
 
 ### Syntax
 
- **Private Sub** *object*_**OLEDragOver (**[ *index* **As Integer**,] *data* **As JSDataObject**, *effect* **As Long**, *button* **As Integer**, *shift* **As Integer**, *x* **As Single**, *y* **As Single**, *state* **As Integer)**  
+ **Private Sub** *object*_**OLEDragOver** ([ *index* **As Integer**,] *data* **As JSDataObject**, *effect* **As Long**, *button* **As Integer**, *shift* **As Integer**, *x* **As Single**, *y* **As Single**, *state* **As Integer**)  
  The **OLEDragDrop** event syntax has these parts:
 
 | Part | Description |
@@ -1426,7 +1426,7 @@ Occurs after every **OLEDragOver** event. **OLEGiveFeedback** allows the source 
 
 ### Syntax
 
- **Private Sub** *object*_**OLEGiveFeedback (**[ *index* **As Integer**,] *effect* **As Long**, *defaultcursors* **As Boolean)**  
+ **Private Sub** *object*_**OLEGiveFeedback** ([ *index* **As Integer**,] *effect* **As Long**, *defaultcursors* **As Boolean**)  
  The **OLEGiveFeedback** event syntax has these parts:
 
 | Part | Description |
@@ -1487,7 +1487,7 @@ Occurs on a source component when a target component performs the **GetData** me
 
 ### Syntax
 
- **Private Sub** *object*_**OLESetData (**[ *index* **As Integer**,] *data* **As JSDataObject**, *dataformat* **As Integer)**  
+ **Private Sub** *object*_**OLESetData** ([ *index* **As Integer**,] *data* **As JSDataObject**, *dataformat* **As Integer**)  
  The **OLESetData** event syntax has these parts:
 
 | Part | Description |
@@ -1514,7 +1514,7 @@ Occurs when a **GridEX**’s **OLEDrag** method is performed.
 
 ### Syntax
 
- **Private Sub** *object*_**OLEStartDrag (**[ *index* **As Integer**,] *data* **As JSDataObject**, *allowedeffects* **As Integer)**  
+ **Private Sub** *object*_**OLEStartDrag** ([ *index* **As Integer**,] *data* **As JSDataObject**, *allowedeffects* **As Integer**)  
  The **OLEStartDrag** event syntax has these parts:
 
 | Part | Description |
@@ -1551,7 +1551,7 @@ Occurs continuously while the **GridEX** control is printing a document.
 
 ### Syntax
 
- **Private Sub** *object*_**PrintingProgress(**[ *index* **As Integer**, ] **ByVal** *printprogress* **As Single**, **ByVal** *cancel* **As JSRetBoolean)**  
+ **Private Sub** *object*_**PrintingProgress**([ *index* **As Integer**, ] **ByVal** *printprogress* **As Single**, **ByVal** *cancel* **As JSRetBoolean**)  
  The **PrintingProgress**event syntax has these parts:
 
 | Part | Description |
@@ -1585,7 +1585,7 @@ Occurs when the current cell changes to a different cell in the same row on a di
 
 ### Syntax
 
- **Private Sub** *object*_**RowColChange(** [ *index* **As Integer**, ] **ByVal** *lastrow* **As Long**, **ByVal** *lastcol* **As Integer)**  
+ **Private Sub** *object*_**RowColChange**( [ *index* **As Integer**, ] **ByVal** *lastrow* **As Long**, **ByVal** *lastcol* **As Integer**)  
  The **RowColChange** event syntax has these parts:
 
 | Part | Description |
@@ -1612,7 +1612,7 @@ Occurs when the user attempts to drag a row or rows to begin an OLE drag operati
 
 ### Syntax
 
- **Private Sub** *object*_**RowDrag (**[ *index* **As Integer**, ] **ByVal** *button***As Integer**, **ByVal** *shift***As Integer)**  
+ **Private Sub** *object*_**RowDrag** ([ *index* **As Integer**, ] **ByVal** *button* **As Integer**, **ByVal** *shift* **As Integer**)  
  The **RowDrag** event syntax has these parts:
 
 | Part | Description |
@@ -1637,7 +1637,7 @@ Occurs when The **GridEX** control loads a row.
 
 ### Syntax
 
- **Private Sub** *object*_**RowFormat (** [ *index* **As Integer**, ] *rowbuffer* **As JSRowData)**  
+ **Private Sub** *object*_**RowFormat** ( [ *index* **As Integer**, ] *rowbuffer* **As JSRowData**)  
  The **RowFormat** event syntax has these parts:
 
 | Part | Description |
@@ -1660,7 +1660,7 @@ Occurs when the user changes the **RowHeight** property by dragging the bar draw
 
 ### Syntax
 
- **Private Sub** *object*_**RowResize(**[ *index* **As Integer**,] **ByVal** *newrowheight* **As Long**, **ByVal** *cancel* **As JSRetBoolean)**  
+ **Private Sub** *object*_**RowResize**([ *index* **As Integer**,] **ByVal** *newrowheight* **As Long**, **ByVal** *cancel* **As JSRetBoolean**)  
  The **RowResize** event syntax has these parts:
 
 | Part | Description |
@@ -1694,7 +1694,7 @@ Occurs when the user selects a different range of rows.
 
 ### Syntax
 
- **Private Sub** *object*_**SelectionChange(**[ *index* **As Integer** ]**)**  
+ **Private Sub** *object*_**SelectionChange**([ *index* **As Integer** ])  
  The **SelectionChange** event syntax has these parts:
 
 | Part | Description |
@@ -1718,7 +1718,7 @@ Occurs when a custom edit column is about to hide or show the cell editor.
 
 ### Syntax
 
- **Private Sub** *object*_**ShowCustomEdit (**[ *index* **As Integer**, ] **ByVal** *colindex* **As Integer**, **ByVal** *editleft* **As Single**, **ByVal** *edittop* **As Single**, **ByVal** *editwidth* **As Single**, **ByVal** *editheight* **As Single**, **ByVal** *editvisible* **As Boolean)**  
+ **Private Sub** *object*_**ShowCustomEdit** ([ *index* **As Integer**, ] **ByVal** *colindex* **As Integer**, **ByVal** *editleft* **As Single**, **ByVal** *edittop* **As Single**, **ByVal** *editwidth* **As Single**, **ByVal** *editheight* **As Single**, **ByVal** *editvisible* **As Boolean**)  
  The **ShowCustomEdit** event syntax has these parts:
 
 | Part | Description |
@@ -1747,7 +1747,7 @@ Occurs in an unbound **GridEX** control when a new row is added to it.
 
 ### Syntax
 
- **Private Sub** *object*_**UnboundAddNew(** [ *index* **As Integer**,] **ByVal** *newrowbookmark* **As JSRetVariant**, **ByVal** *values* **As JSRowData)**  
+ **Private Sub** *object*_**UnboundAddNew**( [ *index* **As Integer**,] **ByVal** *newrowbookmark* **As JSRetVariant**, **ByVal** *values* **As JSRowData**)  
  The **UnboundAddNew** event syntax has these parts:
 
 | Part | Description |
@@ -1773,7 +1773,7 @@ Occurs whenever a row of data is deleted from the unbound **GridEX**.
 
 ### Syntax
 
- **Private Sub** *object*_**UnboundDelete(**[ *index* **As Integer**,] **ByVal** *rowindex* **As Long**, **ByVal** *bookmark***As Variant)**  
+ **Private Sub** *object*_**UnboundDelete**([ *index* **As Integer**,] **ByVal** *rowindex* **As Long**, **ByVal** *bookmark* **As Variant**)  
  The **UnboundDelete** event syntax has these parts:
 
 | Part | Description |
@@ -1811,7 +1811,7 @@ Occurs whenever an unbound **GridEX** control requires data for display, sorting
 
 ### Syntax
 
- **Private Sub** *object*_**UnboundReadData(** [ *index* **As Integer**, ] **ByVal** *rowindex* **As Long**, **ByVal** *bookmark* **As Variant**, **ByVal** *values* **As JSRowData)**  
+ **Private Sub** *object*_**UnboundReadData**( [ *index* **As Integer**, ] **ByVal** *rowindex* **As Long**, **ByVal** *bookmark* **As Variant**, **ByVal** *values* **As JSRowData**)  
  The **UnboundReadData** event syntax has these parts:
 
 | Part | Description |
@@ -1847,7 +1847,7 @@ Occurs when an unbound **GridEX** control has an entire row of modified data to 
 
 ### Syntax
 
- **Private Sub** *object*_**UnboundUpdate(** [ *index* **As Integer**, ] **ByVal** *rowindex* **As Long**, **ByVal** *bookmark* **As Variant**, **ByVal** *values* **As JSRowData)**  
+ **Private Sub** *object*_**UnboundUpdate**( [ *index* **As Integer**, ] **ByVal** *rowindex* **As Long**, **ByVal** *bookmark* **As Variant**, **ByVal** *values* **As JSRowData**)  
  The **UnboundUpdate** event syntax has these parts:
 
 | Part | Description |

@@ -68,7 +68,7 @@ Returns data from a **JSDataObject** object in the form of a variant.
 
 ### Syntax
 
- *object*.**GetData** **(***format* **As Integer)**  
+ *object*.**GetData** (*format* **As Integer**)  
  The **GetData** method syntax has these parts:
 
 | Part | Description |
@@ -110,7 +110,7 @@ Returns a value indicating whether an item in the **JSDataObject** object matche
 
 ### Syntax
 
- *object*.**GetFormat (***format* **As Integer)**  
+ *object*.**GetFormat** (*format* **As Integer**)  
  The **GetFormat** method syntax has these parts:
 
 | Part | Description |
@@ -150,7 +150,7 @@ Inserts data into a **JSDataObject** object using the specified data format.
 
 ### Syntax
 
- *object*.**SetData (***value* **As Variant**, *format* **As Integer)**  
+ *object*.**SetData** (*value* **As Variant**, *format* **As Integer**)  
  The **SetData** method syntax has these parts:
 
 | Part | Description |

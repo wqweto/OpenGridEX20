@@ -58,7 +58,7 @@ Returns a specific **JSGroup** of the **JSGroups** Collection.
 
 ### Syntax
 
- *object*.**Item(***index***)**  
+ *object*.**Item**(*index*)  
  The **Item** property syntax has the following parts:
 
 | Part | Description |

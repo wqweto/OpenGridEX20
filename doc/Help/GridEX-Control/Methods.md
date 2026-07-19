@@ -432,7 +432,7 @@ Returns the group level of a row if it is a group row or 0 otherwise.
 
 ### Syntax
 
- *object*.**GroupRowLevel** **(***rowposition* **As Long)**  
+ *object*.**GroupRowLevel** (*rowposition* **As Long**)  
  The **GroupRowLevel** method syntax has these parts:
 
 | Part | Description |
@@ -517,7 +517,7 @@ Returns **True** if the specified row is a group row in a **GridEX** control.
 
 ### Syntax
 
- *object*.**IsGroupItem(***row***)**  
+ *object*.**IsGroupItem**(*row*)  
  The **IsGroupItem** method syntax has these parts:
 
 | Part | Description |
@@ -1157,7 +1157,9 @@ Returns a value containing the original index of the selected row in a **GridEX*
 
 ### Syntax
 
- *object*.**RowIndex (**row **)**The **RowIndex** method syntax has these parts:
+ *object*.**RowIndex** ( *row* )
+
+The **RowIndex** method syntax has these parts:
 
 | Part | Description |
 | --- | --- |

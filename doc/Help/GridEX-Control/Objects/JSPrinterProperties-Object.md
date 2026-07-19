@@ -329,7 +329,7 @@ Returns or sets the string displayed in the page footer.
 
 ### Syntax
 
- *object*.**FooterString** **(***position***)** [ = *value* ]  
+ *object*.**FooterString** (*position*) [ = *value* ]  
  The **FooterString** property syntax has these parts:
 
 | Part | Description |
@@ -394,7 +394,7 @@ Returns or sets the string displayed in the page header.
 
 ### Syntax
 
- *object*.**HeaderString** **(***position***)** [ = *value* ]  
+ *object*.**HeaderString** (*position*) [ = *value* ]  
  The **HeaderString** property syntax has these parts:
 
 | Part | Description |

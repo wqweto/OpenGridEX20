@@ -74,7 +74,7 @@ Returns a specific **JSGridImage** object of a **JSGridImages** collection.
 
 ### Syntax
 
- *object*.**Item(***index***)**  
+ *object*.**Item**(*index*)  
  The **Item** property syntax has the following parts:
 
 | Part | Description |

@@ -56,7 +56,7 @@ Returns a specific **JSColumn** of the collection, either by index or by key.
 
 ### Syntax
 
- *object*.**Item(***index***)**  
+ *object*.**Item**(*index*)  
  The Item property syntax has the following parts:
 
 | Part | Description |
@@ -139,7 +139,7 @@ Returns a specific **JSColumn** based on its position.
 
 ### Syntax
 
- *object*.**ItemByPosition(***position***)**  
+ *object*.**ItemByPosition**(*position*)  
  The **ItemByPosition** property syntax has these parts:
 
 | Part | Description |

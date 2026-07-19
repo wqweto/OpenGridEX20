@@ -44,7 +44,7 @@ Returns or sets the foreground picture to be displayed in a cell.
 
 ### Syntax
 
- *object*.**CellPicture** **(***colindex***)** [ = *picture* ]  
+ *object*.**CellPicture** (*colindex*) [ = *picture* ]  
  The **CellPicture** property syntax has these parts:
 
 | Part | Description |
@@ -67,7 +67,7 @@ Returns or sets the name of the **JSFormatStyle** to be applied in a cell of a *
 
 ### Syntax
 
- *object*.**CellStyle** **(***colindex***)** [ = *value*]  
+ *object*.**CellStyle** (*colindex*) [ = *value*]  
  The **CellStyle** property syntax has these parts:
 
 | Part | Description |
@@ -112,7 +112,7 @@ Returns or sets the display value of a column in a **JSRowData** object.
 
 ### Syntax
 
- *object*.**DisplayValue** **(** *colindex***)** [ = *value*]  
+ *object*.**DisplayValue** ( *colindex*) [ = *value*]  
  The **DisplayValue** property syntax has these parts:
 
 | Part | Description |
@@ -216,7 +216,7 @@ Returns or sets the index of the **JSGridImage** displayed in a cell of a **JSRo
 
 ### Syntax
 
- *object*.**IconIndex** **(***colindex***)** [ = *value* ]  
+ *object*.**IconIndex** (*colindex*) [ = *value* ]  
  The **IconIndex** property syntax has these parts:
 
 | Part | Description |
@@ -401,7 +401,7 @@ Returns or sets the value of a column in a **JSRowData** object.
 
 ### Syntax
 
- *object*.**Value (***colindex***)** [ = *value*]  
+ *object*.**Value** (*colindex*) [ = *value*]  
  The **Value** property syntax has these parts:
 
 | Part | Description |

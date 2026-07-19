@@ -9,7 +9,7 @@
 
  *object*.**FormatStyle**  
  The object placeholder represents an object expression that evaluates to a **JSFmtCondition** object.  
- *gridex*.**FormatStyles** **(***index***)**  
+ *gridex*.**FormatStyles** (*index*)  
  The **JSFormatStyle** object syntax has these parts:
 
 | Part | Description |

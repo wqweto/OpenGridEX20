@@ -134,7 +134,7 @@ Returns a specific **JSFmtCondition** of the **JSFmtConditions** collection eith
 
 ### Syntax
 
- *object*.**Item(***index***)**  
+ *object*.**Item**(*index*)  
  The **Item** property syntax has the following parts:
 
 | Part | Description |

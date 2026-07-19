@@ -2734,7 +2734,7 @@ Returns or sets a value containing a bookmark for a row in the **GridEX** contro
 
 ### Syntax
 
- *object*.**RowBookmark(***rowindex***)** [ = *value* ]  
+ *object*.**RowBookmark**(*rowindex*) [ = *value* ]  
  The **RowBookmark** property syntax has these parts:
 
 | Part | Description |
@@ -2945,7 +2945,7 @@ Returns or sets whether a row in a **GridEX** control is selected. Not available
 
 ### Syntax
 
- *object*.**RowSelected (***rowposition***)**[ = *value* ]  
+ *object*.**RowSelected** (*rowposition*)[ = *value* ]  
  The **RowSelected** property syntax has these parts:
 
 | Part | Description |
@@ -3328,7 +3328,7 @@ Returns or sets the value of a column in the current row of a **GridEX** control
 
 ### Syntax
 
- *object*.**Value (***colindex***)** [ = *value*]  
+ *object*.**Value** (*colindex*) [ = *value*]  
  The **Value** property syntax has these parts:
 
 | Part | Description |
