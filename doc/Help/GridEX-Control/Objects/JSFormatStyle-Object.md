@@ -72,7 +72,7 @@ Returns or sets the background picture of a **JSFormatStyle** object.
 ### Remarks
 
  The **BackGroundPicture** property refers to the picture used to draw the background of cells, rows or columns where a **FormatStyle** is selected.  
- Use the**JSFormatStyle**'s **Reset** method to clear the **BackGroundPicture** property.  
+ Use the **JSFormatStyle**'s **Reset** method to clear the **BackGroundPicture** property.  
  This property must be used in conjunction with **DrawModeBackGroundPicture** property to tell **GridEX** control how a background picture will be draw in a cell.
 
 ### Data Type
@@ -124,7 +124,7 @@ Returns or sets font bold style used in a **JSFormatStyle** Object.
 ### Syntax
 
  object.**FontBold** [ = *boolean* ]  
- The **FontBold**property syntax has these parts:
+ The **FontBold** property syntax has these parts:
 
 | Part | Description |
 | --- | --- |

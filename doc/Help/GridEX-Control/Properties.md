@@ -88,7 +88,7 @@ Returns or sets an **ADOR.Recordset** object defined by **GridEX** control's pro
 
 ## AllowAddNew Property (GridEX Control)
 
-Returns or sets a value indicating whether the user can add new records to the **Recordset**object underlying a **GridEX** control.
+Returns or sets a value indicating whether the user can add new records to the **Recordset** object underlying a **GridEX** control.
 
 ### Syntax
 
@@ -502,7 +502,7 @@ Returns or sets the background color of the "group rows" in a **GridEX** control
 ### Syntax
 
  *object*.**BackColorRowGroup** [ =*color* ]  
- The**BackColorRowGroup** property syntax has these parts:
+ The **BackColorRowGroup** property syntax has these parts:
 
 | Part | Description |
 | --- | --- |
@@ -804,7 +804,7 @@ Returns or sets a value indicating whether the **GridEX** will automatically siz
 | Setting | Description |
 | --- | --- |
 | **False** | Columns won't be sized when the internal width of the control changes. |
-| **True** | Visible columns in **GridEX** control will be sized to fit **GridEX'**s internal width. |
+| **True** | Visible columns in **GridEX** control will be sized to fit **GridEX**'s internal width. |
 
 ### Remarks
 

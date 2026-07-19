@@ -667,7 +667,7 @@ Loads a previously saved **GridEX** layout from an URL.
 ### Remarks
 
  You can use this method to easily change previously saved layouts at runtime.  
- The file specified in the *url* parameter must be previously saved using the **SaveLayout**method.  
+ The file specified in the *url* parameter must be previously saved using the **SaveLayout** method.  
  When rebinding, you can set the appropriate **DatabaseName** property value to be used instead of the one saved with the layout.
 
 **Applies To:** [GridEX Control](../GridEX-Control.md#gridex-control)  

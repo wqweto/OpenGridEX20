@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - `doc/Help`: repaired 37 syntax lines across 16 files where CHM conversion collapsed bold/italic markers into `***`/`****` runs that rendered as literal asterisks (e.g. `**GetData** **(***format* **As Integer)**`); parentheses normalized to the plain-paren convention used by the rest of the docs, plus the fused `RowIndex` syntax line in `Methods.md` split and its parameter italicized
+- `doc/Help`: repaired 10 more lines where bold markers were fused to adjacent words (e.g. `**For DAO DataMode:**The`, `The**GridEX**`, `**SaveLayout**method`), an apostrophe trapped inside bold (`**GridEX'**s` -> `**GridEX**'s`) and a fused sentence break in `Examples.md`
 - `mdJson.bas`: `JsonDump` now emits `{}` for `Nothing` objects (respecting `CompoundChars`) instead of an empty string that produced malformed JSON when a `Nothing` value was stored inside a document
 
 ### Added (M2 -- object model)
@@ -44,4 +45,5 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- README refreshed to current M2 state: milestone status, source-compatibility scope note, layout table covering `tools`/`test`/`doc/Help` and a Testing section for `test\ModelTests\make.bat`
 - First clean VB6 build of the stub OCX; regenerated `OpenGridEX20.cmp` binary-compatibility baseline from the complete stubbed API surface (26 coclasses, 44 enums, 58 + 6 events, dispids and enum values verified against `doc/GridEX20.idl`)

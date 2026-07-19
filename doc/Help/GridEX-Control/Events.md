@@ -1415,7 +1415,7 @@ If (Effect And jgexDropEffectCopy)...
 ```
 
 This allows for the definition of new drop effects in future versions of Visual Basic while preserving backwards compatibility with your existing code.  
-  The**GridEX** control only supports manual OLE drag and drop events.
+  The **GridEX** control only supports manual OLE drag and drop events.
 
 **Applies To:** [GridEX Control](../GridEX-Control.md#gridex-control)  
 **See Also:** [OLECompleteDrag Event](#olecompletedrag-event-gridex-control), [OLEDragDrop Event](#oledragdrop-event-gridex-control), [OLEDrag Method](Methods.md#oledrag-method-gridex-control), [OLEDropMode Property](Properties.md#oledropmode-property-gridex-control), [OLEGiveFeedback Event](#olegivefeedback-event-gridex-control), [OLESetData Event](#olesetdata-event-gridex-control), [OLEStartDrag Event](#olestartdrag-event-gridex-control)
@@ -1552,7 +1552,7 @@ Occurs continuously while the **GridEX** control is printing a document.
 ### Syntax
 
  **Private Sub** *object*_**PrintingProgress**([ *index* **As Integer**, ] **ByVal** *printprogress* **As Single**, **ByVal** *cancel* **As JSRetBoolean**)  
- The **PrintingProgress**event syntax has these parts:
+ The **PrintingProgress** event syntax has these parts:
 
 | Part | Description |
 | --- | --- |

@@ -1800,7 +1800,7 @@ Janus GridEX 2000 Redistributable File:
 
  The dependency files required to be redistributed with applications using the Janus GridEX 2000 ActiveX Control vary according to the DataMode in which the control is being used.
 
- **For All Data Modes (Unbound/DAO & ADO) :**The following files are required by the control regardless the DataMode used.  
+ **For All Data Modes (Unbound/DAO & ADO) :** The following files are required by the control regardless the DataMode used.  
 Visual Basic 6 Runtime Library
 
 MSVBVM60.DLL 6.00.8495
@@ -1823,7 +1823,7 @@ COMCAT.DLL 4.71 **For ADO DataMode:** In addition to the files outlined above, y
 
  Article ID: Q232053 [INFO: List of Files Installed by MDAC 2.1 (GA)](http://support.microsoft.com/support/kb/articles/Q232/0/53.ASP)
 
- **For DAO DataMode:**The DAO 3.6 (Dao360.dll) library files are required by the Janus GridEX 2000 control when DAO DataMode is being used.For detailed information about installing DAO 3.6 please refer to the following Microsoft Knowledge Base article:  
+ **For DAO DataMode:** The DAO 3.6 (Dao360.dll) library files are required by the Janus GridEX 2000 control when DAO DataMode is being used. For detailed information about installing DAO 3.6 please refer to the following Microsoft Knowledge Base article:  
  Article ID: Q233002 [HOWTO: Redistribute DAO 3.6](http://support.microsoft.com/support/kb/articles/Q233/0/02.ASP?LNG=ENG&SA=PER)  
  Note: DAO 3.6 & MDAC are covered by their own License Agreement. Please consult your Microsoft Product Documentation and/or End User's License Agreement (EULA) for more information about licensing and redistributing these files.
 
