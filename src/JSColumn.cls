@@ -144,11 +144,12 @@ End Property
 
 Public Property Get Width() As Long
 Attribute Width.VB_Description = "Returns/sets the width of a column."
-    Width = m_lWidth
+    Width = ToTwips(m_lWidth)
 End Property
 
 Public Property Let Width(ByVal lValue As Long)
-    m_lWidth = lValue
+    '--- stored in pixels; snapped to nearest like the original
+    m_lWidth = ToPixels(lValue)
 End Property
 
 Public Property Get DataField() As String

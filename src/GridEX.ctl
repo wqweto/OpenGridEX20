@@ -647,11 +647,12 @@ Public Property Let FrozenColumns(ByVal nValue As Integer)
 End Property
 
 Public Property Get RowHeight() As Long
-    RowHeight = m_lRowHeight
+    RowHeight = ToTwips(m_lRowHeight)
 End Property
 
 Public Property Let RowHeight(ByVal lValue As Long)
-    m_lRowHeight = lValue
+    '--- stored in pixels; snapped to nearest like the original
+    m_lRowHeight = ToPixels(lValue)
 End Property
 
 Public Property Get hWndEdit() As Long
@@ -806,11 +807,12 @@ End Property
 
 Public Property Get ColumnHeaderHeight() As Long
 Attribute ColumnHeaderHeight.VB_Description = "Returns/sets the height of the column header row."
-    ColumnHeaderHeight = m_lColumnHeaderHeight
+    ColumnHeaderHeight = ToTwips(m_lColumnHeaderHeight)
 End Property
 
 Public Property Let ColumnHeaderHeight(ByVal lValue As Long)
-    m_lColumnHeaderHeight = lValue
+    '--- stored in pixels; snapped to nearest like the original
+    m_lColumnHeaderHeight = ToPixels(lValue)
 End Property
 
 Public Property Get ColumnHeaders() As Boolean
@@ -842,11 +844,12 @@ End Property
 
 Public Property Get DefaultColumnWidth() As Long
 Attribute DefaultColumnWidth.VB_Description = "Returns/sets a value indicating the default column width used for new columns."
-    DefaultColumnWidth = m_lDefaultColumnWidth
+    DefaultColumnWidth = ToTwips(m_lDefaultColumnWidth)
 End Property
 
 Public Property Let DefaultColumnWidth(ByVal lValue As Long)
-    m_lDefaultColumnWidth = lValue
+    '--- stored in pixels; snapped to nearest like the original
+    m_lDefaultColumnWidth = ToPixels(lValue)
 End Property
 
 Public Property Get View() As jgexViewConstants
@@ -995,20 +998,22 @@ End Property
 
 Public Property Get CardSpacing() As Long
 Attribute CardSpacing.VB_Description = "Returns/sets the horizontal and vertical space between cards."
-    CardSpacing = m_lCardSpacing
+    CardSpacing = ToTwips(m_lCardSpacing)
 End Property
 
 Public Property Let CardSpacing(ByVal lValue As Long)
-    m_lCardSpacing = lValue
+    '--- stored in pixels; snapped to nearest like the original
+    m_lCardSpacing = ToPixels(lValue)
 End Property
 
 Public Property Get CardWidth() As Long
 Attribute CardWidth.VB_Description = "Returns/sets the width of a card."
-    CardWidth = m_lCardWidth
+    CardWidth = ToTwips(m_lCardWidth)
 End Property
 
 Public Property Let CardWidth(ByVal lValue As Long)
-    m_lCardWidth = lValue
+    '--- stored in pixels; snapped to nearest like the original
+    m_lCardWidth = ToPixels(lValue)
 End Property
 
 Public Property Get RowBookmark(ByVal RowIndex As Long) As Variant
@@ -1759,6 +1764,7 @@ Public Sub Refetch(Optional HoldSortSettings As Variant)
 Attribute Refetch.VB_Description = "Forces a GridEX control to refresh its contents without re-opening the recordset. "
     pvResetRows False
     pvApplyHoldSort HoldSortSettings
+    UserControl.Refresh
 End Sub
 
 Public Sub PrintGrid(Optional UsePrintSetupDlg As Boolean, Optional PrintSelectedItems As Boolean)
@@ -1804,6 +1810,18 @@ Public Sub Rebind(Optional HoldSortSettings As Variant)
 Attribute Rebind.VB_Description = "Forces re-creation of the recordset."
     pvResetRows True
     pvApplyHoldSort HoldSortSettings
+    '--- binding positions the current cell on the first row/column
+    If RowCount > 0 Then
+        m_lRow = 1
+    Else
+        m_lRow = 0
+    End If
+    If m_oColumns.Count > 0 Then
+        m_nCol = 1
+    Else
+        m_nCol = 0
+    End If
+    UserControl.Refresh
 End Sub
 
 Public Function IsGroupItem(ByVal Row As Long) As Boolean
@@ -1815,6 +1833,7 @@ End Function
 
 Public Sub Refresh()
 Attribute Refresh.VB_Description = "Forces a complete repaint of a GridEX control."
+    UserControl.Refresh
 End Sub
 
 Public Sub HoldFields()
@@ -1990,7 +2009,7 @@ Private Sub pvEnsureRow(ByVal lRowIndex As Long)
         ReDim Preserve m_aRows(1 To lRowIndex) As UcsRowData
         For lIdx = m_lRowsUBound + 1 To lRowIndex
             With m_aRows(lIdx)
-                .RowHeight = m_lRowHeight
+                .RowHeight = ToTwips(m_lRowHeight)
                 .PreviewRowVisible = True
             End With
         Next
@@ -2042,7 +2061,7 @@ Private Sub pvResetRow(ByVal lRowIndex As Long, ByVal bFullReset As Boolean)
             .RowType = jgexRowTypeRecord
             .GroupLevel = 0
             .RecordCount = 0
-            .RowHeight = m_lRowHeight
+            .RowHeight = ToTwips(m_lRowHeight)
             .RowStyle = vbNullString
             .GroupCaption = vbNullString
             .GroupIconIndex = 0
@@ -2072,6 +2091,274 @@ Private Sub pvApplyHoldSort(HoldSortSettings As Variant)
         m_oGroups.Clear
     End If
 End Sub
+
+'--- painting
+
+Private Sub pvPaint(ByVal hDC As Long)
+    Dim lY              As Long
+
+    If m_bGroupByBoxVisible Then
+        pvPaintGroupByBox hDC, lY
+    End If
+    If m_bColumnHeaders Then
+        pvPaintHeaders hDC, lY
+    End If
+    pvPaintRows hDC, lY
+End Sub
+
+Private Sub pvPaintGroupByBox(ByVal hDC As Long, lY As Long)
+    Dim lBoxH           As Long
+    Dim lTotalH         As Long
+    Dim uRect           As RECT
+    Dim hPrevFont       As Long
+
+    lBoxH = m_lColumnHeaderHeight + 4
+    lTotalH = lBoxH + 10
+    pvFillRect hDC, 0, lY, ScaleWidth, lY + lTotalH, m_clrBackColorGBBox
+    hPrevFont = pvSelectFont(hDC, m_oFont)
+    '--- info box is sized by the info text extent
+    Call DrawText(hDC, StrPtr(m_sGroupByBoxInfoText), Len(m_sGroupByBoxInfoText), uRect, DT_SINGLELINE Or DT_CALCRECT)
+    pvFillRect hDC, 4, lY + 5, 12 + uRect.Right, lY + 5 + lBoxH, m_clrBackColorInfoText
+    pvDrawText hDC, m_sGroupByBoxInfoText, 7, lY + 5, 7 + uRect.Right, lY + 5 + lBoxH, m_clrForeColorInfoText, jgexAlignLeft
+    Call SelectObject(hDC, hPrevFont)
+    lY = lY + lTotalH
+End Sub
+
+Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
+    Dim lHdrH           As Long
+    Dim lX              As Long
+    Dim nIdx            As Integer
+    Dim oCol            As JSColumn
+    Dim lW              As Long
+    Dim hPrevFont       As Long
+
+    lHdrH = m_lColumnHeaderHeight
+    hPrevFont = pvSelectFont(hDC, m_oColumnHeaderFont)
+    '--- top highlight and bottom shadow/dark lines first; cell edges
+    '--- painted after overwrite them at the cell boundaries
+    pvLine hDC, 0, lY, ScaleWidth, lY, vb3DHighlight, PS_SOLID
+    pvLine hDC, 0, lY + lHdrH - 2, ScaleWidth, lY + lHdrH - 2, vb3DShadow, PS_SOLID
+    pvLine hDC, 0, lY + lHdrH - 1, ScaleWidth, lY + lHdrH - 1, vb3DDKShadow, PS_SOLID
+    For nIdx = 1 To m_oColumns.Count
+        Set oCol = m_oColumns.ItemByPosition(nIdx)
+        If oCol.Visible Then
+            lW = ToPixels(oCol.Width)
+            pvPaintHeaderCell hDC, lX, lY, lW, lHdrH, oCol.Caption, oCol.HeaderAlignment
+            lX = lX + lW
+        End If
+    Next
+    '--- filler cell up to the right edge (its right border is clipped off)
+    If lX < ScaleWidth Then
+        pvPaintHeaderCell hDC, lX, lY, ScaleWidth - lX + 2, lHdrH, vbNullString, jgexAlignLeft
+    End If
+    Call SelectObject(hDC, hPrevFont)
+    lY = lY + lHdrH
+End Sub
+
+Private Sub pvPaintHeaderCell(ByVal hDC As Long, ByVal lX As Long, ByVal lY As Long, ByVal lW As Long, ByVal lH As Long, sCaption As String, ByVal eAlign As jgexAlignmentConstants)
+    pvFillRect hDC, lX + 1, lY + 1, lX + lW - 2, lY + lH - 2, m_clrBackColorHeader
+    pvLine hDC, lX, lY, lX, lY + lH - 2, vb3DHighlight, PS_SOLID
+    pvLine hDC, lX + lW - 2, lY, lX + lW - 2, lY + lH - 2, vb3DShadow, PS_SOLID
+    pvLine hDC, lX + lW - 1, lY, lX + lW - 1, lY + lH, vb3DDKShadow, PS_SOLID
+    If LenB(sCaption) <> 0 Then
+        pvDrawText hDC, sCaption, lX + 2, lY + 2, lX + lW - 2, lY + lH - 1, m_clrForeColorHeader, eAlign
+    End If
+End Sub
+
+Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
+    Dim lRowH           As Long
+    Dim lTotalW         As Long
+    Dim lRow            As Long
+    Dim lRowTop         As Long
+    Dim lRowsBottom     As Long
+    Dim lCum            As Long
+    Dim nIdx            As Integer
+    Dim oCol            As JSColumn
+    Dim hPrevFont       As Long
+    Dim uRect           As RECT
+    Dim lPainted        As Long
+
+    lRowH = m_lRowHeight
+    For nIdx = 1 To m_oColumns.Count
+        Set oCol = m_oColumns.ItemByPosition(nIdx)
+        If oCol.Visible Then
+            lTotalW = lTotalW + ToPixels(oCol.Width)
+        End If
+    Next
+    '--- background right of the columns down to the bottom
+    pvFillRect hDC, lTotalW, lY, ScaleWidth, ScaleHeight, m_clrBackColorBkg
+    If lRowH > 0 Then
+        hPrevFont = pvSelectFont(hDC, m_oFont)
+        For lRow = 1 To RowCount
+            lRowTop = lY + (lRow - 1) * lRowH
+            If lRowTop >= ScaleHeight Then
+                Exit For
+            End If
+            pvPaintDataRow hDC, lRow, lRowTop, lRowH, lTotalW
+            lPainted = lRow
+        Next
+        Call SelectObject(hDC, hPrevFont)
+    End If
+    lRowsBottom = lY + lPainted * lRowH
+    '--- background below the last row
+    pvFillRect hDC, 0, lRowsBottom, lTotalW, ScaleHeight, m_clrBackColorBkg
+    If lPainted > 0 Then
+        '--- focus marquee on the current row; the XOR runs against the DC
+        '--- background color which the original keeps at BackColor, and
+        '--- vertical gridlines paint over the marquee dots
+        If m_lRow >= 1 And m_lRow <= lPainted Then
+            uRect.Left = 0
+            uRect.Top = lY + (m_lRow - 1) * lRowH
+            uRect.Right = lTotalW - 1
+            uRect.Bottom = uRect.Top + lRowH - 1
+            Call SetBkColor(hDC, pvColor(m_clrBackColor))
+            Call DrawFocusRect(hDC, uRect)
+        End If
+        '--- vertical gridlines over the rows block
+        If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLVertical Then
+            For nIdx = 1 To m_oColumns.Count
+                Set oCol = m_oColumns.ItemByPosition(nIdx)
+                If oCol.Visible Then
+                    lCum = lCum + ToPixels(oCol.Width)
+                    pvLine hDC, lCum - 1, lY, lCum - 1, lRowsBottom, m_clrGridLinesColor, pvPenStyle()
+                End If
+            Next
+        End If
+    End If
+End Sub
+
+Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lTotalW As Long)
+    Dim bSelected       As Boolean
+    Dim clrBack         As OLE_COLOR
+    Dim clrText         As OLE_COLOR
+    Dim lX              As Long
+    Dim nIdx            As Integer
+    Dim oCol            As JSColumn
+    Dim lW              As Long
+    Dim sText           As String
+
+    bSelected = (lRow = m_lRow)
+    If bSelected Then
+        clrBack = vbHighlight
+        clrText = vbHighlightText
+    ElseIf m_bUseEvenOddColor Then
+        If lRow Mod 2 = 0 Then
+            clrBack = m_clrRowColorEven
+        Else
+            clrBack = m_clrRowColorOdd
+        End If
+        clrText = m_clrForeColor
+    Else
+        clrBack = m_clrBackColor
+        clrText = m_clrForeColor
+    End If
+    pvFillRect hDC, 0, lRowTop, lTotalW, lRowTop + lRowH, clrBack
+    For nIdx = 1 To m_oColumns.Count
+        Set oCol = m_oColumns.ItemByPosition(nIdx)
+        If oCol.Visible Then
+            lW = ToPixels(oCol.Width)
+            sText = pvCellText(lRow, oCol.Index)
+            If LenB(sText) <> 0 Then
+                pvDrawText hDC, sText, lX + 2, lRowTop, lX + lW - 4, lRowTop + lRowH - 1, clrText, oCol.TextAlignment
+            End If
+            lX = lX + lW
+        End If
+    Next
+    If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLHorizontal Then
+        If lRow = RowCount Then
+            '--- the line under the last data row is drawn dark
+            pvLine hDC, 0, lRowTop + lRowH - 1, lTotalW, lRowTop + lRowH - 1, vb3DDKShadow, PS_SOLID
+        Else
+            pvLine hDC, 0, lRowTop + lRowH - 1, lTotalW, lRowTop + lRowH - 1, m_clrGridLinesColor, pvPenStyle()
+        End If
+    End If
+End Sub
+
+Private Function pvCellText(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As String
+    Dim vValue          As Variant
+
+    pvCellText = frRowDisplayValue(lRowIndex, nColIndex)
+    If LenB(pvCellText) = 0 Then
+        vValue = frRowValue(lRowIndex, nColIndex)
+        Select Case VarType(vValue)
+        Case vbEmpty, vbNull, vbObject, vbError
+        Case Else
+            If Not IsArray(vValue) Then
+                pvCellText = CStr(vValue)
+            End If
+        End Select
+    End If
+End Function
+
+Private Function pvPenStyle() As Long
+    Select Case m_eGridLineStyle
+    Case jgexGLSDashes
+        pvPenStyle = PS_DASH
+    Case jgexGLSSmallDots
+        pvPenStyle = PS_DOT
+    Case Else
+        pvPenStyle = PS_SOLID
+    End Select
+End Function
+
+Private Function pvColor(ByVal clrValue As OLE_COLOR) As Long
+    Call OleTranslateColor(clrValue, 0, pvColor)
+End Function
+
+Private Sub pvFillRect(ByVal hDC As Long, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long, ByVal clrFill As OLE_COLOR)
+    Dim uRect           As RECT
+    Dim hBrush          As Long
+
+    If lRight <= lLeft Or lBottom <= lTop Then
+        Exit Sub
+    End If
+    uRect.Left = lLeft
+    uRect.Top = lTop
+    uRect.Right = lRight
+    uRect.Bottom = lBottom
+    hBrush = CreateSolidBrush(pvColor(clrFill))
+    Call FillRect(hDC, uRect, hBrush)
+    Call DeleteObject(hBrush)
+End Sub
+
+Private Sub pvLine(ByVal hDC As Long, ByVal lX1 As Long, ByVal lY1 As Long, ByVal lX2 As Long, ByVal lY2 As Long, ByVal clrLine As OLE_COLOR, ByVal lPenStyle As Long)
+    Dim hPen            As Long
+    Dim hPrevPen        As Long
+
+    hPen = CreatePen(lPenStyle, 1, pvColor(clrLine))
+    hPrevPen = SelectObject(hDC, hPen)
+    Call MoveToEx(hDC, lX1, lY1, 0)
+    Call LineTo(hDC, lX2, lY2)
+    Call SelectObject(hDC, hPrevPen)
+    Call DeleteObject(hPen)
+End Sub
+
+Private Sub pvDrawText(ByVal hDC As Long, sText As String, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long, ByVal clrText As OLE_COLOR, ByVal eAlign As jgexAlignmentConstants)
+    Dim uRect           As RECT
+    Dim lFlags          As Long
+
+    uRect.Left = lLeft
+    uRect.Top = lTop
+    uRect.Right = lRight
+    uRect.Bottom = lBottom
+    lFlags = DT_SINGLELINE Or DT_VCENTER Or DT_NOPREFIX
+    Select Case eAlign
+    Case jgexAlignCenter
+        lFlags = lFlags Or DT_CENTER
+    Case jgexAlignRight
+        lFlags = lFlags Or DT_RIGHT
+    End Select
+    Call SetBkMode(hDC, TRANSPARENT)
+    Call SetTextColor(hDC, pvColor(clrText))
+    Call DrawText(hDC, StrPtr(sText), Len(sText), uRect, lFlags)
+End Sub
+
+Private Function pvSelectFont(ByVal hDC As Long, oFont As Font) As Long
+    Dim pFont           As IFont
+
+    Set pFont = oFont
+    pvSelectFont = SelectObject(hDC, pFont.hFont)
+End Function
 
 Private Sub pvInitFormatStyles()
     '--- built-in styles present on a fresh original control
@@ -2161,13 +2448,13 @@ Private Sub UserControl_Initialize()
     m_eLockType = jgexLockOptimistic
     m_eCursorLocation = jgexUseServer
     m_eBorderStyle = jgexFixed
-    m_lDefaultColumnWidth = 1500
-    m_lColumnHeaderHeight = 285
-    m_lRowHeight = 285
+    m_lDefaultColumnWidth = 100
+    m_lColumnHeaderHeight = 19
+    m_lRowHeight = 19
     m_lImageWidth = 16
     m_lImageHeight = 16
-    m_lCardWidth = 3750
-    m_lCardSpacing = 180
+    m_lCardWidth = 250
+    m_lCardSpacing = 12
     m_lPreviewRowIndent = 600
     m_bColumnHeaders = True
     m_bGroupByBoxVisible = True
@@ -2187,8 +2474,22 @@ End Sub
 
 Private Sub UserControl_InitProperties()
     '--- a freshly placed control starts with two default empty columns
-    m_oColumns.Add(vbNullString).Width = m_lDefaultColumnWidth
-    m_oColumns.Add(vbNullString).Width = m_lDefaultColumnWidth
+    m_oColumns.Add(vbNullString).Width = ToTwips(m_lDefaultColumnWidth)
+    m_oColumns.Add(vbNullString).Width = ToTwips(m_lDefaultColumnWidth)
+End Sub
+
+Private Sub UserControl_Paint()
+    Const FUNC_NAME     As String = "UserControl_Paint"
+
+    On Error GoTo EH
+    pvPaint UserControl.hDC
+    Exit Sub
+EH:
+    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+End Sub
+
+Private Sub UserControl_Resize()
+    UserControl.Refresh
 End Sub
 
 Private Sub UserControl_Terminate()

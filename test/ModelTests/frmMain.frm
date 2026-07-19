@@ -112,7 +112,8 @@ Private Sub pvTestColumns()
         .Add "Gamma", jgexIcon, jgexEditNone, "kC"
         AssertEquals "Columns.Count", 3, .Count
         AssertEquals "Columns(2).Caption", "Beta", .Item(2).Caption
-        AssertEquals "Columns(2).Width", 777, .Item(2).Width
+        '--- widths snap to whole pixels like the original
+        AssertEquals "Columns(2).Width", 780, .Item(2).Width
         AssertEquals "Columns(kC).ColumnType", jgexIcon, .Item("kC").ColumnType
         AssertEquals "Columns(kC).Index", 3, .Item("kC").Index
         AssertEquals "ItemByPosition(2).Caption", "Beta", .ItemByPosition(2).Caption
@@ -399,7 +400,8 @@ Private Sub pvTestUnbound()
         .Row = 2
         .FirstItem = 2
         .FirstItem = 2
-        AssertEquals "Unbound: nav event order", "RowCol(0,0);RowCol(2,0);First;", oForm.EventLog
+        '--- Rebind positioned the current cell on (1,1)
+        AssertEquals "Unbound: nav event order", "RowCol(1,1);RowCol(2,1);First;", oForm.EventLog
     End With
     Unload oForm
 End Sub
@@ -453,6 +455,12 @@ Private Sub pvTestSnapshotCorpus()
 EH:
     Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
     Assert "corpus error in " & sName & ": &H" & Hex$(Err.Number) & " " & Err.Description, False
+End Sub
+
+Private Sub pvCanonTwips(oExp As Object, sKey As String)
+    If Not IsEmpty(JsonValue(oExp, sKey)) Then
+        JsonValue(oExp, sKey) = ((C2Lng(JsonValue(oExp, sKey)) + Screen.TwipsPerPixelY \ 2) \ Screen.TwipsPerPixelY) * Screen.TwipsPerPixelY
+    End If
 End Sub
 
 Private Sub pvStripErrors(oSide As Object, oOther As Object)
@@ -514,6 +522,14 @@ Private Sub pvCanonProps(oExp As Object, oAct As Object)
         m_oCanonFont.Size = C2Dbl(JsonValue(oExp, "Size"))
         JsonValue(oExp, "Size") = CDbl(m_oCanonFont.Size)
     End If
+    '--- pixel-stored twips props snap on runtime set (original too), so
+    '--- quantize expected design-time twips the same way
+    pvCanonTwips oExp, "ColumnHeaderHeight"
+    pvCanonTwips oExp, "RowHeight"
+    pvCanonTwips oExp, "Width"
+    pvCanonTwips oExp, "DefaultColumnWidth"
+    pvCanonTwips oExp, "CardWidth"
+    pvCanonTwips oExp, "CardSpacing"
     vKeys = JsonKeys(oExp)
     If IsArray(vKeys) Then
         For lIdx = 0 To UBound(vKeys)

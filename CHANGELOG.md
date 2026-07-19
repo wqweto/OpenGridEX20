@@ -71,6 +71,14 @@ All notable changes to this project will be documented in this file.
 - `BoundColumnIndex`/`ReplaceColumnIndex` raise error 393 unless `ActAsDropDown` is set (matches original; they land in snapshot `$errors` identically); corpus canonicalization now strips `$errors`-listed props from *both* sides symmetrically
 - UserControl designer: 3D client-edge border + pixel `ScaleMode` so the client area matches the original's 396x256 in a 400x260 site
 
+### Added (M3c -- static table painting)
+
+- GDI painting pipeline in `GridEX.ctl` (`UserControl_Paint`, double-buffer-free direct DC drawing with shared declares in `mdGlobals.bas`): group-by box (shadow background + info box sized by text extent with the info text at fixed inset), Double3D column headers (full-width top highlight and bottom shadow/dark lines with per-cell white left edge and shadow+dark right edges overwriting them at boundaries, filler cell to the right edge, captions per `HeaderAlignment`), data rows (selection via system highlight, even/odd colors, per-column `TextAlignment`, `DisplayValue` over `Value`), horizontal/vertical gridlines in `GridLineStyle` pen styles with a dark line under the last row, `BackColorBkg` filler areas and the XOR focus marquee (`DrawFocusRect` against a `BackColor` DC background, drawn under the vertical gridlines)
+- Pixel-exact behaviors discovered and encoded: text insets are asymmetric (captions at x+2 with a 2px vertical drop, cell text centered over `x+2..x+w-4`), and `Rebind` positions the current cell at (1,1)
+- Twips-facing metric props are stored internally in *pixels* and snap to the nearest pixel on runtime set exactly like the original (probed live: 400->405, 290->285, 1790->1785, 1793->1800, 187->180): `RowHeight`, `ColumnHeaderHeight`, `JSColumn.Width`, `DefaultColumnWidth`, `CardWidth`, `CardSpacing`; `PreviewRowIndent` stays raw twips and `ImageWidth`/`ImageHeight` are native pixels (also probed); public getters convert back via `Screen.TwipsPerPixel*`
+- All 7 VisualDiff scenarios now verify pixel-identical to the goldens recorded from the original control (group-by box, headers incl. 27px flat variant, gridline styles/colors, unbound data rows with selection and focus, before/after-show application) -- M3c static painting exit reached for the initial corpus
+- Corpus canonicalization additions: expected `RowHeight`/`ColumnHeaderHeight`/`Width`/`DefaultColumnWidth`/`CardWidth`/`CardSpacing` quantized like the runtime Lets do (design-time propbag values such as 288/228 are not pixel-multiples at 96dpi)
+
 ### Changed
 
 - README refreshed to current M2 state: milestone status, source-compatibility scope note, layout table covering `tools`/`test`/`doc/Help` and a Testing section for `test\ModelTests\make.bat`
