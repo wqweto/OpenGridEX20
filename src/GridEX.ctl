@@ -739,7 +739,16 @@ End Property
 
 Public Property Let Col(ByVal nValue As Integer)
     Dim nLastCol        As Integer
+    Dim nMax            As Integer
 
+    '--- setting a value past the visible columns selects the last one
+    nMax = pvVisibleColCount()
+    If nValue > nMax Then
+        nValue = nMax
+    End If
+    If nValue < 1 And nMax > 0 Then
+        nValue = 1
+    End If
     If m_nCol <> nValue Then
         nLastCol = m_nCol
         m_nCol = nValue
@@ -1822,6 +1831,21 @@ End Sub
 
 Public Sub EnsureVisible(Optional ByVal Row As Long, Optional ByVal Col As Integer)
 Attribute EnsureVisible.VB_Description = "Ensures visibility of a cell."
+    Dim lVisible        As Long
+
+    '--- no arg means the current row; horizontal scroll not implemented yet
+    If Row < 1 Then
+        Row = m_lRow
+    End If
+    If Row < 1 Or RowCount = 0 Then
+        Exit Sub
+    End If
+    lVisible = pvVisibleRows()
+    If Row < m_lFirstItem Then
+        FirstItem = Row
+    ElseIf Row > m_lFirstItem + lVisible - 1 Then
+        FirstItem = Row - lVisible + 1
+    End If
 End Sub
 
 Public Sub Rebind(Optional HoldSortSettings As Variant)
@@ -2404,6 +2428,43 @@ EH:
     Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
 End Sub
 
+Private Function pvTopHeight() As Long
+    If m_bGroupByBoxVisible Then
+        pvTopHeight = m_lColumnHeaderHeight + 14
+    End If
+    If m_bColumnHeaders Then
+        pvTopHeight = pvTopHeight + m_lColumnHeaderHeight
+    End If
+End Function
+
+Private Function pvVisibleRows() As Long
+    If m_lRowHeight > 0 Then
+        pvVisibleRows = (ScaleHeight - pvTopHeight()) \ m_lRowHeight
+    End If
+    If pvVisibleRows < 1 Then
+        pvVisibleRows = 1
+    End If
+End Function
+
+Private Function pvVisibleColCount() As Integer
+    Dim nIdx            As Integer
+
+    For nIdx = 1 To m_oColumns.Count
+        If m_oColumns.ItemByPosition(nIdx).Visible Then
+            pvVisibleColCount = pvVisibleColCount + 1
+        End If
+    Next
+End Function
+
+Private Function pvClampRow(ByVal lRow As Long) As Long
+    pvClampRow = lRow
+    If pvClampRow < 1 Then
+        pvClampRow = 1
+    ElseIf pvClampRow > RowCount Then
+        pvClampRow = RowCount
+    End If
+End Function
+
 Private Sub pvUpdateScrollBars()
     Dim lTopH           As Long
     Dim lAvailH         As Long
@@ -2415,12 +2476,7 @@ Private Sub pvUpdateScrollBars()
         Exit Sub
     End If
     m_bScrollUpdating = True
-    If m_bGroupByBoxVisible Then
-        lTopH = m_lColumnHeaderHeight + 14
-    End If
-    If m_bColumnHeaders Then
-        lTopH = lTopH + m_lColumnHeaderHeight
-    End If
+    lTopH = pvTopHeight()
     lStyle = GetWindowLong(UserControl.hWnd, GWL_STYLE)
     lNewStyle = lStyle And Not WS_VSCROLL
     If m_lRowHeight > 0 And RowCount > 0 Then
@@ -2551,10 +2607,18 @@ End Sub
 
 Public Function ControlSubclassProc(ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long, Handled As Boolean) As Long
 Attribute ControlSubclassProc.VB_MemberFlags = "40"
+    Dim nKeyCode        As Integer
+    Dim nShift          As Integer
+
     Select Case wMsg
     Case WM_VSCROLL
         pvOnVScroll wParam And &HFFFF&
         Handled = True
+    Case WM_KEYDOWN
+        nKeyCode = CInt(wParam And &HFFFF&)
+        nShift = pvShiftState()
+        RaiseEvent KeyDown(nKeyCode, nShift)
+        pvOnKeyDown nKeyCode
     End Select
     '--- note: performance optimization for design-time subclassing
     If Not Handled And ThunkPrivateData(m_pSubclass) = EBMODE_DESIGN Then
@@ -2562,6 +2626,53 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         ControlSubclassProc = CallNextSubclassProc(m_pSubclass, hWnd, wMsg, wParam, lParam)
     End If
 End Function
+
+Private Function pvShiftState() As Integer
+    If GetKeyState(vbKeyShift) < 0 Then
+        pvShiftState = pvShiftState Or vbShiftMask
+    End If
+    If GetKeyState(vbKeyControl) < 0 Then
+        pvShiftState = pvShiftState Or vbCtrlMask
+    End If
+    If GetKeyState(vbKeyMenu) < 0 Then
+        pvShiftState = pvShiftState Or vbAltMask
+    End If
+End Function
+
+Private Sub pvOnKeyDown(ByVal nKeyCode As Integer)
+    Select Case nKeyCode
+    Case vbKeyDown
+        If m_lRow < RowCount Then
+            Row = m_lRow + 1
+            EnsureVisible m_lRow
+        End If
+    Case vbKeyUp
+        If m_lRow > 1 Then
+            Row = m_lRow - 1
+            EnsureVisible m_lRow
+        End If
+    Case vbKeyRight
+        If m_nCol < pvVisibleColCount() Then
+            Col = m_nCol + 1
+        End If
+    Case vbKeyLeft
+        If m_nCol > 1 Then
+            Col = m_nCol - 1
+        End If
+    Case vbKeyPageDown
+        Row = pvClampRow(m_lRow + pvVisibleRows())
+        EnsureVisible m_lRow
+    Case vbKeyPageUp
+        Row = pvClampRow(m_lRow - pvVisibleRows())
+        EnsureVisible m_lRow
+    Case vbKeyHome
+        Row = pvClampRow(1)
+        EnsureVisible m_lRow
+    Case vbKeyEnd
+        Row = pvClampRow(RowCount)
+        EnsureVisible m_lRow
+    End Select
+End Sub
 
 Private Sub pvOnVScroll(ByVal lCode As Long)
     Dim uSi             As SCROLLINFO

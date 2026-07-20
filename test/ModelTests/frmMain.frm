@@ -66,6 +66,7 @@ DefObj A-Z
 '=========================================================================
 
 Private Const WM_VSCROLL            As Long = &H115
+Private Const WM_KEYDOWN            As Long = &H100
 Private Const SB_LINEUP             As Long = 0
 Private Const SB_LINEDOWN           As Long = 1
 Private Const SB_PAGEDOWN           As Long = 3
@@ -98,6 +99,7 @@ Private Sub Form_Load()
     pvTestRowDataWeakRef
     pvTestUnbound
     pvTestScroll
+    pvTestKeyNav
     pvTestSnapshotCorpus
 QH:
     TestsDone
@@ -440,6 +442,43 @@ Private Sub pvTestScroll()
         SendMessage .hWnd, WM_VSCROLL, SB_PAGEDOWN, 0
         Assert "Scroll: page down advances", .FirstItem > 2
         AssertEquals "Scroll: FirstItemChange event count", "First;First;First;First;", oForm.EventLog
+    End With
+    Unload oForm
+End Sub
+
+Private Sub pvTestKeyNav()
+    Dim oForm           As frmWeak
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add "A"
+        .Columns.Add "B"
+        .DataMode = jgexUnbound
+        .ItemCount = 50
+        .Rebind
+        AssertEquals "KeyNav: initial Row", 1, .Row
+        AssertEquals "KeyNav: initial Col", 1, .Col
+        '--- arrows drive the current cell through the subclassed proc
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyDown, 0
+        AssertEquals "KeyNav: Down -> Row 2", 2, .Row
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyRight, 0
+        AssertEquals "KeyNav: Right -> Col 2", 2, .Col
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyRight, 0
+        AssertEquals "KeyNav: Right clamps at last col", 2, .Col
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyLeft, 0
+        AssertEquals "KeyNav: Left -> Col 1", 1, .Col
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyUp, 0
+        AssertEquals "KeyNav: Up -> Row 1", 1, .Row
+        '--- End jumps to and scrolls in the last row
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyEnd, 0
+        AssertEquals "KeyNav: End -> last Row", 50, .Row
+        Assert "KeyNav: End scrolled into view", .FirstItem > 1
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyHome, 0
+        AssertEquals "KeyNav: Home -> Row 1", 1, .Row
+        AssertEquals "KeyNav: Home scrolled to top", 1, .FirstItem
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyPageDown, 0
+        Assert "KeyNav: PageDown advances Row", .Row > 1
     End With
     Unload oForm
 End Sub
