@@ -53,6 +53,15 @@ Public Const SWP_NOSIZE                 As Long = 1
 Public Const SWP_NOMOVE                 As Long = 2
 Public Const SWP_NOZORDER               As Long = 4
 Public Const SWP_FRAMECHANGED           As Long = &H20
+Public Const SIF_TRACKPOS               As Long = &H10
+Public Const WM_VSCROLL                 As Long = &H115
+Public Const SB_LINEUP                  As Long = 0
+Public Const SB_LINEDOWN                As Long = 1
+Public Const SB_PAGEUP                  As Long = 2
+Public Const SB_PAGEDOWN                As Long = 3
+Public Const SB_THUMBPOSITION           As Long = 4
+Public Const SB_THUMBTRACK              As Long = 5
+Public Const EBMODE_DESIGN              As Long = 0
 
 Public Type RECT
     Left                    As Long
@@ -115,6 +124,7 @@ Public Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongW" (ByVal
 Public Declare Function SetWindowLong Lib "user32" Alias "SetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long, ByVal dwNewLong As Long) As Long
 Public Declare Function SetWindowPos Lib "user32" (ByVal hWnd As Long, ByVal hWndInsertAfter As Long, ByVal X As Long, ByVal Y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long
 Public Declare Function SetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal fnBar As Long, lpsi As SCROLLINFO, ByVal fRedraw As Long) As Long
+Public Declare Function GetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal fnBar As Long, lpsi As SCROLLINFO) As Long
 
 '=========================================================================
 ' Functions

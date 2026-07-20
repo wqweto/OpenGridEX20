@@ -1,14 +1,13 @@
 VERSION 5.00
-Begin VB.UserControl GridEX
-   Appearance      =   1  '3D
+Begin VB.UserControl GridEX 
    BorderStyle     =   1  'Fixed Single
    ClientHeight    =   2880
    ClientLeft      =   0
    ClientTop       =   0
    ClientWidth     =   3840
-   ScaleHeight     =   192
+   ScaleHeight     =   240
    ScaleMode       =   3  'Pixel
-   ScaleWidth      =   256
+   ScaleWidth      =   320
 End
 Attribute VB_Name = "GridEX"
 Attribute VB_GlobalNameSpace = False
@@ -608,6 +607,7 @@ Private m_vScrollToolTipColumn      As Variant
 Private m_bAutomaticSort            As Boolean
 Private m_lPreviewRowIndent         As Long
 Private m_bAllowRowSizing           As Boolean
+Private m_pSubclass                 As IUnknown
 
 '--- per-row virtual storage behind JSRowData wrappers
 Private Type UcsCellData
@@ -955,8 +955,8 @@ Public Property Set ColumnHeaderFont(ByVal oValue As Font)
 End Property
 
 Public Property Get Font() As Font
-Attribute Font.VB_UserMemId = -512
 Attribute Font.VB_Description = "Returns/sets a Font object."
+Attribute Font.VB_UserMemId = -512
     Set Font = m_oFont
 End Property
 
@@ -1762,6 +1762,10 @@ Friend Property Let frRowPreviewRowVisible(ByVal lRowIndex As Long, ByVal bValue
     m_aRows(lRowIndex).PreviewRowVisible = bValue
 End Property
 
+Private Property Get pvAddressOfSubclassProc() As GridEX
+    Set pvAddressOfSubclassProc = InitAddressOfMethod(Me, 5)
+End Property
+
 '=========================================================================
 ' Methods
 '=========================================================================
@@ -1861,8 +1865,8 @@ Attribute ClearFields.VB_Description = "Restores the default layout columns."
 End Sub
 
 Public Sub AboutBox()
-Attribute AboutBox.VB_UserMemId = -552
 Attribute AboutBox.VB_Description = "Displays the About box for the control."
+Attribute AboutBox.VB_UserMemId = -552
 End Sub
 
 Public Sub LoadEntireRecordset()
@@ -2537,6 +2541,58 @@ Private Sub pvInitFormatStyles()
     End With
 End Sub
 
+Private Sub pvSubclass()
+    Set m_pSubclass = InitSubclassingThunk(hWnd, Me, pvAddressOfSubclassProc.ControlSubclassProc(0, 0, 0, 0, 0))
+End Sub
+
+Private Sub pvUnsubclass()
+    TerminateSubclassingThunk m_pSubclass, Me
+End Sub
+
+Public Function ControlSubclassProc(ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long, Handled As Boolean) As Long
+Attribute ControlSubclassProc.VB_MemberFlags = "40"
+    Select Case wMsg
+    Case WM_VSCROLL
+        pvOnVScroll wParam And &HFFFF&
+        Handled = True
+    End Select
+    '--- note: performance optimization for design-time subclassing
+    If Not Handled And ThunkPrivateData(m_pSubclass) = EBMODE_DESIGN Then
+        Handled = True
+        ControlSubclassProc = CallNextSubclassProc(m_pSubclass, hWnd, wMsg, wParam, lParam)
+    End If
+End Function
+
+Private Sub pvOnVScroll(ByVal lCode As Long)
+    Dim uSi             As SCROLLINFO
+    Dim lPage           As Long
+
+    Select Case lCode
+    Case SB_LINEUP
+        FirstItem = m_lFirstItem - 1
+    Case SB_LINEDOWN
+        FirstItem = m_lFirstItem + 1
+    Case SB_PAGEUP, SB_PAGEDOWN
+        uSi.cbSize = Len(uSi)
+        uSi.fMask = SIF_PAGE
+        Call GetScrollInfo(UserControl.hWnd, SB_VERT, uSi)
+        lPage = uSi.nPage
+        If lPage < 1 Then
+            lPage = 1
+        End If
+        If lCode = SB_PAGEUP Then
+            FirstItem = m_lFirstItem - lPage
+        Else
+            FirstItem = m_lFirstItem + lPage
+        End If
+    Case SB_THUMBPOSITION, SB_THUMBTRACK
+        uSi.cbSize = Len(uSi)
+        uSi.fMask = SIF_TRACKPOS
+        Call GetScrollInfo(UserControl.hWnd, SB_VERT, uSi)
+        FirstItem = uSi.nTrackPos + 1
+    End Select
+End Sub
+
 '=========================================================================
 ' Interface IObjectSafety
 '=========================================================================
@@ -2625,6 +2681,11 @@ Private Sub UserControl_InitProperties()
     '--- a freshly placed control starts with two default empty columns
     m_oColumns.Add(vbNullString).Width = ToTwips(m_lDefaultColumnWidth)
     m_oColumns.Add(vbNullString).Width = ToTwips(m_lDefaultColumnWidth)
+    pvSubclass
+End Sub
+
+Private Sub UserControl_ReadProperties(PropBag As PropertyBag)
+    pvSubclass
 End Sub
 
 Private Sub m_oFont_FontChanged(ByVal PropertyName As String)
@@ -2661,6 +2722,7 @@ End Sub
 Private Sub UserControl_Terminate()
     Dim lIdx            As Long
 
+    pvUnsubclass
     '--- detach outstanding JSRowData wrappers so their weak owner
     '--- pointers cannot dangle past the control lifetime
     For lIdx = 1 To m_lRowsUBound

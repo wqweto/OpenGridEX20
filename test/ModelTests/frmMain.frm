@@ -62,6 +62,17 @@ Option Explicit
 DefObj A-Z
 
 '=========================================================================
+' API
+'=========================================================================
+
+Private Const WM_VSCROLL            As Long = &H115
+Private Const SB_LINEUP             As Long = 0
+Private Const SB_LINEDOWN           As Long = 1
+Private Const SB_PAGEDOWN           As Long = 3
+
+Private Declare Function SendMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long
+
+'=========================================================================
 ' Constants and member variables
 '=========================================================================
 
@@ -86,6 +97,7 @@ Private Sub Form_Load()
     pvTestRowData
     pvTestRowDataWeakRef
     pvTestUnbound
+    pvTestScroll
     pvTestSnapshotCorpus
 QH:
     TestsDone
@@ -402,6 +414,32 @@ Private Sub pvTestUnbound()
         .FirstItem = 2
         '--- Rebind positioned the current cell on (1,1)
         AssertEquals "Unbound: nav event order", "RowCol(1,1);RowCol(2,1);First;", oForm.EventLog
+    End With
+    Unload oForm
+End Sub
+
+Private Sub pvTestScroll()
+    Dim oForm           As frmWeak
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add "Alpha"
+        .DataMode = jgexUnbound
+        .ItemCount = 50
+        .Rebind
+        AssertEquals "Scroll: FirstItem after Rebind", 1, .FirstItem
+        oForm.EventLog = vbNullString
+        '--- drive the MST-subclassed scrollbar with real WM_VSCROLL messages
+        SendMessage .hWnd, WM_VSCROLL, SB_LINEDOWN, 0
+        AssertEquals "Scroll: line down", 2, .FirstItem
+        SendMessage .hWnd, WM_VSCROLL, SB_LINEDOWN, 0
+        AssertEquals "Scroll: line down again", 3, .FirstItem
+        SendMessage .hWnd, WM_VSCROLL, SB_LINEUP, 0
+        AssertEquals "Scroll: line up", 2, .FirstItem
+        SendMessage .hWnd, WM_VSCROLL, SB_PAGEDOWN, 0
+        Assert "Scroll: page down advances", .FirstItem > 2
+        AssertEquals "Scroll: FirstItemChange event count", "First;First;First;First;", oForm.EventLog
     End With
     Unload oForm
 End Sub

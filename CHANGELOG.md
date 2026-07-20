@@ -86,6 +86,8 @@ All notable changes to this project will be documented in this file.
 - Vertical scrollbar as a real non-client `WS_VSCROLL` style toggled when rows overflow the data area (client shrinks exactly like the original), with `SetScrollInfo` range/page/pos kept in sync; recursion-guarded against the style-change resize feedback
 - Painting starts at `FirstItem` (partial last row clipped naturally); `FirstItem` let clamps to valid range, fires `FirstItemChange` and repaints; `Rebind` homes it to 1
 - VisualDiff `post` scenario section applies runtime props after the data feed (used for `FirstItem`); corpus at 16 scenarios all pixel-identical incl. restored `partial-rows` (scrollbar client shrink) and `scrolled` (`FirstItem=4`) -- both passed on first verify
+- Interactive scrolling via the Modern Subclassing Thunk (`src/mdModernSubclassing.bas`, wqweto MST): the control IDE-safely subclasses its own window and routes `WM_VSCROLL` to `pvOnVScroll` (line up/down, page up/down from `GetScrollInfo` page size, thumb position/track from `SIF_TRACKPOS`) which drives `FirstItem`; the callback `ControlSubclassProc` is a hidden (`VB_MemberFlags = "40"`) member reached through `InitAddressOfMethod`, kept off the public typelib surface (gate still zero-diff); subclass set up in `UserControl_InitProperties`/`ReadProperties`, torn down via `TerminateSubclassingThunk` in `UserControl_Terminate`
+- `test/ModelTests`: 6 new assertions (118 total) driving real `WM_VSCROLL` messages (`SB_LINEUP`/`SB_LINEDOWN`/`SB_PAGEDOWN`) through the subclassed window proc and asserting the resulting `FirstItem` steps and `FirstItemChange` event sequence
 
 ### Changed
 
