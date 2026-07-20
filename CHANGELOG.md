@@ -98,6 +98,7 @@ All notable changes to this project will be documented in this file.
 - Record-selector painting verified against the original: the current row is always shown selected (highlighted) and the row-header ▶ arrow marks the current row only (not merely-selected rows); new `multiselect` VisualDiff golden (row headers, three selected rows plus the current row) recorded from the original and matched pixel-for-pixel via a scenario `select` list that drives `SelectedItems.Add`
 - `KeyPress` (`WM_CHAR`) and `MouseMove` (`WM_MOUSEMOVE`) events raised through the subclass; a left-button drag extends a multi-select range from the mouse-down anchor to the row under the cursor
 - `test/ModelTests`: 4 new assertions (150 total) for `WM_CHAR` -> `KeyPress` and left-drag range selection
+- Horizontal scrollbar: `WS_HSCROLL` toggled (alongside the interacting `WS_VSCROLL`) when the visible columns overflow the client width, with `SetScrollInfo` range/page/pos; both scrollbars now appear together and shrink the client in both dimensions exactly like the original. Overflow painting matched to the original: the focus marquee clips its right edge to the visible width and a `vbButtonFace` separator line is drawn along the bottom client row under the horizontal scrollbar. New `both-scrollbars` VisualDiff golden (5 columns over 16 rows) recorded from the original and matched pixel-for-pixel (18 goldens total)
 
 ### Changed
 

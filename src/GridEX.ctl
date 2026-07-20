@@ -2321,7 +2321,13 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
         If m_lRow >= lFirst And m_lRow < lFirst + lPainted Then
             uRect.Left = lHdrW
             uRect.Top = lY + (m_lRow - lFirst) * lRowH
-            uRect.Right = lHdrW + lTotalW - 1
+            '--- clip the marquee right edge to the visible width when the
+            '--- columns overflow it
+            If lHdrW + lTotalW > ScaleWidth Then
+                uRect.Right = ScaleWidth
+            Else
+                uRect.Right = lHdrW + lTotalW - 1
+            End If
             uRect.Bottom = uRect.Top + lRowH - 1
             Call SetBkColor(hDC, pvColor(m_clrBackColor))
             Call DrawFocusRect(hDC, uRect)
@@ -2336,6 +2342,11 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
                 End If
             Next
         End If
+    End If
+    '--- separator strip the original draws along the bottom edge when the
+    '--- horizontal scrollbar takes over the last client row
+    If lHdrW + lTotalW > ScaleWidth Then
+        pvLine hDC, 0, ScaleHeight - 1, ScaleWidth, ScaleHeight - 1, m_clrBackColorHeader, PS_SOLID
     End If
 End Sub
 
@@ -2489,8 +2500,13 @@ End Function
 Private Sub pvUpdateScrollBars()
     Dim lTopH           As Long
     Dim lAvailH         As Long
+    Dim lAvailW         As Long
+    Dim lHdrW           As Long
+    Dim lColsW          As Long
     Dim lStyle          As Long
     Dim lNewStyle       As Long
+    Dim bNeedV          As Boolean
+    Dim bNeedH          As Boolean
     Dim uSi             As SCROLLINFO
 
     If m_bScrollUpdating Then
@@ -2498,23 +2514,42 @@ Private Sub pvUpdateScrollBars()
     End If
     m_bScrollUpdating = True
     lTopH = pvTopHeight()
-    lStyle = GetWindowLong(UserControl.hWnd, GWL_STYLE)
-    lNewStyle = lStyle And Not WS_VSCROLL
-    If m_lRowHeight > 0 And RowCount > 0 Then
-        If RowCount * m_lRowHeight > ScaleHeight - lTopH Then
-            lNewStyle = lNewStyle Or WS_VSCROLL
+    If m_bRowHeaders Then
+        lHdrW = 18
+    End If
+    lColsW = lHdrW + pvTotalColWidth()
+    '--- both scrollbars interact: each one steals space from the other
+    lAvailH = ScaleHeight - lTopH
+    lAvailW = ScaleWidth
+    bNeedV = (m_lRowHeight > 0 And RowCount > 0 And RowCount * m_lRowHeight > lAvailH)
+    bNeedH = (lColsW > lAvailW)
+    If bNeedV Then
+        lAvailW = lAvailW - 17
+        bNeedH = (lColsW > lAvailW)
+    End If
+    If bNeedH Then
+        lAvailH = lAvailH - 17
+        bNeedV = (m_lRowHeight > 0 And RowCount > 0 And RowCount * m_lRowHeight > lAvailH)
+        If bNeedV Then
+            lAvailW = ScaleWidth - 17
         End If
+    End If
+    lStyle = GetWindowLong(UserControl.hWnd, GWL_STYLE)
+    lNewStyle = lStyle And Not WS_VSCROLL And Not WS_HSCROLL
+    If bNeedV Then
+        lNewStyle = lNewStyle Or WS_VSCROLL
+    End If
+    If bNeedH Then
+        lNewStyle = lNewStyle Or WS_HSCROLL
     End If
     If lNewStyle <> lStyle Then
         Call SetWindowLong(UserControl.hWnd, GWL_STYLE, lNewStyle)
         Call SetWindowPos(UserControl.hWnd, 0, 0, 0, 0, 0, SWP_NOSIZE Or SWP_NOMOVE Or SWP_NOZORDER Or SWP_FRAMECHANGED)
     End If
-    If (lNewStyle And WS_VSCROLL) <> 0 Then
-        lAvailH = ScaleHeight - lTopH
+    If bNeedV Then
         With uSi
             .cbSize = Len(uSi)
             .fMask = SIF_RANGE Or SIF_PAGE Or SIF_POS
-            .nMin = 0
             .nMax = RowCount - 1
             If m_lRowHeight > 0 Then
                 .nPage = lAvailH \ m_lRowHeight
@@ -2525,8 +2560,53 @@ Private Sub pvUpdateScrollBars()
         End With
         Call SetScrollInfo(UserControl.hWnd, SB_VERT, uSi, 1)
     End If
+    If bNeedH Then
+        With uSi
+            .cbSize = Len(uSi)
+            .fMask = SIF_RANGE Or SIF_PAGE Or SIF_POS
+            .nMax = pvVisibleColCount() - 1
+            .nPage = pvVisibleColsInWidth(lAvailW - lHdrW)
+            If m_nLeftCol > 0 Then
+                .nPos = m_nLeftCol - 1
+            End If
+        End With
+        Call SetScrollInfo(UserControl.hWnd, SB_HORZ, uSi, 1)
+    End If
     m_bScrollUpdating = False
 End Sub
+
+Private Function pvTotalColWidth() As Long
+    Dim nIdx            As Integer
+    Dim oCol            As JSColumn
+
+    For nIdx = 1 To m_oColumns.Count
+        Set oCol = m_oColumns.ItemByPosition(nIdx)
+        If oCol.Visible Then
+            pvTotalColWidth = pvTotalColWidth + ToPixels(oCol.Width)
+        End If
+    Next
+End Function
+
+Private Function pvVisibleColsInWidth(ByVal lWidth As Long) As Long
+    Dim nIdx            As Integer
+    Dim oCol            As JSColumn
+    Dim lCum            As Long
+
+    '--- how many whole columns fit in lWidth starting at LeftCol
+    For nIdx = 1 To m_oColumns.Count
+        Set oCol = m_oColumns.ItemByPosition(nIdx)
+        If oCol.Visible Then
+            lCum = lCum + ToPixels(oCol.Width)
+            If lCum > lWidth Then
+                Exit Function
+            End If
+            pvVisibleColsInWidth = pvVisibleColsInWidth + 1
+        End If
+    Next
+    If pvVisibleColsInWidth < 1 Then
+        pvVisibleColsInWidth = 1
+    End If
+End Function
 
 Private Function pvColor(ByVal clrValue As OLE_COLOR) As Long
     Call OleTranslateColor(clrValue, 0, pvColor)

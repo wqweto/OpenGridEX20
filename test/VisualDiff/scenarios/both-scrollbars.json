@@ -1,0 +1,28 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "both-scrollbars",
+    "width": 400,
+    "height": 260,
+    "apply": "before-show",
+    "props": {
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500 },
+            { "Caption": "Beta", "Width": 1500 },
+            { "Caption": "Gamma", "Width": 1500 },
+            { "Caption": "Delta", "Width": 1500 },
+            { "Caption": "Epsilon", "Width": 1500 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            ["a1","b1","c1","d1","e1"],["a2","b2","c2","d2","e2"],
+            ["a3","b3","c3","d3","e3"],["a4","b4","c4","d4","e4"],
+            ["a5","b5","c5","d5","e5"],["a6","b6","c6","d6","e6"],
+            ["a7","b7","c7","d7","e7"],["a8","b8","c8","d8","e8"],
+            ["a9","b9","c9","d9","e9"],["a10","b10","c10","d10","e10"],
+            ["a11","b11","c11","d11","e11"],["a12","b12","c12","d12","e12"],
+            ["a13","b13","c13","d13","e13"],["a14","b14","c14","d14","e14"],
+            ["a15","b15","c15","d15","e15"],["a16","b16","c16","d16","e16"]
+        ]
+    }
+}

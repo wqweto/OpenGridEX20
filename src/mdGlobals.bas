@@ -55,6 +55,7 @@ Public Const SWP_NOZORDER               As Long = 4
 Public Const SWP_FRAMECHANGED           As Long = &H20
 Public Const SIF_TRACKPOS               As Long = &H10
 Public Const WM_VSCROLL                 As Long = &H115
+Public Const WM_HSCROLL                  As Long = &H114
 Public Const WM_KEYDOWN                  As Long = &H100
 Public Const WM_LBUTTONDOWN              As Long = &H201
 Public Const WM_LBUTTONUP                As Long = &H202
