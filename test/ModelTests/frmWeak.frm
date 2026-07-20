@@ -71,3 +71,11 @@ End Sub
 Private Sub GridEX1_FirstItemChange()
     EventLog = EventLog & "First;"
 End Sub
+
+Private Sub GridEX1_Click()
+    EventLog = EventLog & "Click;"
+End Sub
+
+Private Sub GridEX1_ColumnHeaderClick(ByVal Column As JSColumn)
+    EventLog = EventLog & "HdrClick(" & Column.Caption & ");"
+End Sub

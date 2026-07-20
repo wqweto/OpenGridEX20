@@ -67,6 +67,8 @@ DefObj A-Z
 
 Private Const WM_VSCROLL            As Long = &H115
 Private Const WM_KEYDOWN            As Long = &H100
+Private Const WM_LBUTTONDOWN        As Long = &H201
+Private Const WM_LBUTTONUP          As Long = &H202
 Private Const SB_LINEUP             As Long = 0
 Private Const SB_LINEDOWN           As Long = 1
 Private Const SB_PAGEDOWN           As Long = 3
@@ -100,6 +102,7 @@ Private Sub Form_Load()
     pvTestUnbound
     pvTestScroll
     pvTestKeyNav
+    pvTestMouse
     pvTestSnapshotCorpus
 QH:
     TestsDone
@@ -482,6 +485,40 @@ Private Sub pvTestKeyNav()
     End With
     Unload oForm
 End Sub
+
+Private Sub pvTestMouse()
+    Dim oForm           As frmWeak
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("A").Width = 1500
+        .Columns.Add("B").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 50
+        .Rebind
+        '--- geometry (MS Sans Serif 8.25): group-by box 0..32, header
+        '--- 33..51, data from y=52; row height 19px; A=0..99, B=100..199
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 80)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, pvMakeLong(50, 80)
+        AssertEquals "Mouse: click sets Row 2", 2, .Row
+        AssertEquals "Mouse: click sets Col 1", 1, .Col
+        Assert "Mouse: Click event fired", InStr(oForm.EventLog, "Click;") > 0
+        '--- click a cell in the second column
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(150, 80)
+        AssertEquals "Mouse: click sets Col 2", 2, .Col
+        '--- click the first column header
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
+        AssertEquals "Mouse: header click fires ColumnHeaderClick", "HdrClick(A);", oForm.EventLog
+    End With
+    Unload oForm
+End Sub
+
+Private Function pvMakeLong(ByVal lLo As Long, ByVal lHi As Long) As Long
+    pvMakeLong = (lLo And &HFFFF&) Or (lHi * &H10000)
+End Function
 
 Private Sub pvTestSnapshotCorpus()
     Const FUNC_NAME     As String = "pvTestSnapshotCorpus"

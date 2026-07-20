@@ -2619,6 +2619,14 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         nShift = pvShiftState()
         RaiseEvent KeyDown(nKeyCode, nShift)
         pvOnKeyDown nKeyCode
+    Case WM_LBUTTONDOWN
+        RaiseEvent MouseDown(vbLeftButton, pvMouseShift(wParam), pvLoWord(lParam), pvHiWord(lParam))
+        pvOnLButtonDown pvLoWord(lParam), pvHiWord(lParam)
+    Case WM_LBUTTONUP
+        RaiseEvent MouseUp(vbLeftButton, pvMouseShift(wParam), pvLoWord(lParam), pvHiWord(lParam))
+        RaiseEvent Click
+    Case WM_LBUTTONDBLCLK
+        RaiseEvent DblClick
     End Select
     '--- note: performance optimization for design-time subclassing
     If Not Handled And ThunkPrivateData(m_pSubclass) = EBMODE_DESIGN Then
@@ -2638,6 +2646,88 @@ Private Function pvShiftState() As Integer
         pvShiftState = pvShiftState Or vbAltMask
     End If
 End Function
+
+Private Function pvMouseShift(ByVal wParam As Long) As Integer
+    If (wParam And MK_SHIFT) <> 0 Then
+        pvMouseShift = pvMouseShift Or vbShiftMask
+    End If
+    If (wParam And MK_CONTROL) <> 0 Then
+        pvMouseShift = pvMouseShift Or vbCtrlMask
+    End If
+    If GetKeyState(vbKeyMenu) < 0 Then
+        pvMouseShift = pvMouseShift Or vbAltMask
+    End If
+End Function
+
+Private Function pvLoWord(ByVal lValue As Long) As Long
+    Dim nWord           As Integer
+
+    Call CopyMemory(nWord, lValue, 2)
+    pvLoWord = nWord
+End Function
+
+Private Function pvHiWord(ByVal lValue As Long) As Long
+    Dim nWord           As Integer
+
+    Call CopyMemory(nWord, ByVal VarPtr(lValue) + 2, 2)
+    pvHiWord = nWord
+End Function
+
+Private Function pvColAtX(ByVal lX As Long, oCol As JSColumn) As Integer
+    Dim lCum            As Long
+    Dim nIdx            As Integer
+    Dim nPos            As Integer
+    Dim oItem           As JSColumn
+
+    If m_bRowHeaders Then
+        lCum = 18
+    End If
+    For nIdx = 1 To m_oColumns.Count
+        Set oItem = m_oColumns.ItemByPosition(nIdx)
+        If oItem.Visible Then
+            nPos = nPos + 1
+            lCum = lCum + ToPixels(oItem.Width)
+            If lX < lCum Then
+                Set oCol = oItem
+                pvColAtX = nPos
+                Exit Function
+            End If
+        End If
+    Next
+End Function
+
+Private Sub pvOnLButtonDown(ByVal lX As Long, ByVal lY As Long)
+    Dim lTopGbox        As Long
+    Dim lTopHdr         As Long
+    Dim nPos            As Integer
+    Dim oCol            As JSColumn
+    Dim lRow            As Long
+
+    If m_bGroupByBoxVisible Then
+        lTopGbox = m_lColumnHeaderHeight + 14
+    End If
+    lTopHdr = lTopGbox
+    If m_bColumnHeaders Then
+        lTopHdr = lTopHdr + m_lColumnHeaderHeight
+    End If
+    If lY < lTopGbox Then
+        '--- group-by box: grouping not implemented yet
+    ElseIf lY < lTopHdr Then
+        '--- column header band
+        nPos = pvColAtX(lX, oCol)
+        If Not oCol Is Nothing Then
+            RaiseEvent ColumnHeaderClick(oCol)
+        End If
+    ElseIf m_lRowHeight > 0 Then
+        '--- data area cell
+        lRow = m_lFirstItem + (lY - lTopHdr) \ m_lRowHeight
+        nPos = pvColAtX(lX, oCol)
+        If lRow >= 1 And lRow <= RowCount And nPos >= 1 Then
+            Row = lRow
+            Col = nPos
+        End If
+    End If
+End Sub
 
 Private Sub pvOnKeyDown(ByVal nKeyCode As Integer)
     Select Case nKeyCode
