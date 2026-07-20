@@ -2349,7 +2349,8 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
     Dim lW              As Long
     Dim sText           As String
 
-    bSelected = pvIsRowSelected(lRow)
+    '--- the current row is always shown selected, as in the original
+    bSelected = pvIsRowSelected(lRow) Or (m_lRow >= 1 And lRow = m_lRow)
     If bSelected Then
         pvSelColors clrBack, clrText
     ElseIf m_bUseEvenOddColor Then
@@ -2364,7 +2365,8 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         clrText = m_clrForeColor
     End If
     If lHdrW > 0 Then
-        pvPaintRowHeader hDC, lRowTop, lRowH, lHdrW, bSelected
+        '--- the record-selector arrow marks the current row only
+        pvPaintRowHeader hDC, lRowTop, lRowH, lHdrW, (lRow = m_lRow)
     End If
     pvFillRect hDC, lHdrW, lRowTop, lHdrW + lTotalW, lRowTop + lRowH, clrBack
     lX = lHdrW
@@ -2615,6 +2617,7 @@ Public Function ControlSubclassProc(ByVal hWnd As Long, ByVal wMsg As Long, ByVa
 Attribute ControlSubclassProc.VB_MemberFlags = "40"
     Dim nKeyCode        As Integer
     Dim nShift          As Integer
+    Dim nKeyAscii       As Integer
 
     Select Case wMsg
     Case WM_VSCROLL
@@ -2633,6 +2636,14 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         RaiseEvent Click
     Case WM_LBUTTONDBLCLK
         RaiseEvent DblClick
+    Case WM_MOUSEMOVE
+        RaiseEvent MouseMove(pvMouseButton(wParam), pvMouseShift(wParam), pvLoWord(lParam), pvHiWord(lParam))
+        If (wParam And MK_LBUTTON) <> 0 Then
+            pvOnMouseDrag pvHiWord(lParam)
+        End If
+    Case WM_CHAR
+        nKeyAscii = CInt(wParam And &HFFFF&)
+        RaiseEvent KeyPress(nKeyAscii)
     End Select
     '--- note: performance optimization for design-time subclassing
     If Not Handled And ThunkPrivateData(m_pSubclass) = EBMODE_DESIGN Then
@@ -2664,6 +2675,36 @@ Private Function pvMouseShift(ByVal wParam As Long) As Integer
         pvMouseShift = pvMouseShift Or vbAltMask
     End If
 End Function
+
+Private Function pvMouseButton(ByVal wParam As Long) As Integer
+    If (wParam And MK_LBUTTON) <> 0 Then
+        pvMouseButton = pvMouseButton Or vbLeftButton
+    End If
+    If (wParam And MK_RBUTTON) <> 0 Then
+        pvMouseButton = pvMouseButton Or vbRightButton
+    End If
+End Function
+
+Private Sub pvOnMouseDrag(ByVal lY As Long)
+    Dim lTopHdr         As Long
+    Dim lRow            As Long
+
+    '--- dragging with the left button held extends a multi-select range
+    '--- from the mouse-down anchor to the row under the cursor
+    If Not m_bMultiSelect Or m_lRowHeight <= 0 Then
+        Exit Sub
+    End If
+    lTopHdr = pvTopHeight()
+    If lY < lTopHdr Then
+        Exit Sub
+    End If
+    lRow = pvClampRow(m_lFirstItem + (lY - lTopHdr) \ m_lRowHeight)
+    If lRow <> m_lRow Then
+        Row = lRow
+        pvSetRangeSel m_lSelAnchor, lRow
+        EnsureVisible m_lRow
+    End If
+End Sub
 
 Private Function pvLoWord(ByVal lValue As Long) As Long
     Dim nWord           As Integer

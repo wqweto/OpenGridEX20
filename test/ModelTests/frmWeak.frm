@@ -83,3 +83,7 @@ End Sub
 Private Sub GridEX1_SelectionChange()
     EventLog = EventLog & "Sel;"
 End Sub
+
+Private Sub GridEX1_KeyPress(KeyAscii As Integer)
+    EventLog = EventLog & "Press(" & KeyAscii & ");"
+End Sub

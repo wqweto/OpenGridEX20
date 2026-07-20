@@ -1,0 +1,26 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "multiselect",
+    "width": 400,
+    "height": 260,
+    "apply": "before-show",
+    "props": {
+        "RowHeaders": true,
+        "MultiSelect": true,
+        "Columns": [
+            { "Caption": "Name", "Width": 1800 },
+            { "Caption": "Qty", "Width": 1200, "TextAlignment": 1 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "Chai", "39" ],
+            [ "Chang", "17" ],
+            [ "Aniseed", "13" ],
+            [ "Ikura", "31" ],
+            [ "Tofu", "35" ],
+            [ "Konbu", "24" ]
+        ]
+    },
+    "select": [ 2, 3, 4 ]
+}

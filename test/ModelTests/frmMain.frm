@@ -69,6 +69,9 @@ Private Const WM_VSCROLL            As Long = &H115
 Private Const WM_KEYDOWN            As Long = &H100
 Private Const WM_LBUTTONDOWN        As Long = &H201
 Private Const WM_LBUTTONUP          As Long = &H202
+Private Const WM_MOUSEMOVE          As Long = &H200
+Private Const WM_CHAR               As Long = &H102
+Private Const MK_LBUTTON            As Long = &H1
 Private Const SB_LINEUP             As Long = 0
 Private Const SB_LINEDOWN           As Long = 1
 Private Const SB_PAGEDOWN           As Long = 3
@@ -104,6 +107,7 @@ Private Sub Form_Load()
     pvTestKeyNav
     pvTestMouse
     pvTestSelection
+    pvTestKeyPressDrag
     pvTestSnapshotCorpus
 QH:
     TestsDone
@@ -532,6 +536,31 @@ End Sub
 Private Function pvMakeLong(ByVal lLo As Long, ByVal lHi As Long) As Long
     pvMakeLong = (lLo And &HFFFF&) Or (lHi * &H10000)
 End Function
+
+Private Sub pvTestKeyPressDrag()
+    Dim oForm           As frmWeak
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("A").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 50
+        .MultiSelect = True
+        .Rebind
+        '--- WM_CHAR raises KeyPress with the character code
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_CHAR, 65, 0
+        AssertEquals "KeyPress: WM_CHAR raises KeyPress(65)", "Press(65);", oForm.EventLog
+        '--- left-button drag over rows extends the selection range from the
+        '--- mouse-down anchor (row 1 after bind) to the row under the cursor
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, pvMakeLong(30, 80)
+        Assert "Drag: row under cursor selected", .RowSelected(2)
+        Assert "Drag: anchor row still selected", .RowSelected(1)
+        Assert "Drag: row past cursor not selected", Not .RowSelected(4)
+    End With
+    Unload oForm
+End Sub
 
 Private Sub pvTestSelection()
     Dim oForm           As frmWeak

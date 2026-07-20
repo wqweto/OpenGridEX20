@@ -79,6 +79,11 @@ Public Function RunScenario(sProgId As String, oScenario As Object, baBits() As 
         ImportObject m_oExt.Object, m_sClass, C2Obj(JsonValue(oScenario, "post"))
         DoEvents
     End If
+    '--- row selection: select the listed 1-based row positions
+    If Not C2Obj(JsonValue(oScenario, "select")) Is Nothing Then
+        pvSelectRows C2Obj(JsonValue(oScenario, "select"))
+        DoEvents
+    End If
     '--- capture the control window itself; fall back to the form client
     lHwnd = pvControlHwnd()
     If lHwnd = 0 Then
@@ -236,6 +241,29 @@ Private Sub pvLogError(sText As String)
     Open App.Path & "\output\host-errors.log" For Append As #lFile
     Print #lFile, sText
     Close #lFile
+End Sub
+
+Private Sub pvSelectRows(oList As Object)
+    Const FUNC_NAME     As String = "pvSelectRows"
+    Dim lCount          As Long
+    Dim lIdx            As Long
+    Dim oGrid           As Object
+
+    On Error GoTo EH
+    lCount = C2Lng(JsonValue(oList, "-1"))
+    If lCount = 0 Then
+        Exit Sub
+    End If
+    Set oGrid = m_oExt.Object
+    oGrid.MultiSelect = (lCount > 1)
+    oGrid.SelectedItems.Clear
+    For lIdx = 0 To lCount - 1
+        oGrid.SelectedItems.Add C2Lng(JsonValue(oList, lIdx))
+    Next
+    oGrid.Refresh
+    Exit Sub
+EH:
+    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
 End Sub
 
 Private Sub pvTrySet(sProp As String, ByVal vValue As Variant)
