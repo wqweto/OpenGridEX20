@@ -42,6 +42,7 @@ Private m_eDrawModeBackGround       As jgexDrawModePictureBackgroundConstants
 Private m_ePictureHorzAlignment     As jgexHorzPictureAlignmentConstants
 Private m_ePictureVertAlignment     As jgexVertPictureAlignmentConstants
 Private m_ePictureDrawMode          As jgexPictureDrawModeConstants
+Private m_bIsSystem                 As Boolean
 
 '=========================================================================
 ' Properties
@@ -223,6 +224,14 @@ End Sub
 Friend Sub frInit(sName As String)
     m_sName = sName
 End Sub
+
+Friend Property Get frIsSystem() As Boolean
+    frIsSystem = m_bIsSystem
+End Property
+
+Friend Property Let frIsSystem(ByVal bValue As Boolean)
+    m_bIsSystem = bValue
+End Property
 
 '=========================================================================
 ' Functions

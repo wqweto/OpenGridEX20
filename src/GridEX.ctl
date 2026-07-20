@@ -608,6 +608,7 @@ Private m_bAutomaticSort            As Boolean
 Private m_lPreviewRowIndent         As Long
 Private m_bAllowRowSizing           As Boolean
 Private m_pSubclass                 As IUnknown
+Private m_lSelAnchor                As Long
 
 '--- per-row virtual storage behind JSRowData wrappers
 Private Type UcsCellData
@@ -722,9 +723,23 @@ End Property
 
 Public Property Get RowSelected(ByVal RowPosition As Long) As Boolean
 Attribute RowSelected.VB_Description = "Returns/set whether a row is selected or not."
+    RowSelected = pvIsRowSelected(RowPosition)
 End Property
 
 Public Property Let RowSelected(ByVal RowPosition As Long, ByVal bValue As Boolean)
+    If bValue Then
+        If Not pvIsRowSelected(RowPosition) Then
+            pvAddSel RowPosition
+            RaiseEvent SelectionChange
+            pvInvalidate
+        End If
+    Else
+        If pvIsRowSelected(RowPosition) Then
+            m_oSelectedItems.RemoveRowPosition RowPosition
+            RaiseEvent SelectionChange
+            pvInvalidate
+        End If
+    End If
 End Property
 
 Public Property Get SortKeys() As JSSortKeys
@@ -1852,13 +1867,18 @@ Public Sub Rebind(Optional HoldSortSettings As Variant)
 Attribute Rebind.VB_Description = "Forces re-creation of the recordset."
     pvResetRows True
     pvApplyHoldSort HoldSortSettings
-    '--- binding positions the current cell on the first row/column
+    '--- binding positions the current cell on the first row/column and
+    '--- selects it (matches the original after a bind)
+    m_oSelectedItems.Clear
     If RowCount > 0 Then
         m_lRow = 1
         m_lFirstItem = 1
+        pvAddSel 1
+        m_lSelAnchor = 1
     Else
         m_lRow = 0
         m_lFirstItem = 0
+        m_lSelAnchor = 0
     End If
     If m_oColumns.Count > 0 Then
         m_nCol = 1
@@ -2329,10 +2349,9 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
     Dim lW              As Long
     Dim sText           As String
 
-    bSelected = (lRow = m_lRow)
+    bSelected = pvIsRowSelected(lRow)
     If bSelected Then
-        clrBack = vbHighlight
-        clrText = vbHighlightText
+        pvSelColors clrBack, clrText
     ElseIf m_bUseEvenOddColor Then
         If lRow Mod 2 = 0 Then
             clrBack = m_clrRowColorEven
@@ -2511,6 +2530,21 @@ Private Function pvColor(ByVal clrValue As OLE_COLOR) As Long
     Call OleTranslateColor(clrValue, 0, pvColor)
 End Function
 
+Private Sub pvSelColors(clrBack As OLE_COLOR, clrFore As OLE_COLOR)
+    Dim oStyle          As JSFormatStyle
+
+    '--- selected-row colors come from the SelectedRow FormatStyle, with a
+    '--- system-highlight fallback if the style has been removed
+    Set oStyle = m_oFormatStyles.frItemOrNothing("SelectedRow")
+    If oStyle Is Nothing Then
+        clrBack = vbHighlight
+        clrFore = vbHighlightText
+    Else
+        clrBack = oStyle.BackColor
+        clrFore = oStyle.ForeColor
+    End If
+End Sub
+
 Private Sub pvFillRect(ByVal hDC As Long, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long, ByVal clrFill As OLE_COLOR)
     Dim uRect           As RECT
     Dim hBrush          As Long
@@ -2569,34 +2603,6 @@ Private Function pvSelectFont(ByVal hDC As Long, oFont As Font) As Long
     pvSelectFont = SelectObject(hDC, pFont.hFont)
 End Function
 
-Private Sub pvInitFormatStyles()
-    '--- built-in styles present on a fresh original control
-    With m_oFormatStyles.Add("Default")
-        .BackColor = vbWindowBackground
-        .ForeColor = vbWindowText
-    End With
-    With m_oFormatStyles.Add("OddRow")
-        .BackColor = &HBFFFFF
-        .ForeColor = vbWindowText
-    End With
-    With m_oFormatStyles.Add("EvenRow")
-        .BackColor = &HC1D7B0
-        .ForeColor = vbWindowText
-    End With
-    With m_oFormatStyles.Add("RowGroup")
-        .BackColor = vbButtonFace
-        .ForeColor = vbButtonText
-    End With
-    With m_oFormatStyles.Add("PreviewRow")
-        .BackColor = vbWindowBackground
-        .ForeColor = &HFF0000
-    End With
-    With m_oFormatStyles.Add("SelectedRow")
-        .BackColor = vbHighlight
-        .ForeColor = vbHighlightText
-    End With
-End Sub
-
 Private Sub pvSubclass()
     Set m_pSubclass = InitSubclassingThunk(hWnd, Me, pvAddressOfSubclassProc.ControlSubclassProc(0, 0, 0, 0, 0))
 End Sub
@@ -2618,10 +2624,10 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         nKeyCode = CInt(wParam And &HFFFF&)
         nShift = pvShiftState()
         RaiseEvent KeyDown(nKeyCode, nShift)
-        pvOnKeyDown nKeyCode
+        pvOnKeyDown nKeyCode, nShift
     Case WM_LBUTTONDOWN
         RaiseEvent MouseDown(vbLeftButton, pvMouseShift(wParam), pvLoWord(lParam), pvHiWord(lParam))
-        pvOnLButtonDown pvLoWord(lParam), pvHiWord(lParam)
+        pvOnLButtonDown pvLoWord(lParam), pvHiWord(lParam), pvMouseShift(wParam)
     Case WM_LBUTTONUP
         RaiseEvent MouseUp(vbLeftButton, pvMouseShift(wParam), pvLoWord(lParam), pvHiWord(lParam))
         RaiseEvent Click
@@ -2696,7 +2702,7 @@ Private Function pvColAtX(ByVal lX As Long, oCol As JSColumn) As Integer
     Next
 End Function
 
-Private Sub pvOnLButtonDown(ByVal lX As Long, ByVal lY As Long)
+Private Sub pvOnLButtonDown(ByVal lX As Long, ByVal lY As Long, ByVal nShift As Integer)
     Dim lTopGbox        As Long
     Dim lTopHdr         As Long
     Dim nPos            As Integer
@@ -2723,23 +2729,20 @@ Private Sub pvOnLButtonDown(ByVal lX As Long, ByVal lY As Long)
         lRow = m_lFirstItem + (lY - lTopHdr) \ m_lRowHeight
         nPos = pvColAtX(lX, oCol)
         If lRow >= 1 And lRow <= RowCount And nPos >= 1 Then
-            Row = lRow
-            Col = nPos
+            pvNavigate lRow, nPos, nShift, (nShift And vbCtrlMask) <> 0
         End If
     End If
 End Sub
 
-Private Sub pvOnKeyDown(ByVal nKeyCode As Integer)
+Private Sub pvOnKeyDown(ByVal nKeyCode As Integer, ByVal nShift As Integer)
     Select Case nKeyCode
     Case vbKeyDown
         If m_lRow < RowCount Then
-            Row = m_lRow + 1
-            EnsureVisible m_lRow
+            pvNavigate m_lRow + 1, m_nCol, nShift, False
         End If
     Case vbKeyUp
         If m_lRow > 1 Then
-            Row = m_lRow - 1
-            EnsureVisible m_lRow
+            pvNavigate m_lRow - 1, m_nCol, nShift, False
         End If
     Case vbKeyRight
         If m_nCol < pvVisibleColCount() Then
@@ -2750,18 +2753,97 @@ Private Sub pvOnKeyDown(ByVal nKeyCode As Integer)
             Col = m_nCol - 1
         End If
     Case vbKeyPageDown
-        Row = pvClampRow(m_lRow + pvVisibleRows())
-        EnsureVisible m_lRow
+        pvNavigate pvClampRow(m_lRow + pvVisibleRows()), m_nCol, nShift, False
     Case vbKeyPageUp
-        Row = pvClampRow(m_lRow - pvVisibleRows())
-        EnsureVisible m_lRow
+        pvNavigate pvClampRow(m_lRow - pvVisibleRows()), m_nCol, nShift, False
     Case vbKeyHome
-        Row = pvClampRow(1)
-        EnsureVisible m_lRow
+        pvNavigate pvClampRow(1), m_nCol, nShift, False
     Case vbKeyEnd
-        Row = pvClampRow(RowCount)
-        EnsureVisible m_lRow
+        pvNavigate pvClampRow(RowCount), m_nCol, nShift, False
     End Select
+End Sub
+
+'--- moves the current cell and updates the selection accordingly
+Private Sub pvNavigate(ByVal lRow As Long, ByVal nCol As Integer, ByVal nShift As Integer, ByVal bCtrlToggle As Boolean)
+    If lRow >= 1 And lRow <= RowCount Then
+        Row = lRow
+    End If
+    If nCol >= 1 Then
+        Col = nCol
+    End If
+    pvUpdateSelection m_lRow, nShift, bCtrlToggle
+    EnsureVisible m_lRow
+End Sub
+
+Private Sub pvUpdateSelection(ByVal lRow As Long, ByVal nShift As Integer, ByVal bCtrlToggle As Boolean)
+    If lRow < 1 Or lRow > RowCount Then
+        Exit Sub
+    End If
+    If m_bMultiSelect And bCtrlToggle Then
+        pvToggleSel lRow
+    ElseIf m_bMultiSelect And (nShift And vbShiftMask) <> 0 Then
+        pvSetRangeSel m_lSelAnchor, lRow
+    Else
+        pvSetSingleSel lRow
+    End If
+End Sub
+
+Private Function pvIsRowSelected(ByVal lPos As Long) As Boolean
+    Dim oItem           As JSSelectedItem
+
+    For Each oItem In m_oSelectedItems
+        If oItem.RowPosition = lPos Then
+            pvIsRowSelected = True
+            Exit Function
+        End If
+    Next
+End Function
+
+Private Sub pvAddSel(ByVal lPos As Long)
+    pvEnsureRow lPos
+    m_oSelectedItems.frAdd lPos, m_aRows(lPos).Bookmark, lPos
+End Sub
+
+Private Sub pvSetSingleSel(ByVal lPos As Long)
+    m_oSelectedItems.Clear
+    pvAddSel lPos
+    m_lSelAnchor = lPos
+    RaiseEvent SelectionChange
+    pvInvalidate
+End Sub
+
+Private Sub pvToggleSel(ByVal lPos As Long)
+    If pvIsRowSelected(lPos) Then
+        m_oSelectedItems.RemoveRowPosition lPos
+    Else
+        pvAddSel lPos
+    End If
+    m_lSelAnchor = lPos
+    RaiseEvent SelectionChange
+    pvInvalidate
+End Sub
+
+Private Sub pvSetRangeSel(ByVal lFrom As Long, ByVal lTo As Long)
+    Dim lLo             As Long
+    Dim lHi             As Long
+    Dim lIdx            As Long
+
+    If lFrom = 0 Then
+        lFrom = lTo
+    End If
+    If lFrom <= lTo Then
+        lLo = lFrom
+        lHi = lTo
+    Else
+        lLo = lTo
+        lHi = lFrom
+    End If
+    m_oSelectedItems.Clear
+    For lIdx = lLo To lHi
+        pvAddSel lIdx
+    Next
+    RaiseEvent SelectionChange
+    pvInvalidate
 End Sub
 
 Private Sub pvOnVScroll(ByVal lCode As Long)
@@ -2875,7 +2957,6 @@ Private Sub UserControl_Initialize()
     m_sCalendarNoneText = "None"
     m_sGroupByBoxInfoText = "Drag a column header here to group by that column."
     m_sRecordNavigatorString = "Record:|of"
-    pvInitFormatStyles
 End Sub
 
 Private Sub UserControl_InitProperties()

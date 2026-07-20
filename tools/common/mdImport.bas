@@ -198,7 +198,12 @@ Private Function pvAddItem(oColl As Object, sItemClass As String, oItemJson As O
         Set pvAddItem = CallByName(oColl, "Add", VbMethod, JsonValue(oItemJson, "Value"), _
                 C2Str(JsonValue(oItemJson, "Text")), JsonValue(oItemJson, "IconIndex"))
     Case "JSFormatStyle"
-        Set pvAddItem = CallByName(oColl, "Add", VbMethod, C2Str(JsonValue(oItemJson, "Name")))
+        '--- system styles survive the collection Clear and cannot be
+        '--- re-added, so upsert: reuse an existing style by name
+        Set pvAddItem = pvExistingItem(oColl, C2Str(JsonValue(oItemJson, "Name")))
+        If pvAddItem Is Nothing Then
+            Set pvAddItem = CallByName(oColl, "Add", VbMethod, C2Str(JsonValue(oItemJson, "Name")))
+        End If
     Case "JSGridImage"
         AssignVariant vValue, JsonValue(oItemJson, "Picture")
         If IsObject(vValue) Then
@@ -209,6 +214,13 @@ Private Function pvAddItem(oColl As Object, sItemClass As String, oItemJson As O
             End If
         End If
     End Select
+End Function
+
+Private Function pvExistingItem(oColl As Object, sName As String) As Object
+    '--- non-raising "Item by key or Nothing"
+    On Error Resume Next
+    Set pvExistingItem = CallByName(oColl, "Item", VbGet, sName)
+    On Error GoTo 0
 End Function
 
 Private Sub pvTrace(sText As String)

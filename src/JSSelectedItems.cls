@@ -113,6 +113,10 @@ Attribute Clear.VB_Description = "Removes all selected rows in the collection."
     Set m_cItems = New Collection
 End Sub
 
+Friend Sub frAdd(ByVal RowPosition As Long, vBookmark As Variant, ByVal RowIndex As Long)
+    pvAdd vBookmark, RowIndex, RowPosition
+End Sub
+
 Private Sub pvAdd(vBookmark As Variant, ByVal lRowIndex As Long, ByVal lRowPosition As Long)
     Dim oItem           As JSSelectedItem
 

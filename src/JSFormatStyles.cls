@@ -61,12 +61,54 @@ End Function
 
 Public Sub Remove(ByVal Index As Variant)
 Attribute Remove.VB_Description = "Removes a specific member from the collection."
+    Dim oStyle          As JSFormatStyle
+
+    '--- the built-in system styles are protected, as in the original;
+    '--- the typed local keeps the Friend access early-bound
+    Set oStyle = m_cItems.Item(Index)
+    If oStyle.frIsSystem Then
+        Err.Raise 380 '--- Invalid property value
+    End If
     m_cItems.Remove Index
 End Sub
 
 Public Sub Clear()
 Attribute Clear.VB_Description = "Removes all the JSFormatStyle objects from the collection."
-    Set m_cItems = New Collection
+    Dim lIdx            As Long
+    Dim oStyle          As JSFormatStyle
+
+    '--- Clear keeps the built-in system styles (matches the original)
+    For lIdx = m_cItems.Count To 1 Step -1
+        Set oStyle = m_cItems.Item(lIdx)
+        If Not oStyle.frIsSystem Then
+            m_cItems.Remove lIdx
+        End If
+    Next
+End Sub
+
+'=========================================================================
+' Friend methods
+'=========================================================================
+
+Friend Function frItemOrNothing(sName As String) As JSFormatStyle
+    Dim vItem           As Variant
+
+    '--- non-raising lookup so painting stays Break-on-All-Errors safe
+    If SearchCollection(m_cItems, sName, vItem) Then
+        Set frItemOrNothing = vItem
+    End If
+End Function
+
+'=========================================================================
+' Functions
+'=========================================================================
+
+Private Sub pvAddSystem(sName As String, ByVal clrBack As OLE_COLOR, ByVal clrFore As OLE_COLOR)
+    With Add(sName)
+        .frIsSystem = True
+        .BackColor = clrBack
+        .ForeColor = clrFore
+    End With
 End Sub
 
 '=========================================================================
@@ -75,4 +117,13 @@ End Sub
 
 Private Sub Class_Initialize()
     Set m_cItems = New Collection
+    '--- built-in styles present on a fresh original control; protected
+    '--- from Remove and preserved across Clear; creation order matches
+    '--- the original (SelectedRow first)
+    pvAddSystem "SelectedRow", vbHighlight, vbHighlightText
+    pvAddSystem "Default", vbWindowBackground, vbWindowText
+    pvAddSystem "OddRow", &HBFFFFF, vbWindowText
+    pvAddSystem "EvenRow", &HC1D7B0, vbWindowText
+    pvAddSystem "RowGroup", vbButtonFace, vbButtonText
+    pvAddSystem "PreviewRow", vbWindowBackground, &HFF0000
 End Sub

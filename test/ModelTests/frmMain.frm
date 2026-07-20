@@ -103,6 +103,7 @@ Private Sub Form_Load()
     pvTestScroll
     pvTestKeyNav
     pvTestMouse
+    pvTestSelection
     pvTestSnapshotCorpus
 QH:
     TestsDone
@@ -170,18 +171,30 @@ Private Sub pvTestValueList()
 End Sub
 
 Private Sub pvTestFormatStyles()
+    Dim lErr            As Long
+
     With GridEX1.FormatStyles
         AssertEquals "FormatStyles: 6 built-in styles", 6, .Count
         AssertEquals "FormatStyles: built-in EvenRow color", &HC1D7B0, .Item("EvenRow").BackColor
-        .Clear
+        '--- system styles are protected from Remove (error 380)
+        On Error Resume Next
+        Err.Clear
+        .Remove "SelectedRow"
+        lErr = Err.Number
+        On Error GoTo 0
+        AssertEquals "FormatStyles: Remove system raises 380", 380, lErr
+        AssertEquals "FormatStyles: system count unchanged", 6, .Count
+        '--- user styles add on top of the system ones
         .Add("Header").FontBold = True
         .Add "Totals"
-        AssertEquals "FormatStyles.Count", 2, .Count
+        AssertEquals "FormatStyles: count with user styles", 8, .Count
         AssertEquals "Item(Header).FontBold", True, .Item("Header").FontBold
-        AssertEquals "Item(1).Name", "Header", .Item(1).Name
         .Remove "Header"
-        AssertEquals "Count after Remove", 1, .Count
+        AssertEquals "FormatStyles: count after user Remove", 7, .Count
+        '--- Clear drops user styles but keeps the system ones
         .Clear
+        AssertEquals "FormatStyles: Clear keeps system styles", 6, .Count
+        AssertEquals "FormatStyles: SelectedRow survives Clear", "SelectedRow", .Item("SelectedRow").Name
     End With
 End Sub
 
@@ -519,6 +532,37 @@ End Sub
 Private Function pvMakeLong(ByVal lLo As Long, ByVal lHi As Long) As Long
     pvMakeLong = (lLo And &HFFFF&) Or (lHi * &H10000)
 End Function
+
+Private Sub pvTestSelection()
+    Dim oForm           As frmWeak
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add "A"
+        .DataMode = jgexUnbound
+        .ItemCount = 50
+        .Rebind
+        '--- binding selects the first row
+        Assert "Sel: row 1 selected after Rebind", .RowSelected(1)
+        Assert "Sel: row 2 not selected", Not .RowSelected(2)
+        '--- RowSelected Let drives selection and fires SelectionChange
+        .MultiSelect = True
+        oForm.EventLog = vbNullString
+        .RowSelected(3) = True
+        Assert "Sel: row 3 selected via property", .RowSelected(3)
+        Assert "Sel: row 1 still selected (multi)", .RowSelected(1)
+        AssertEquals "Sel: SelectionChange fired once", "Sel;", oForm.EventLog
+        '--- setting the same value again is a no-op (no event)
+        oForm.EventLog = vbNullString
+        .RowSelected(3) = True
+        AssertEquals "Sel: no event when unchanged", vbNullString, oForm.EventLog
+        .RowSelected(3) = False
+        Assert "Sel: row 3 deselected", Not .RowSelected(3)
+        AssertEquals "Sel: deselect fires event", "Sel;", oForm.EventLog
+    End With
+    Unload oForm
+End Sub
 
 Private Sub pvTestSnapshotCorpus()
     Const FUNC_NAME     As String = "pvTestSnapshotCorpus"

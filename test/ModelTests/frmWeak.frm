@@ -79,3 +79,7 @@ End Sub
 Private Sub GridEX1_ColumnHeaderClick(ByVal Column As JSColumn)
     EventLog = EventLog & "HdrClick(" & Column.Caption & ");"
 End Sub
+
+Private Sub GridEX1_SelectionChange()
+    EventLog = EventLog & "Sel;"
+End Sub
