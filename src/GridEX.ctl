@@ -966,7 +966,13 @@ Attribute LeftCol.VB_Description = "Returns/sets the left-most visible column."
 End Property
 
 Public Property Let LeftCol(ByVal nValue As Integer)
-    m_nLeftCol = nValue
+    If m_nLeftCol <> nValue Then
+        m_nLeftCol = nValue
+        '--- painting starts at the left-most column, so scrolling repaints
+        pvInvalidate
+        pvUpdateScrollBars
+        RaiseEvent LeftColChange
+    End If
 End Property
 
 Public Property Get ColumnHeaderFont() As Font
@@ -2223,7 +2229,7 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
         pvPaintHeaderCell hDC, 0, lY, 18, lHdrH, vbNullString, jgexAlignLeft
         lX = 18
     End If
-    For nIdx = 1 To m_oColumns.Count
+    For nIdx = pvFirstCol() To m_oColumns.Count
         Set oCol = m_oColumns.ItemByPosition(nIdx)
         If oCol.Visible Then
             lW = ToPixels(oCol.Width)
@@ -2285,7 +2291,7 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
     If m_bRowHeaders Then
         lHdrW = 18
     End If
-    For nIdx = 1 To m_oColumns.Count
+    For nIdx = pvFirstCol() To m_oColumns.Count
         Set oCol = m_oColumns.ItemByPosition(nIdx)
         If oCol.Visible Then
             lTotalW = lTotalW + ToPixels(oCol.Width)
@@ -2341,7 +2347,7 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
         End If
         '--- vertical gridlines over the rows block
         If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLVertical Then
-            For nIdx = 1 To m_oColumns.Count
+            For nIdx = pvFirstCol() To m_oColumns.Count
                 Set oCol = m_oColumns.ItemByPosition(nIdx)
                 If oCol.Visible Then
                     lCum = lCum + ToPixels(oCol.Width)
@@ -2356,7 +2362,9 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
     End If
     '--- separator strip the original draws along the bottom edge when the
     '--- horizontal scrollbar takes over the last client row
-    If lHdrW + lTotalW > ScaleWidth Then
+    '--- gauged on every column, not just those visible from LeftCol: the
+    '--- scrollbar is what puts the strip there and it depends on the total
+    If lHdrW + pvTotalColWidth() > ScaleWidth Then
         pvLine hDC, 0, ScaleHeight - 1, ScaleWidth, ScaleHeight - 1, m_clrBackColorHeader, PS_SOLID
     End If
 End Sub
@@ -2407,7 +2415,7 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         End If
     End If
     lX = lHdrW
-    For nIdx = 1 To m_oColumns.Count
+    For nIdx = pvFirstCol() To m_oColumns.Count
         Set oCol = m_oColumns.ItemByPosition(nIdx)
         If oCol.Visible Then
             lW = ToPixels(oCol.Width)
@@ -2484,7 +2492,7 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
         End If
         hPrevBrush = SelectObject(hDC, hBrush)
         lCum = lHdrW
-        For nIdx = 1 To m_oColumns.Count
+        For nIdx = pvFirstCol() To m_oColumns.Count
             Set oCol = m_oColumns.ItemByPosition(nIdx)
             If oCol.Visible Then
                 lW = ToPixels(oCol.Width)
@@ -2618,6 +2626,18 @@ Private Function pvVisibleRows() As Long
     End If
     If pvVisibleRows < 1 Then
         pvVisibleRows = 1
+    End If
+End Function
+
+Private Function pvFirstCol() As Integer
+    '--- the left-most visible column: horizontal scrolling moves whole
+    '--- columns, so painting and hit-testing simply start here
+    pvFirstCol = m_nLeftCol
+    If pvFirstCol < 1 Then
+        pvFirstCol = 1
+    End If
+    If pvFirstCol > m_oColumns.Count Then
+        pvFirstCol = m_oColumns.Count
     End If
 End Function
 
@@ -2900,10 +2920,7 @@ Private Sub pvDrawText(ByVal hDC As Long, sText As String, ByVal lLeft As Long, 
     Call RestoreDC(hDC, lSaved)
 End Sub
 
-Private Function pvSelectFont(ByVal hDC As Long, oFont As Font) As Long
-    Dim pFont           As IFont
-
-    Set pFont = oFont
+Private Function pvSelectFont(ByVal hDC As Long, pFont As IFont) As Long
     pvSelectFont = SelectObject(hDC, pFont.hFont)
 End Function
 
@@ -2942,6 +2959,8 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
     Select Case wMsg
     Case WM_VSCROLL
         pvOnVScroll wParam And &HFFFF&
+    Case WM_HSCROLL
+        pvOnHScroll wParam And &HFFFF&
         Handled = True
     Case WM_KEYDOWN
         nKeyCode = CInt(wParam And &HFFFF&)
@@ -3049,7 +3068,7 @@ Private Function pvColAtX(ByVal lX As Long, oCol As JSColumn) As Integer
     If m_bRowHeaders Then
         lCum = 18
     End If
-    For nIdx = 1 To m_oColumns.Count
+    For nIdx = pvFirstCol() To m_oColumns.Count
         Set oItem = m_oColumns.ItemByPosition(nIdx)
         If oItem.Visible Then
             nPos = nPos + 1
@@ -3219,6 +3238,47 @@ Private Sub pvSetRangeSel(ByVal lFrom As Long, ByVal lTo As Long)
     RaiseEvent SelectionChange
     pvInvalidate
 End Sub
+
+Private Sub pvOnHScroll(ByVal lCode As Long)
+    Dim uSi             As SCROLLINFO
+    Dim lPage           As Long
+
+    '--- LeftCol is 1-based while the scrollbar position is 0-based
+    Select Case lCode
+    Case SB_LINELEFT
+        LeftCol = pvClampCol(pvFirstCol() - 1)
+    Case SB_LINERIGHT
+        LeftCol = pvClampCol(pvFirstCol() + 1)
+    Case SB_PAGELEFT, SB_PAGERIGHT
+        uSi.cbSize = Len(uSi)
+        uSi.fMask = SIF_PAGE
+        Call GetScrollInfo(UserControl.hWnd, SB_HORZ, uSi)
+        lPage = uSi.nPage
+        If lPage < 1 Then
+            lPage = 1
+        End If
+        If lCode = SB_PAGELEFT Then
+            LeftCol = pvClampCol(pvFirstCol() - lPage)
+        Else
+            LeftCol = pvClampCol(pvFirstCol() + lPage)
+        End If
+    Case SB_THUMBPOSITION, SB_THUMBTRACK
+        uSi.cbSize = Len(uSi)
+        uSi.fMask = SIF_TRACKPOS
+        Call GetScrollInfo(UserControl.hWnd, SB_HORZ, uSi)
+        LeftCol = pvClampCol(uSi.nTrackPos + 1)
+    End Select
+End Sub
+
+Private Function pvClampCol(ByVal nValue As Integer) As Integer
+    pvClampCol = nValue
+    If pvClampCol < 1 Then
+        pvClampCol = 1
+    End If
+    If pvClampCol > m_oColumns.Count Then
+        pvClampCol = m_oColumns.Count
+    End If
+End Function
 
 Private Sub pvOnVScroll(ByVal lCode As Long)
     Dim uSi             As SCROLLINFO

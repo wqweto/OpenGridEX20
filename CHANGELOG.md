@@ -140,6 +140,13 @@ All notable changes to this project will be documented in this file.
   - a dashed gridline's phase keeps running past the last row instead of restarting, so the block's closing line sits at offset `RowHeight` in the 6px cycle: `19 mod 6 = 1` draws it at 96dpi, `22 mod 6 = 4` leaves it blank at 144dpi. Only visible because the corpus spans both scales -- the reset-every-row version looked correct at 96dpi alone
   - assigning `Row` from outside collapses the selection onto that row and repaints; navigation and drag now go through a private `pvSetRow` that leaves the selection alone, which is what keeps `SelectionChange` ordering and the drag anchor intact
 
+### Added (M3d -- horizontal scrolling)
+
+- Columns scroll horizontally: painting and hit-testing start at `pvFirstCol` instead of column 1, `WM_HSCROLL` is handled (line/page/thumb) through `pvOnHScroll`, and `LeftCol` repaints, refreshes the scrollbar and raises the previously-declared-but-never-fired `LeftColChange`. Scrolling moves whole columns, as the original does -- the `hscrolled` golden shows column 3 flush against the row header, with no partial column
+- The bottom separator strip is gauged on the width of *every* column rather than those visible from `LeftCol`: the horizontal scrollbar is what puts the strip there, and it depends on the total
+- `LeftCol` was the last property the renderer only partly consumed, so the paint matrix is now **43 of 126 verified with nothing weak, unverified or partial** -- M6 complete
+- `make.bat` and `record.bat` take an optional scenario mask (`make.bat hscrolled`, `record.bat gridlines-*`), which the harness already supported but the scripts never passed on. A single-scenario check runs in about a second against a couple of minutes for the corpus
+
 ### Changed
 
 - `PAINT-PROPERTIES.md`: alphabetical matrix of all 126 properties that affect painting -- the direct `GridEX` members plus the `JSColumn` and `JSFormatStyle` sub-properties -- with type, status, consuming paint routine, owning milestone, the commit where it started affecting pixels and the covering test. The bar for **verified** is two or more distinct values rendered and pixel-matched against the original: 43 properties are read by the paint path, only 19 clear that bar, 15 have no covering test at all and 83 are not implemented. `GridLinesColor` is the worked example: consumed by `pvLine` since M3c and set to `0x0000FF` by `gridlines-dots-colors`, yet that scenario declares no rows, so no data gridline is drawn and the golden holds no blue pixel

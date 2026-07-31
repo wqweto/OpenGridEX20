@@ -32,10 +32,10 @@ gridline is ever drawn and the golden's full colour histogram
 
 | | count | share |
 |---|---:|---:|
-| verified | 42 | 33% |
+| verified | 43 | 34% |
 | weak | 0 | 0% |
 | unverified | 0 | 0% |
-| partial | 1 | 1% |
+| partial | 0 | 0% |
 | **not implemented** | **83** | **66%** |
 | **total** | **126** | |
 
@@ -43,9 +43,9 @@ gridline is ever drawn and the golden's full colour histogram
 implemented** -- they store and return their value, and round-trip through the
 snapshot corpus, but the renderer never looks at them.
 
-**Every property the renderer reads is now proven** against the original at two or
-more distinct values, except `LeftCol`, which is only partly consumed because
-horizontal scrolling is unimplemented.
+**Every property the renderer reads is proven** against the original at two or
+more distinct values. The 83 that remain are unimplemented, each owned by a later
+milestone.
 
 Getting there took eight scenarios and turned up **eleven** real defects. Each had
 survived because the corpus could not see it: solid gridlines hide both dotted
@@ -179,7 +179,7 @@ the M2 storage commit, so that hash carries no information about painting.
 | `JSFormatStyle.PictureHorzAlignment` | `jgexHorzPictureAlignmentConstants` | **not impl** | -- | M9 | -- | -- |
 | `JSFormatStyle.PictureVertAlignment` | `jgexVertPictureAlignmentConstants` | **not impl** | -- | M9 | -- | -- |
 | `JSFormatStyle.TextAlignment` | `jgexAlignmentConstants` | **not impl** | -- | M9 | -- | -- |
-| `LeftCol` | `Integer` | **partial** | `pvUpdateScrollBars` only | M3d | [`e95c15e`](../../commit/e95c15e1b1d35f09c9bbe557228ddc1329ed6c6f) | sets the horizontal thumb; the paint path ignores it, so columns do not scroll |
+| `LeftCol` | `Integer` | verified | `pvPaintRows`, `pvPaintDataRow`, `pvPaintHeaders`, `pvUpdateScrollBars` | M3d | [`e95c15e`](../../commit/e95c15e1b1d35f09c9bbe557228ddc1329ed6c6f) | `hscrolled` scrolls to column 3; column 1 elsewhere |
 | `MaskColor` | `OLE_COLOR` | **not impl** | -- | M9 | -- | -- |
 | `MultiSelect` | `jgexMultiSelectConstants` | verified | input path, rendered via `pvIsRowSelected` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `multiselect` (contiguous 2-4) and `gridlines-vertical` (disjoint 1/3/6) |
 | `NewRowPos` | `jgexNewRowPositionConstants` | **not impl** | -- | M5 | -- | -- |
@@ -235,8 +235,13 @@ geometry is perfect -- the tell is a diff whose only pairs are the accent and it
 XOR complement. Re-record rather than debug. `golden/144` currently holds the
 older accent and wants a re-record next time the machine is at 150%.
 
-What remains for M6: **`LeftCol`** stays `partial` until horizontal scrolling
-lands (M3d remainder).
+M6 is complete. Horizontal scrolling landed with it, since `LeftCol` was the one
+property the renderer only partly consumed.
+
+Both harness scripts take an optional scenario mask -- `make.bat hscrolled`,
+`record.bat gridlines-*` -- which cuts a single-scenario check to about a second
+against a couple of minutes for the corpus. Recording is the slow half of the
+loop, so scenarios are also packed 5-6 properties each.
 
 One rule is recorded as an empirical table rather than a derivation: where the
 row header's border pair lands per `GridLines` value (`Vertical` +1,
