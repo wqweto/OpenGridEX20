@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 - `IObjectSafety` implementation on both controls reporting safe for scripting/initialization
 - `src/make.bat` build script which restores CRLF line endings and compiles `OpenGridEX20.vbp` with VB6
 - Project README with repository layout and build instructions
-- `ROADMAP.md` with implementation milestones M0-M10 and testing strategy
+- `ROADMAP.md` with implementation milestones M0-M11 and testing strategy
 - `tools/DumpSurface.vbs` typelib surface dumper (TLI based) for source-compatibility checks against `doc/GridEX20.idl`
 - `tools/CompareIdl.ps1` source-compatibility gate: canonical diff of `doc/OpenGridEX20.idl` (OleView dump of the built OCX) against `doc/GridEX20.idl`; currently passes with zero differences
 - Snapshot engine (M1): `tools/GenProfiles.ps1` generates `tools/common/mdProfiles.bas` (267 property profiles parsed from the stubs incl. runtime-only/collection classification), `tools/common/mdSnapshot.bas` profile-driven late-bound object model walker building `mdJson.bas` documents, JSON schema frozen in `tools/common/SCHEMA.md` (all JSON goes through `mdJson.bas` using its canonical idioms; `$schema`/`$errors` meta keys addressed via JSONPath dot form `$.$schema`)
@@ -122,5 +122,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- `PAINT-PROPERTIES.md`: alphabetical matrix of all 126 properties that affect painting -- the direct `GridEX` members plus the `JSColumn` and `JSFormatStyle` sub-properties -- with type, status, consuming paint routine, owning milestone, the commit where it started affecting pixels and the covering test. The bar for **verified** is two or more distinct values rendered and pixel-matched against the original: 43 properties are read by the paint path, only 19 clear that bar, 15 have no covering test at all and 83 are not implemented. `GridLinesColor` is the worked example: consumed by `pvLine` since M3c and set to `0x0000FF` by `gridlines-dots-colors`, yet that scenario declares no rows, so no data gridline is drawn and the golden holds no blue pixel
+- `ROADMAP.md`: new **M6 -- Paint property matrix** gating the milestone formerly numbered M6 (ADO binding, now M7; persistence M8, styling M9, printing M10, long tail M11), so binding is built on a verified renderer. It also records a two gaps the audit exposed: card view (`View`, `CardBorders`, `CardCaptionPrefix`, `CardWidth`, `CardSpacing` and the `JSColumn` card members) plus the drag/resize affordances have no owning milestone at all (17 properties), and M9 carries 38 unimplemented paint properties behind a one-line roadmap entry
 - README refreshed to current M2 state: milestone status, source-compatibility scope note, layout table covering `tools`/`test`/`doc/Help` and a Testing section for `test\ModelTests\make.bat`
 - First clean VB6 build of the stub OCX; regenerated `OpenGridEX20.cmp` binary-compatibility baseline from the complete stubbed API surface (26 coclasses, 44 enums, 58 + 6 events, dispids and enum values verified against `doc/GridEX20.idl`)

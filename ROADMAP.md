@@ -107,7 +107,35 @@ Exit: sorting/grouping visual scenarios + relevant Advanced Sample parts.
 
 Exit: Custom Edit, Combo DropDowns, ADO3-style value list behavior (unbound data).
 
-## M6 -- ADO binding
+## M6 -- Paint property matrix
+
+Gate before any data-binding work: every property that affects painting is proven
+against the original at two or more distinct values, so that binding is built on
+a verified renderer rather than on properties that merely compile.
+
+- `PAINT-PROPERTIES.md` is the tracking document -- type, status, paint routine,
+  owning milestone, implementing commit and covering test for each of the 126
+  paint-affecting properties (`GridEX` plus the `JSColumn`/`JSFormatStyle`
+  sub-properties); kept current in the same commit that changes a status
+- Baseline at the time of writing: 43 of 126 are read by the paint path, only 19
+  are proven at more than one value, 15 have no covering test at all
+- Close the unverified block by authoring scenarios, not control code (rows for
+  `gridlines-dots-colors`, a two-palette `colors-*` pair, `formatstyles-selection`,
+  `column-order`); fix whatever disagrees with the original
+- Give the weak entries a second rendered value, incl. the three non-default
+  `GridLines` modes
+- Decide the owner for the currently unowned surface: card view (`View`,
+  `CardBorders`, `CardCaptionPrefix`, `CardWidth`, `CardSpacing` and the
+  `JSColumn` card members) and the drag/resize affordances have no milestone at
+  all -- 17 properties in total
+- Re-scope M9: the matrix puts 38 unimplemented paint properties there, mostly
+  the `JSFormatStyle` font and picture families, which is far more than its
+  one-line entry implies
+
+Exit: no `unverified` rows left in `PAINT-PROPERTIES.md` for properties whose
+milestone has shipped; card view has an owning milestone.
+
+## M7 -- ADO binding
 
 - Late-bound ADO (`As Object`, no msado15 reference), `ADORecordset` get/set,
   `DatabaseName`/`RecordSource`/`CursorLocation`/`LockType`, bookmarks,
@@ -116,7 +144,7 @@ Exit: Custom Edit, Combo DropDowns, ADO3-style value list behavior (unbound data
 
 Exit: ADO1-5 samples and NorthWind run against `JSNwind.mdb`.
 
-## M7 -- Persistence and property pages
+## M8 -- Persistence and property pages
 
 - Our `WriteProperties`/`ReadProperties` routed through the same friend setters;
   add-in import + IDE save converts sample forms to our `.frm`/`.frx`
@@ -125,21 +153,21 @@ Exit: ADO1-5 samples and NorthWind run against `JSNwind.mdb`.
 
 Exit: all ported sample forms load in the IDE with correct design-time state.
 
-## M8 -- Styling extras
+## M9 -- Styling extras
 
 - Full `JSFormatStyle` application, `JSFmtConditions` conditional formatting,
   preview rows, tooltips, scroll tips
 
 Exit: Using FormatStyles, ADO5 conditional formatting, Preview Rows samples.
 
-## M9 -- Printing
+## M10 -- Printing
 
 - `JSPrinterProperties`, pagination, `PrintGrid`, `GEXPreview` rendering/toolbar/
   zoom, `PrintPreview` handshake between controls
 
 Exit: the three Print & PrintPreview samples.
 
-## M10 -- Long tail (optional, in rough order of value)
+## M11 -- Long tail (optional, in rough order of value)
 
 - OLE drag & drop (`JSDataObject`), `SaveLayout`/`LoadLayout`/`LayoutString`
 - RDS / DataEnvironment / HTML samples: likely skip (obsolete)
