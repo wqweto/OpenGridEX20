@@ -86,7 +86,10 @@ Public Function RunScenario(sProgId As String, oScenario As Object, baBits() As 
     '--- runtime props applied after the data feed (e.g. FirstItem)
     If Not C2Obj(JsonValue(oScenario, "post")) Is Nothing Then
         ImportObject m_oExt.Object, m_sClass, C2Obj(JsonValue(oScenario, "post"))
-        DoEvents
+        '--- the original repaints some runtime property changes off a timer,
+        '--- so two identical captures can be taken before it ever fires --
+        '--- that raced the golden recording of post-bearing scenarios
+        pvSettle 10
     End If
     '--- row selection: select the listed 1-based row positions
     If Not C2Obj(JsonValue(oScenario, "select")) Is Nothing Then
@@ -113,6 +116,17 @@ Private Function pvControlHwnd() As Long
 EH:
     Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
 End Function
+
+Private Sub pvSettle(ByVal lRetries As Long)
+    Dim lIdx            As Long
+
+    '--- pumped a millisecond at a time so a timer tick is picked up as soon
+    '--- as it fires rather than at the end of a coarse sleep
+    For lIdx = 1 To lRetries
+        Sleep 1
+        DoEvents
+    Next
+End Sub
 
 Private Function pvCaptureStable(ByVal lHwnd As Long, lWidth As Long, lHeight As Long, baBits() As Byte) As Boolean
     Dim lRetry          As Long

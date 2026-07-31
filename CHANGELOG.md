@@ -145,6 +145,7 @@ All notable changes to this project will be documented in this file.
 - Columns scroll horizontally: painting and hit-testing start at `pvFirstCol` instead of column 1, `WM_HSCROLL` is handled (line/page/thumb) through `pvOnHScroll`, and `LeftCol` repaints, refreshes the scrollbar and raises the previously-declared-but-never-fired `LeftColChange`. Scrolling moves whole columns, as the original does -- the `hscrolled` golden shows column 3 flush against the row header, with no partial column
 - The bottom separator strip is gauged on the width of *every* column rather than those visible from `LeftCol`: the horizontal scrollbar is what puts the strip there, and it depends on the total
 - `LeftCol` was the last property the renderer only partly consumed, so the paint matrix is now **43 of 126 verified with nothing weak, unverified or partial** -- M6 complete
+- Scenarios carrying a `post` block settle before capture (`pvSettle`, ten 1ms pumps): the original repaints some runtime property changes off a timer, so the capture-until-stable loop could take two identical shots before it ever fired. That was the intermittent selftest failure -- the original diffed against a golden recorded seconds earlier, one capture holding a selected row the other did not
 - `make.bat` and `record.bat` take an optional scenario mask (`make.bat hscrolled`, `record.bat gridlines-*`), which the harness already supported but the scripts never passed on. A single-scenario check runs in about a second against a couple of minutes for the corpus
 
 ### Changed
