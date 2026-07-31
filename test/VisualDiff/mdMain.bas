@@ -11,6 +11,30 @@ Option Explicit
 DefObj A-Z
 
 '=========================================================================
+' API
+'=========================================================================
+
+Private Const GW_CHILD                      As Long = 5
+Private Const GW_HWNDNEXT                   As Long = 2
+Private Const GWL_STYLE                     As Long = -16
+Private Const WS_HSCROLL                    As Long = &H100000
+Private Const WS_VSCROLL                    As Long = &H200000
+Private Const WS_TABSTOP                    As Long = &H10000
+
+Private Type RECT
+    Left                    As Long
+    Top                     As Long
+    Right                   As Long
+    Bottom                  As Long
+End Type
+
+Private Declare Function GetWindow Lib "user32" (ByVal hWnd As Long, ByVal wCmd As Long) As Long
+Private Declare Function GetClassName Lib "user32" Alias "GetClassNameW" (ByVal hWnd As Long, ByVal lpClassName As Long, ByVal nMaxCount As Long) As Long
+Private Declare Function GetWindowRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
+Private Declare Function GetClientRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
+Private Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long) As Long
+
+'=========================================================================
 ' Constants and member variables
 '=========================================================================
 
@@ -67,6 +91,24 @@ Public Sub Main()
     Else
         sProgId = STR_PROGID_ORIGINAL
     End If
+    If sMode = "windows" Then
+        For Each vFile In EnumFiles(App.Path & "\scenarios", "*.json")
+            sName = Mid$(vFile, InStrRev(vFile, "\") + 1)
+            sName = Left$(sName, Len(sName) - Len(".json"))
+            If sName Like sMask Then
+                JsonParse ReadTextFile(CStr(vFile)), vDoc
+                Set oForm = New frmHost
+                If oForm.RunScenario(sProgId, C2Obj(vDoc), baBits, lWidth, lHeight) Then
+                    Assert "--- " & sProgId & " / " & sName & " ---", True
+                    pvDumpWindows oForm.hWnd, oForm.hWnd, 0
+                End If
+                Unload oForm
+                Set oForm = Nothing
+            End If
+        Next
+        TestsDone
+        Exit Sub
+    End If
     If sMode = "metrics" Then
         Assert FontMetrics("MS Sans Serif", 8) & sDpi & "dpi", True
         Assert FontMetrics("Tahoma", 8) & sDpi & "dpi", True
@@ -122,6 +164,41 @@ EH:
     Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
     Assert "Unhandled error &H" & Hex$(Err.Number) & " " & Err.Description & " in " & sName, False
     TestsDone
+End Sub
+
+Private Sub pvDumpWindows(ByVal hWndRoot As Long, ByVal hWnd As Long, ByVal lLevel As Long)
+    Dim hChild          As Long
+    Dim sClass          As String
+    Dim uWin            As RECT
+    Dim uRoot           As RECT
+    Dim uClient         As RECT
+    Dim lStyle          As Long
+    Dim sFlags          As String
+
+    hChild = GetWindow(hWnd, GW_CHILD)
+    Do While hChild <> 0
+        sClass = String$(256, 0)
+        Call GetClassName(hChild, StrPtr(sClass), 256)
+        sClass = Left$(sClass, InStr(sClass, vbNullChar) - 1)
+        Call GetWindowRect(hChild, uWin)
+        Call GetWindowRect(hWndRoot, uRoot)
+        Call GetClientRect(hChild, uClient)
+        lStyle = GetWindowLong(hChild, GWL_STYLE)
+        sFlags = vbNullString
+        If (lStyle And WS_HSCROLL) <> 0 Then
+            sFlags = sFlags & " WS_HSCROLL"
+        End If
+        If (lStyle And WS_VSCROLL) <> 0 Then
+            sFlags = sFlags & " WS_VSCROLL"
+        End If
+        If (lStyle And WS_TABSTOP) <> 0 Then
+            sFlags = sFlags & " WS_TABSTOP"
+        End If
+        Assert Space$(lLevel * 2) & "[" & sClass & "] at (" & uWin.Left - uRoot.Left & "," & uWin.Top - uRoot.Top & ") " & _
+            uWin.Right - uWin.Left & "x" & uWin.Bottom - uWin.Top & " client " & uClient.Right & "x" & uClient.Bottom & sFlags, True
+        pvDumpWindows hWndRoot, hChild, lLevel + 1
+        hChild = GetWindow(hChild, GW_HWNDNEXT)
+    Loop
 End Sub
 
 Private Sub pvEnsureDir(sPath As String)

@@ -96,12 +96,12 @@ Public Function RunScenario(sProgId As String, oScenario As Object, baBits() As 
         pvSelectRows C2Obj(JsonValue(oScenario, "select"))
         DoEvents
     End If
-    '--- capture the control window itself; fall back to the form client
-    lHwnd = pvControlHwnd()
-    If lHwnd = 0 Then
-        lHwnd = hWnd
-    End If
-    RunScenario = pvCaptureStable(lHwnd, lWidth, lHeight, baBits)
+    '--- always the host form client, never the control window: the two
+    '--- controls do not expose the same window from hWnd -- the original's
+    '--- is an inner grid window sized inside its own chrome, ours is the
+    '--- whole UserControl -- while the form client holds each of them plus
+    '--- their scrollbars and record navigator on identical coordinates
+    RunScenario = pvCaptureStable(hWnd, lWidth, lHeight, baBits)
     Exit Function
 EH:
     Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"

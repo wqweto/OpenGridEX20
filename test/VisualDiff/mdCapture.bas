@@ -39,6 +39,8 @@ Private Type BITMAPINFOHEADER
 End Type
 
 Private Declare Function GetClientRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
+Private Declare Function GetWindowRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
+Private Declare Function GetWindowDC Lib "user32" (ByVal hWnd As Long) As Long
 Private Declare Function GetDC Lib "user32" (ByVal hWnd As Long) As Long
 Private Declare Function ReleaseDC Lib "user32" (ByVal hWnd As Long, ByVal hdc As Long) As Long
 Private Declare Function GetDeviceCaps Lib "gdi32" (ByVal hdc As Long, ByVal nIndex As Long) As Long
@@ -153,6 +155,45 @@ Public Sub DisableWindowTransitions(ByVal hWnd As Long)
 EH:
     Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
 End Sub
+
+Public Function CaptureWindowFull(ByVal hWnd As Long, lWidth As Long, lHeight As Long, baBits() As Byte) As Boolean
+    Dim uRect           As RECT
+    Dim hDCWnd          As Long
+    Dim hDCMem          As Long
+    Dim hBmp            As Long
+    Dim hPrevBmp        As Long
+    Dim uInfo           As BITMAPINFOHEADER
+
+    '--- whole window incl. the non-client frame: the record navigator and the
+    '--- horizontal scrollbar share that strip, so a client-only shot misses
+    '--- them entirely. Blitted from the window DC, again without any screen
+    '--- coordinate mapping
+    Call GetWindowRect(hWnd, uRect)
+    lWidth = uRect.Right - uRect.Left
+    lHeight = uRect.Bottom - uRect.Top
+    If lWidth <= 0 Or lHeight <= 0 Then
+        Exit Function
+    End If
+    hDCWnd = GetWindowDC(hWnd)
+    hDCMem = CreateCompatibleDC(hDCWnd)
+    hBmp = CreateCompatibleBitmap(hDCWnd, lWidth, lHeight)
+    hPrevBmp = SelectObject(hDCMem, hBmp)
+    Call BitBlt(hDCMem, 0, 0, lWidth, lHeight, hDCWnd, 0, 0, SRCCOPY)
+    Call SelectObject(hDCMem, hPrevBmp)
+    With uInfo
+        .biSize = Len(uInfo)
+        .biWidth = lWidth
+        .biHeight = lHeight
+        .biPlanes = 1
+        .biBitCount = 24
+        .biCompression = BI_RGB
+    End With
+    ReDim baBits(0 To pvStride(lWidth) * lHeight - 1) As Byte
+    CaptureWindowFull = (GetDIBits(hDCMem, hBmp, 0, lHeight, baBits(0), uInfo, DIB_RGB_COLORS) = lHeight)
+    Call DeleteObject(hBmp)
+    Call DeleteDC(hDCMem)
+    Call ReleaseDC(hWnd, hDCWnd)
+End Function
 
 Public Function CaptureWindowClient(ByVal hWnd As Long, lWidth As Long, lHeight As Long, baBits() As Byte) As Boolean
     Dim uRect           As RECT

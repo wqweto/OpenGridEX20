@@ -8,6 +8,28 @@ Begin VB.UserControl GridEX
    ScaleHeight     =   240
    ScaleMode       =   3  'Pixel
    ScaleWidth      =   320
+   Begin VB.PictureBox picGrid 
+      Appearance      =   0  'Flat
+      BackColor       =   &H80000005&
+      BorderStyle     =   0  'None
+      ForeColor       =   &H80000008&
+      Height          =   2415
+      Left            =   0
+      ScaleHeight     =   161
+      ScaleMode       =   3  'Pixel
+      ScaleWidth      =   256
+      TabIndex        =   0
+      Top             =   0
+      Width           =   3840
+   End
+   Begin VB.HScrollBar hsbGrid 
+      Height          =   255
+      Left            =   0
+      TabStop         =   0   'False
+      Top             =   2520
+      Visible         =   0   'False
+      Width           =   1815
+   End
 End
 Attribute VB_Name = "GridEX"
 Attribute VB_GlobalNameSpace = False
@@ -532,6 +554,9 @@ Private m_eNewRowPos                As jgexNewRowPosConstants
 Private m_lItemCount                As Long
 Private m_eDataMode                 As jgexDataModeConstants
 Private m_nLeftCol                  As Integer
+Private m_hScrollH                  As Long
+Private m_bHScroll                  As Boolean
+Private m_bBand                     As Boolean
 Private WithEvents m_oColumnHeaderFont As StdFont
 Attribute m_oColumnHeaderFont.VB_VarHelpID = -1
 Private WithEvents m_oFont          As StdFont
@@ -607,7 +632,8 @@ Private m_vScrollToolTipColumn      As Variant
 Private m_bAutomaticSort            As Boolean
 Private m_lPreviewRowIndent         As Long
 Private m_bAllowRowSizing           As Boolean
-Private m_pSubclass                 As IUnknown
+Private m_pSubclassPic              As IUnknown
+Private m_pSubclassCtl              As IUnknown
 Private m_lSelAnchor                As Long
 
 '--- per-row virtual storage behind JSRowData wrappers
@@ -633,6 +659,21 @@ Private Type UcsRowData
     CellCount               As Integer
     Cells()                 As UcsCellData
     RowData                 As JSRowData
+End Type
+
+Private Type UcsNavLayout
+    BandTop                 As Long
+    BandH                   As Long
+    Prefix                  As String
+    Middle                  As String
+    PrefixX                 As Long
+    BtnFirst                As RECT
+    BtnPrev                 As RECT
+    Box                     As RECT
+    MiddleX                 As Long
+    BtnNext                 As RECT
+    BtnLast                 As RECT
+    Width                   As Long
 End Type
 
 Private m_aRows()                   As UcsRowData
@@ -1121,7 +1162,9 @@ End Property
 
 Public Property Get hWnd() As Long
 Attribute hWnd.VB_Description = "Returns the handle of the control."
-    hWnd = UserControl.hWnd
+    '--- the grid surface, as the original exposes: its inner window, not
+    '--- the outer control that also holds the scrollbar band
+    hWnd = picGrid.hWnd
 End Property
 
 Public Property Get AllowDelete() As Boolean
@@ -2190,7 +2233,7 @@ Private Sub pvPaintGroupByBox(ByVal hDC As Long, lY As Long)
 
     lBoxH = m_lColumnHeaderHeight + 4
     lTotalH = lBoxH + 10
-    pvFillRect hDC, 0, lY, ScaleWidth, lY + lTotalH, m_clrBackColorGBBox
+    pvFillRect hDC, 0, lY, picGrid.ScaleWidth, lY + lTotalH, m_clrBackColorGBBox
     hPrevFont = pvSelectFont(hDC, m_oFont)
     '--- info box is sized by the info text extent
     Call DrawText(hDC, StrPtr(m_sGroupByBoxInfoText), Len(m_sGroupByBoxInfoText), uRect, DT_SINGLELINE Or DT_CALCRECT)
@@ -2214,15 +2257,15 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
     '--- at the cell boundaries
     Select Case m_eHeaderStyle
     Case jgexHSDouble3D
-        pvLine hDC, 0, lY, ScaleWidth, lY, vb3DHighlight, PS_SOLID
-        pvLine hDC, 0, lY + lHdrH - 2, ScaleWidth, lY + lHdrH - 2, vb3DShadow, PS_SOLID
-        pvLine hDC, 0, lY + lHdrH - 1, ScaleWidth, lY + lHdrH - 1, vb3DDKShadow, PS_SOLID
+        pvLine hDC, 0, lY, picGrid.ScaleWidth, lY, vb3DHighlight, PS_SOLID
+        pvLine hDC, 0, lY + lHdrH - 2, picGrid.ScaleWidth, lY + lHdrH - 2, vb3DShadow, PS_SOLID
+        pvLine hDC, 0, lY + lHdrH - 1, picGrid.ScaleWidth, lY + lHdrH - 1, vb3DDKShadow, PS_SOLID
     Case jgexHSSingleFlat
-        pvLine hDC, 0, lY, ScaleWidth, lY, vb3DDKShadow, PS_SOLID
-        pvLine hDC, 0, lY + lHdrH - 1, ScaleWidth, lY + lHdrH - 1, vb3DDKShadow, PS_SOLID
+        pvLine hDC, 0, lY, picGrid.ScaleWidth, lY, vb3DDKShadow, PS_SOLID
+        pvLine hDC, 0, lY + lHdrH - 1, picGrid.ScaleWidth, lY + lHdrH - 1, vb3DDKShadow, PS_SOLID
     Case jgexHSSingle3D
-        pvLine hDC, 0, lY, ScaleWidth, lY, vb3DHighlight, PS_SOLID
-        pvLine hDC, 0, lY + lHdrH - 1, ScaleWidth, lY + lHdrH - 1, vb3DShadow, PS_SOLID
+        pvLine hDC, 0, lY, picGrid.ScaleWidth, lY, vb3DHighlight, PS_SOLID
+        pvLine hDC, 0, lY + lHdrH - 1, picGrid.ScaleWidth, lY + lHdrH - 1, vb3DShadow, PS_SOLID
     End Select
     '--- corner cell above the row headers column
     If m_bRowHeaders Then
@@ -2238,8 +2281,8 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
         End If
     Next
     '--- filler cell up to the right edge (its right border is clipped off)
-    If lX < ScaleWidth Then
-        pvPaintHeaderCell hDC, lX, lY, ScaleWidth - lX + 2, lHdrH, vbNullString, jgexAlignLeft
+    If lX < picGrid.ScaleWidth Then
+        pvPaintHeaderCell hDC, lX, lY, picGrid.ScaleWidth - lX + 2, lHdrH, vbNullString, jgexAlignLeft
     End If
     Call SelectObject(hDC, hPrevFont)
     lY = lY + lHdrH
@@ -2298,7 +2341,7 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
         End If
     Next
     '--- background right of the columns down to the bottom
-    pvFillRect hDC, lHdrW + lTotalW, lY, ScaleWidth, ScaleHeight, m_clrBackColorBkg
+    pvFillRect hDC, lHdrW + lTotalW, lY, picGrid.ScaleWidth, picGrid.ScaleHeight, m_clrBackColorBkg
     lFirst = m_lFirstItem
     If lFirst < 1 Then
         lFirst = 1
@@ -2307,7 +2350,7 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
         hPrevFont = pvSelectFont(hDC, m_oFont)
         For lRow = lFirst To RowCount
             lRowTop = lY + (lRow - lFirst) * lRowH
-            If lRowTop >= ScaleHeight Then
+            If lRowTop >= picGrid.ScaleHeight Then
                 Exit For
             End If
             pvPaintDataRow hDC, lRow, lRowTop, lRowH, lHdrW, lTotalW
@@ -2324,19 +2367,19 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
     End If
     If m_bEmptyRows Then
         '--- empty rows continue the grid to the bottom edge
-        pvFillRect hDC, lHdrW, lRowsBottom, lHdrW + lTotalW, ScaleHeight, m_clrBackColor
+        pvFillRect hDC, lHdrW, lRowsBottom, lHdrW + lTotalW, picGrid.ScaleHeight, m_clrBackColor
         If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLHorizontal Then
             lRowTop = lRowsBottom
-            Do While lRowTop + lRowH - 1 < ScaleHeight
+            Do While lRowTop + lRowH - 1 < picGrid.ScaleHeight
                 pvLine hDC, lHdrW, lRowTop + lRowH - 1, lHdrW + lTotalW, lRowTop + lRowH - 1, m_clrGridLinesColor, pvPenStyle()
                 lRowTop = lRowTop + lRowH
             Loop
         End If
-        lRowsBottom = ScaleHeight
+        lRowsBottom = picGrid.ScaleHeight
     Else
         '--- background below the last row
-        pvFillRect hDC, 0, lRowsBottom + lExtra, lHdrW, ScaleHeight, m_clrBackColorBkg
-        pvFillRect hDC, lHdrW, lRowsBottom, lHdrW + lTotalW, ScaleHeight, m_clrBackColorBkg
+        pvFillRect hDC, 0, lRowsBottom + lExtra, lHdrW, picGrid.ScaleHeight, m_clrBackColorBkg
+        pvFillRect hDC, lHdrW, lRowsBottom, lHdrW + lTotalW, picGrid.ScaleHeight, m_clrBackColorBkg
     End If
     If lPainted > 0 Or m_bEmptyRows Then
         '--- focus marquee on the current row; the XOR runs against the DC
@@ -2364,8 +2407,8 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
     '--- horizontal scrollbar takes over the last client row
     '--- gauged on every column, not just those visible from LeftCol: the
     '--- scrollbar is what puts the strip there and it depends on the total
-    If lHdrW + pvTotalColWidth() > ScaleWidth Then
-        pvLine hDC, 0, ScaleHeight - 1, ScaleWidth, ScaleHeight - 1, m_clrBackColorHeader, PS_SOLID
+    If lHdrW + pvTotalColWidth() > picGrid.ScaleWidth Then
+        pvLine hDC, 0, picGrid.ScaleHeight - 1, picGrid.ScaleWidth, picGrid.ScaleHeight - 1, m_clrBackColorHeader, PS_SOLID
     End If
 End Sub
 
@@ -2410,8 +2453,8 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
     lMarqueeR = -1
     If lRow = m_lRow Then
         lMarqueeR = lHdrW + lTotalW - 2
-        If lMarqueeR > ScaleWidth - 1 Then
-            lMarqueeR = ScaleWidth - 1
+        If lMarqueeR > picGrid.ScaleWidth - 1 Then
+            lMarqueeR = picGrid.ScaleWidth - 1
         End If
     End If
     lX = lHdrW
@@ -2475,8 +2518,8 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
     If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLVertical Then
         lRight = lRight - 1
     End If
-    If lRight > ScaleWidth - 1 Then
-        lRight = ScaleWidth - 1
+    If lRight > picGrid.ScaleWidth - 1 Then
+        lRight = picGrid.ScaleWidth - 1
     End If
     lBottom = lRowTop + pvRowContentH(lRowH) - 1
     lStartB = 1
@@ -2605,7 +2648,7 @@ Private Sub pvInvalidate()
     '--- tolerate refresh before the control window exists
     On Error GoTo EH
     pvUpdateScrollBars
-    UserControl.Refresh
+    picGrid.Refresh
     Exit Sub
 EH:
     Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
@@ -2622,7 +2665,7 @@ End Function
 
 Private Function pvVisibleRows() As Long
     If m_lRowHeight > 0 Then
-        pvVisibleRows = (ScaleHeight - pvTopHeight()) \ m_lRowHeight
+        pvVisibleRows = (picGrid.ScaleHeight - pvTopHeight()) \ m_lRowHeight
     End If
     If pvVisibleRows < 1 Then
         pvVisibleRows = 1
@@ -2660,6 +2703,241 @@ Private Function pvClampRow(ByVal lRow As Long) As Long
     End If
 End Function
 
+Private Function pvHitScrollBar() As Boolean
+    Dim uPt             As POINTAPI
+
+    If m_hScrollH = 0 Then
+        Exit Function
+    End If
+    Call GetCursorPos(uPt)
+    pvHitScrollBar = (WindowFromPoint(uPt.X, uPt.Y) = m_hScrollH)
+End Function
+
+Private Function pvNavLayout(uNav As UcsNavLayout) As Boolean
+    Dim lBtnW           As Long
+    Dim lBtnTop         As Long
+    Dim lBtnH           As Long
+    Dim lBoxW           As Long
+    Dim hPrevFont       As Long
+    Dim lX              As Long
+    Dim vSplit          As Variant
+
+    If Not m_bRecordNavigator Then
+        Exit Function
+    End If
+    '--- taken from the metric rather than from picGrid: the grid surface is
+    '--- laid out to leave exactly this much, and deriving it back the other
+    '--- way picks up rounding from the Move
+    uNav.BandH = GetSystemMetrics(SM_CYHSCROLL)
+    uNav.BandTop = UserControl.ScaleHeight - uNav.BandH
+    If uNav.BandH <= 0 Then
+        Exit Function
+    End If
+    '--- RecordNavigatorString holds the two literals, pipe separated
+    vSplit = Split(m_sRecordNavigatorString & "|", "|")
+    uNav.Prefix = vSplit(0)
+    uNav.Middle = vSplit(1) & " " & RowCount
+    '--- gaps measured off the original: prefix at 4, then 2 before the first
+    '--- button pair, 4 before the record box, 5 after it and 6 after the
+    '--- "of N" text -- buttons are one pixel taller than the band is high
+    lBtnW = uNav.BandH + 1
+    lBtnTop = uNav.BandTop + 1
+    lBtnH = uNav.BandH - 1
+    hPrevFont = pvSelectFont(UserControl.hDC, m_oFont)
+    lX = 4
+    uNav.PrefixX = lX
+    lX = lX + pvTextWidth(UserControl.hDC, uNav.Prefix) + 4
+    pvSetRect uNav.BtnFirst, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
+    lX = lX + lBtnW
+    pvSetRect uNav.BtnPrev, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
+    lX = lX + lBtnW + 4
+    '--- the box is a fixed size -- 5, 50 and 500 records render identically --
+    '--- but it does not scale linearly with dpi: 46px at 96 and 53px at 120,
+    '--- which this fits. Two scales cannot identify the formula uniquely, so
+    '--- it wants confirming against a 144dpi golden
+    lBoxW = FontTextHeight(m_oFont) + uNav.BandH + 16
+    '--- the box is taller than the band and clipped by it, like the original's
+    '--- TextBox (53x24 inside a 22px band at 120dpi)
+    pvSetRect uNav.Box, lX, uNav.BandTop, lX + lBoxW, uNav.BandTop + uNav.BandH + 4
+    lX = lX + lBoxW + 4
+    uNav.MiddleX = lX
+    lX = lX + pvTextWidth(UserControl.hDC, uNav.Middle) + 8
+    pvSetRect uNav.BtnNext, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
+    lX = lX + lBtnW
+    pvSetRect uNav.BtnLast, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
+    lX = lX + lBtnW
+    uNav.Width = lX
+    Call SelectObject(UserControl.hDC, hPrevFont)
+    pvNavLayout = True
+End Function
+
+Private Sub pvSetRect(uRect As RECT, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long)
+    uRect.Left = lLeft
+    uRect.Top = lTop
+    uRect.Right = lRight
+    uRect.Bottom = lBottom
+End Sub
+
+Private Function pvTextWidth(ByVal hDC As Long, sText As String) As Long
+    Dim uRect           As RECT
+
+    Call DrawText(hDC, StrPtr(sText), Len(sText), uRect, DT_SINGLELINE Or DT_CALCRECT Or DT_NOPREFIX)
+    pvTextWidth = uRect.Right
+End Function
+
+Private Function pvNavigatorWidth() As Long
+    Dim uNav            As UcsNavLayout
+
+    If pvNavLayout(uNav) Then
+        pvNavigatorWidth = uNav.Width
+    End If
+End Function
+
+Private Sub pvNavButton(ByVal hDC As Long, uBtn As RECT)
+    '--- a single-pixel white edge on top and left, shadow then dark shadow
+    '--- down the right and bottom -- DrawFrameControl doubles the light edge
+    pvFillRect hDC, uBtn.Left, uBtn.Top, uBtn.Right, uBtn.Bottom, m_clrBackColorHeader
+    pvLine hDC, uBtn.Left, uBtn.Top, uBtn.Right, uBtn.Top, vb3DHighlight, PS_SOLID
+    pvLine hDC, uBtn.Left, uBtn.Top, uBtn.Left, uBtn.Bottom, vb3DHighlight, PS_SOLID
+    pvLine hDC, uBtn.Right - 2, uBtn.Top + 1, uBtn.Right - 2, uBtn.Bottom - 1, vb3DShadow, PS_SOLID
+    pvLine hDC, uBtn.Left + 1, uBtn.Bottom - 2, uBtn.Right - 1, uBtn.Bottom - 2, vb3DShadow, PS_SOLID
+    pvLine hDC, uBtn.Right - 1, uBtn.Top, uBtn.Right - 1, uBtn.Bottom, vb3DDKShadow, PS_SOLID
+    pvLine hDC, uBtn.Left, uBtn.Bottom - 1, uBtn.Right, uBtn.Bottom - 1, vb3DDKShadow, PS_SOLID
+End Sub
+
+Private Sub pvNavArrow(ByVal hDC As Long, uBtn As RECT, ByVal bRight As Boolean, ByVal bDisabled As Boolean, ByVal bEnd As Boolean, ByVal lBandH As Long)
+    Dim lApex           As Long
+    Dim lCenter         As Long
+    Dim lHalf           As Long
+    Dim lOfs            As Long
+
+    '--- 5 wide, 9 tall: the apex is a single pixel and each column towards
+    '--- the base grows by one row either side
+    '--- Bottom is exclusive, so the last row is Bottom - 1
+    '--- 5x9 at 96dpi, 6x11 at 120dpi. The end buttons sit their glyph clear
+    '--- of the bar; the inner pair centre theirs in the face
+    lHalf = lBandH \ 4
+    If bEnd Then
+        lOfs = lBandH \ 4 + lBandH \ 7 + lBandH \ 5
+    Else
+        lOfs = (uBtn.Right - uBtn.Left - lHalf - 1) \ 2 + 1
+    End If
+    lCenter = (uBtn.Top + uBtn.Bottom - 1) \ 2
+    If bRight Then
+        lApex = uBtn.Right - 1 - lOfs
+    Else
+        lApex = uBtn.Left + lOfs
+    End If
+    If bDisabled Then
+        pvNavTriangle hDC, lApex + 1, lCenter + 1, bRight, vb3DHighlight, lHalf
+        pvNavTriangle hDC, lApex, lCenter, bRight, vb3DShadow, lHalf
+    Else
+        pvNavTriangle hDC, lApex, lCenter, bRight, vbBlack, lHalf
+    End If
+End Sub
+
+Private Sub pvNavTriangle(ByVal hDC As Long, ByVal lApex As Long, ByVal lCenter As Long, ByVal bRight As Boolean, ByVal clrFill As OLE_COLOR, ByVal lHalf As Long)
+    Dim lIdx            As Long
+    Dim lX              As Long
+
+    For lIdx = 0 To lHalf
+        If bRight Then
+            lX = lApex - lIdx
+        Else
+            lX = lApex + lIdx
+        End If
+        pvFillRect hDC, lX, lCenter - lIdx, lX + 1, lCenter + lIdx + 1, clrFill
+    Next
+End Sub
+
+Private Sub pvPaintNavigator(ByVal hDC As Long)
+    Dim uNav            As UcsNavLayout
+    Dim hPrevFont       As Long
+    Dim uBox            As RECT
+    Dim lAtFirst        As Long
+    Dim lAtLast         As Long
+    Dim lBarX           As Long
+    Dim lBarW           As Long
+    Dim lBarY           As Long
+    Dim lTextH          As Long
+    Dim lTextTop        As Long
+
+    If Not pvNavLayout(uNav) Then
+        Exit Sub
+    End If
+    pvFillRect hDC, 0, uNav.BandTop, uNav.Width, uNav.BandTop + uNav.BandH, m_clrBackColorHeader
+    '--- the pair pointing at an end greys out once the current row is there
+    lAtFirst = 0
+    If m_lRow <= 1 Then
+        lAtFirst = DFCS_INACTIVE
+    End If
+    lAtLast = 0
+    If m_lRow >= RowCount Then
+        lAtLast = DFCS_INACTIVE
+    End If
+    '--- faces from the system, glyphs drawn here: DrawFrameControl's arrow is
+    '--- 4x7 where the original's is 5x9, and the end buttons shift theirs
+    '--- right/left by two to clear the bar that marks first and last
+    pvNavButton hDC, uNav.BtnFirst
+    pvNavButton hDC, uNav.BtnPrev
+    pvNavButton hDC, uNav.BtnNext
+    pvNavButton hDC, uNav.BtnLast
+    pvNavArrow hDC, uNav.BtnFirst, False, False, True, uNav.BandH
+    pvNavArrow hDC, uNav.BtnPrev, False, (m_lRow <= 1), False, uNav.BandH
+    pvNavArrow hDC, uNav.BtnNext, True, (m_lRow >= RowCount), False, uNav.BandH
+    pvNavArrow hDC, uNav.BtnLast, True, False, True, uNav.BandH
+    '--- bar metrics scale with the band: 2px wide at 4 in from the edge at
+    '--- 96dpi, 3px at 5 in at 120dpi
+    lBarX = uNav.BandH \ 4
+    lBarW = uNav.BandH \ 7
+    lBarY = uNav.BandH \ 5
+    pvFillRect hDC, uNav.BtnFirst.Left + lBarX, uNav.BtnFirst.Top + lBarY, uNav.BtnFirst.Left + lBarX + lBarW, uNav.BtnFirst.Bottom - lBarY - 1, vbBlack
+    pvFillRect hDC, uNav.BtnLast.Right - 1 - lBarX - lBarW, uNav.BtnLast.Top + lBarY, uNav.BtnLast.Right - 1 - lBarX, uNav.BtnLast.Bottom - lBarY - 1, vbBlack
+    uBox = uNav.Box
+    Call DrawEdge(hDC, uBox, EDGE_SUNKEN, BF_RECT)
+    pvFillRect hDC, uNav.Box.Left + 2, uNav.Box.Top + 2, uNav.Box.Right - 2, uNav.Box.Bottom - 2, vbWindowBackground
+    hPrevFont = pvSelectFont(hDC, m_oFont)
+    '--- the labels centre on the font box, not the band: rounding the half
+    '--- pixel up is what keeps them on the original's row at every scale
+    lTextH = FontTextHeight(m_oFont)
+    lTextTop = uNav.BandTop + (uNav.BandH - lTextH + 1) \ 2
+    pvDrawText hDC, uNav.Prefix, uNav.PrefixX, lTextTop, uNav.PrefixX + pvTextWidth(hDC, uNav.Prefix), lTextTop + lTextH, m_clrForeColorHeader, m_clrBackColorHeader, jgexAlignLeft, uNav.PrefixX, uNav.Width
+    pvDrawText hDC, uNav.Middle, uNav.MiddleX, lTextTop, uNav.MiddleX + pvTextWidth(hDC, uNav.Middle), lTextTop + lTextH, m_clrForeColorHeader, m_clrBackColorHeader, jgexAlignLeft, uNav.MiddleX, uNav.Width
+    pvDrawText hDC, CStr(m_lRow), uNav.Box.Left + 2, uNav.Box.Top + 2, uNav.Box.Right - 4, uNav.BandTop + uNav.BandH - 2, m_clrForeColor, vbWindowBackground, jgexAlignRight, uNav.Box.Left + 2, uNav.Box.Right - 2
+    Call SelectObject(hDC, hPrevFont)
+End Sub
+
+Private Sub pvLayoutGrid()
+    Dim lBandH          As Long
+
+    '--- the grid surface owns everything above the scrollbar band, so its
+    '--- own WS_VSCROLL stops where the band starts -- which is what makes
+    '--- the vertical thumb geometry match the original
+    If m_bBand Then
+        lBandH = GetSystemMetrics(SM_CYHSCROLL)
+    End If
+    picGrid.Move 0, 0, UserControl.ScaleWidth, UserControl.ScaleHeight - lBandH
+End Sub
+
+Private Sub pvLayoutHScroll(ByVal bNeedH As Boolean, ByVal bNeedV As Boolean)
+    Dim lBandH          As Long
+
+    '--- a VB6 HScrollBar rather than a Win32 SCROLLBAR child: the original
+    '--- is a VB6 control too, so the runtime draws both with the same code
+    '--- and the shaft dither matches by construction
+    If Not bNeedH Then
+        hsbGrid.Visible = False
+        m_hScrollH = 0
+        Exit Sub
+    End If
+    lBandH = GetSystemMetrics(SM_CYHSCROLL)
+    '--- the band stops at the client width, leaving the usual corner gap
+    '--- under the vertical bar, as the original's does
+    hsbGrid.Move pvNavigatorWidth(), UserControl.ScaleHeight - lBandH, picGrid.ScaleWidth - pvNavigatorWidth(), lBandH
+    hsbGrid.Visible = True
+    m_hScrollH = hsbGrid.hWnd
+End Sub
+
 Private Sub pvUpdateScrollBars()
     Dim lTopH           As Long
     Dim lAvailH         As Long
@@ -2671,6 +2949,7 @@ Private Sub pvUpdateScrollBars()
     Dim bNeedV          As Boolean
     Dim bNeedH          As Boolean
     Dim uSi             As SCROLLINFO
+    Dim lPage           As Long
 
     If m_bScrollUpdating Then
         Exit Sub
@@ -2682,8 +2961,8 @@ Private Sub pvUpdateScrollBars()
     End If
     lColsW = lHdrW + pvTotalColWidth()
     '--- both scrollbars interact: each one steals space from the other
-    lAvailH = ScaleHeight - lTopH
-    lAvailW = ScaleWidth
+    lAvailH = picGrid.ScaleHeight - lTopH
+    lAvailW = picGrid.ScaleWidth
     bNeedV = (m_lRowHeight > 0 And RowCount > 0 And RowCount * m_lRowHeight > lAvailH)
     bNeedH = (lColsW > lAvailW)
     If bNeedV Then
@@ -2694,20 +2973,22 @@ Private Sub pvUpdateScrollBars()
         lAvailH = lAvailH - GetSystemMetrics(SM_CYHSCROLL)
         bNeedV = (m_lRowHeight > 0 And RowCount > 0 And RowCount * m_lRowHeight > lAvailH)
         If bNeedV Then
-            lAvailW = ScaleWidth - GetSystemMetrics(SM_CXVSCROLL)
+            lAvailW = picGrid.ScaleWidth - GetSystemMetrics(SM_CXVSCROLL)
         End If
     End If
-    lStyle = GetWindowLong(UserControl.hWnd, GWL_STYLE)
+    '--- only the vertical bar is a window style. The horizontal one is a
+    '--- child SCROLLBAR so it can be positioned precisely: the record
+    '--- navigator shares its strip and a non-client bar always spans the
+    '--- whole edge. The original does exactly this -- WS_VSCROLL on the grid
+    '--- window, a child scrollbar control in the band below it
+    lStyle = GetWindowLong(picGrid.hWnd, GWL_STYLE)
     lNewStyle = lStyle And Not WS_VSCROLL And Not WS_HSCROLL
     If bNeedV Then
         lNewStyle = lNewStyle Or WS_VSCROLL
     End If
-    If bNeedH Then
-        lNewStyle = lNewStyle Or WS_HSCROLL
-    End If
     If lNewStyle <> lStyle Then
-        Call SetWindowLong(UserControl.hWnd, GWL_STYLE, lNewStyle)
-        Call SetWindowPos(UserControl.hWnd, 0, 0, 0, 0, 0, SWP_NOSIZE Or SWP_NOMOVE Or SWP_NOZORDER Or SWP_FRAMECHANGED)
+        Call SetWindowLong(picGrid.hWnd, GWL_STYLE, lNewStyle)
+        Call SetWindowPos(picGrid.hWnd, 0, 0, 0, 0, 0, SWP_NOSIZE Or SWP_NOMOVE Or SWP_NOZORDER Or SWP_FRAMECHANGED)
     End If
     If bNeedV Then
         With uSi
@@ -2721,19 +3002,29 @@ Private Sub pvUpdateScrollBars()
                 .nPos = m_lFirstItem - 1
             End If
         End With
-        Call SetScrollInfo(UserControl.hWnd, SB_VERT, uSi, 1)
+        Call SetScrollInfo(picGrid.hWnd, SB_VERT, uSi, 1)
     End If
+    m_bHScroll = bNeedH
+    '--- the band hosts the navigator as well, so it can be there without a
+    '--- horizontal scrollbar
+    m_bBand = bNeedH Or m_bRecordNavigator
+    '--- the band appearing takes height away from the grid surface
+    pvLayoutGrid
+    pvLayoutHScroll bNeedH, bNeedV
     If bNeedH Then
-        With uSi
-            .cbSize = Len(uSi)
-            .fMask = SIF_RANGE Or SIF_PAGE Or SIF_POS
-            .nMax = pvVisibleColCount() - 1
-            .nPage = pvVisibleColsInWidth(lAvailW - lHdrW)
-            If m_nLeftCol > 0 Then
-                .nPos = m_nLeftCol - 1
-            End If
-        End With
-        Call SetScrollInfo(UserControl.hWnd, SB_HORZ, uSi, 1)
+        lPage = pvVisibleColsInWidth(lAvailW - lHdrW)
+        If lPage < 1 Then
+            lPage = 1
+        End If
+        hsbGrid.LargeChange = 1
+        hsbGrid.Min = 0
+        hsbGrid.Max = pvVisibleColCount() - lPage
+        If hsbGrid.Max < 1 Then
+            hsbGrid.Max = 1
+        End If
+        If m_nLeftCol - 1 >= 0 And m_nLeftCol - 1 <= hsbGrid.Max Then
+            hsbGrid.Value = m_nLeftCol - 1
+        End If
     End If
     m_bScrollUpdating = False
 End Sub
@@ -2760,7 +3051,10 @@ Private Function pvVisibleColsInWidth(ByVal lWidth As Long) As Long
         Set oCol = m_oColumns.ItemByPosition(nIdx)
         If oCol.Visible Then
             lCum = lCum + ToPixels(oCol.Width)
-            If lCum > lWidth Then
+            '--- strictly less: a column ending exactly on the edge does not
+            '--- count as visible, which is what decides the thumb size when
+            '--- the columns happen to fill the client precisely
+            If lCum >= lWidth Then
                 Exit Function
             End If
             pvVisibleColsInWidth = pvVisibleColsInWidth + 1
@@ -2943,11 +3237,16 @@ EH:
 End Sub
 
 Private Sub pvSubclass()
-    Set m_pSubclass = InitSubclassingThunk(hWnd, Me, pvAddressOfSubclassProc.ControlSubclassProc(0, 0, 0, 0, 0))
+    '--- the grid surface carries input, painting and its own WS_VSCROLL,
+    '--- while the outer control is the scrollbar band's parent and so the
+    '--- one that receives WM_CTLCOLORSCROLLBAR for the child bar
+    Set m_pSubclassPic = InitSubclassingThunk(hWnd, Me, pvAddressOfSubclassProc.ControlSubclassProc(0, 0, 0, 0, 0))
+    Set m_pSubclassCtl = InitSubclassingThunk(UserControl.hWnd, Me, pvAddressOfSubclassProc.ControlSubclassProc(0, 0, 0, 0, 0))
 End Sub
 
 Private Sub pvUnsubclass()
-    TerminateSubclassingThunk m_pSubclass, Me
+    TerminateSubclassingThunk m_pSubclassPic, Me
+    TerminateSubclassingThunk m_pSubclassCtl, Me
 End Sub
 
 Public Function ControlSubclassProc(ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long, Handled As Boolean) As Long
@@ -2959,8 +3258,14 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
     Select Case wMsg
     Case WM_VSCROLL
         pvOnVScroll wParam And &HFFFF&
-    Case WM_HSCROLL
-        pvOnHScroll wParam And &HFFFF&
+    Case WM_MOUSEACTIVATE
+        '--- the child scrollbar would take focus on click like any control,
+        '--- so activation is refused for clicks that land on it -- the grid
+        '--- itself still activates normally
+        If pvHitScrollBar() Then
+            ControlSubclassProc = MA_NOACTIVATE
+            Handled = True
+        End If
         Handled = True
     Case WM_KEYDOWN
         nKeyCode = CInt(wParam And &HFFFF&)
@@ -2983,11 +3288,13 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
     Case WM_CHAR
         nKeyAscii = CInt(wParam And &HFFFF&)
         RaiseEvent KeyPress(nKeyAscii)
+    Case WM_CTLCOLORSCROLLBAR
+        Handled = True
     End Select
     '--- note: performance optimization for design-time subclassing
-    If Not Handled And ThunkPrivateData(m_pSubclass) = EBMODE_DESIGN Then
+    If Not Handled And ThunkPrivateData(m_pSubclassPic) = EBMODE_DESIGN Then
         Handled = True
-        ControlSubclassProc = CallNextSubclassProc(m_pSubclass, hWnd, wMsg, wParam, lParam)
+        ControlSubclassProc = CallNextSubclassProc(m_pSubclassPic, hWnd, wMsg, wParam, lParam)
     End If
 End Function
 
@@ -3239,37 +3546,6 @@ Private Sub pvSetRangeSel(ByVal lFrom As Long, ByVal lTo As Long)
     pvInvalidate
 End Sub
 
-Private Sub pvOnHScroll(ByVal lCode As Long)
-    Dim uSi             As SCROLLINFO
-    Dim lPage           As Long
-
-    '--- LeftCol is 1-based while the scrollbar position is 0-based
-    Select Case lCode
-    Case SB_LINELEFT
-        LeftCol = pvClampCol(pvFirstCol() - 1)
-    Case SB_LINERIGHT
-        LeftCol = pvClampCol(pvFirstCol() + 1)
-    Case SB_PAGELEFT, SB_PAGERIGHT
-        uSi.cbSize = Len(uSi)
-        uSi.fMask = SIF_PAGE
-        Call GetScrollInfo(UserControl.hWnd, SB_HORZ, uSi)
-        lPage = uSi.nPage
-        If lPage < 1 Then
-            lPage = 1
-        End If
-        If lCode = SB_PAGELEFT Then
-            LeftCol = pvClampCol(pvFirstCol() - lPage)
-        Else
-            LeftCol = pvClampCol(pvFirstCol() + lPage)
-        End If
-    Case SB_THUMBPOSITION, SB_THUMBTRACK
-        uSi.cbSize = Len(uSi)
-        uSi.fMask = SIF_TRACKPOS
-        Call GetScrollInfo(UserControl.hWnd, SB_HORZ, uSi)
-        LeftCol = pvClampCol(uSi.nTrackPos + 1)
-    End Select
-End Sub
-
 Private Function pvClampCol(ByVal nValue As Integer) As Integer
     pvClampCol = nValue
     If pvClampCol < 1 Then
@@ -3292,7 +3568,7 @@ Private Sub pvOnVScroll(ByVal lCode As Long)
     Case SB_PAGEUP, SB_PAGEDOWN
         uSi.cbSize = Len(uSi)
         uSi.fMask = SIF_PAGE
-        Call GetScrollInfo(UserControl.hWnd, SB_VERT, uSi)
+        Call GetScrollInfo(picGrid.hWnd, SB_VERT, uSi)
         lPage = uSi.nPage
         If lPage < 1 Then
             lPage = 1
@@ -3305,7 +3581,7 @@ Private Sub pvOnVScroll(ByVal lCode As Long)
     Case SB_THUMBPOSITION, SB_THUMBTRACK
         uSi.cbSize = Len(uSi)
         uSi.fMask = SIF_TRACKPOS
-        Call GetScrollInfo(UserControl.hWnd, SB_VERT, uSi)
+        Call GetScrollInfo(picGrid.hWnd, SB_VERT, uSi)
         FirstItem = uSi.nTrackPos + 1
     End Select
 End Sub
@@ -3404,6 +3680,21 @@ Private Sub UserControl_ReadProperties(PropBag As PropertyBag)
     pvSubclass
 End Sub
 
+Private Sub hsbGrid_Change()
+    pvOnHScroll
+End Sub
+
+Private Sub hsbGrid_Scroll()
+    pvOnHScroll
+End Sub
+
+Private Sub pvOnHScroll()
+    If m_bScrollUpdating Then
+        Exit Sub
+    End If
+    LeftCol = pvClampCol(hsbGrid.Value + 1)
+End Sub
+
 Private Sub m_oFont_FontChanged(ByVal PropertyName As String)
     '--- default row height follows the data font unless explicitly set
     If Not m_bRowHeightSet Then
@@ -3424,14 +3715,29 @@ End Sub
 Private Sub UserControl_Paint()
     Const FUNC_NAME     As String = "UserControl_Paint"
 
+    '--- the navigator lives in the band, which is the outer control's own
+    '--- client area -- picGrid covers everything above it
     On Error GoTo EH
-    pvPaint UserControl.hDC
+    If m_bRecordNavigator Then
+        pvPaintNavigator UserControl.hDC
+    End If
+    Exit Sub
+EH:
+    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+End Sub
+
+Private Sub picGrid_Paint()
+    Const FUNC_NAME     As String = "picGrid_Paint"
+
+    On Error GoTo EH
+    pvPaint picGrid.hDC
     Exit Sub
 EH:
     Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
 End Sub
 
 Private Sub UserControl_Resize()
+    pvLayoutGrid
     pvInvalidate
 End Sub
 

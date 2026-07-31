@@ -107,7 +107,30 @@ Exit: sorting/grouping visual scenarios + relevant Advanced Sample parts.
 
 Exit: Custom Edit, Combo DropDowns, ADO3-style value list behavior (unbound data).
 
-## M6 -- Paint property matrix
+## M6 -- Card view
+
+The one part of the public surface no milestone owned: M3 declared card view out
+of scope and nothing later picked it up, yet `View`, `CardBorders`,
+`CardCaptionPrefix`, `CardWidth`, `CardSpacing` and the `JSColumn` card members
+are all public and appear in the sample corpus. Twelve paint properties in total.
+
+- `View` switching between table and card layout, card painting: borders
+  (`CardBorders`), caption prefix (`CardCaptionPrefix`), and the fixed
+  `CardWidth`/`CardSpacing` pixel metrics confirmed at M3 to be DPI-independent
+- per-column card behaviour: `JSColumn.CardCaption`, `CardIcon`,
+  `ShowCaptionInCardView`, `MinRowsInCardView`, `MaxRowsInCardView`
+- `AutomaticArrange` and `AllowCardSizing`
+- developed golden-first exactly like the table view, recorded from the original
+  and verified at 96/120/144 dpi
+
+Comes before the paint property matrix on purpose: card view *adds* twelve paint
+properties, so gating on "nothing unverified" only means something once they
+exist.
+
+Exit: card scenarios pass pixel diff at all recorded scales; no `unowned` card
+entries left in `PAINT-PROPERTIES.md`.
+
+## M7 -- Paint property matrix
 
 Gate before any data-binding work: every property that affects painting is proven
 against the original at two or more distinct values, so that binding is built on
@@ -124,18 +147,17 @@ a verified renderer rather than on properties that merely compile.
   `column-order`); fix whatever disagrees with the original
 - Give the weak entries a second rendered value, incl. the three non-default
   `GridLines` modes
-- Decide the owner for the currently unowned surface: card view (`View`,
-  `CardBorders`, `CardCaptionPrefix`, `CardWidth`, `CardSpacing` and the
-  `JSColumn` card members) and the drag/resize affordances have no milestone at
-  all -- 17 properties in total
-- Re-scope M9: the matrix puts 38 unimplemented paint properties there, mostly
+- Card view is owned by M6 now. Five properties are still unowned: the
+  drag/resize affordances (`AllowColumnDrag`, `AllowRowSizing`, `DetectRowDrag`,
+  `JSColumn.AllowSizing`) and `Options`
+- Re-scope M10: the matrix puts 38 unimplemented paint properties there, mostly
   the `JSFormatStyle` font and picture families, which is far more than its
   one-line entry implies
 
 Exit: no `unverified` rows left in `PAINT-PROPERTIES.md` for properties whose
 milestone has shipped; card view has an owning milestone.
 
-## M7 -- ADO binding
+## M8 -- ADO binding
 
 - Late-bound ADO (`As Object`, no msado15 reference), `ADORecordset` get/set,
   `DatabaseName`/`RecordSource`/`CursorLocation`/`LockType`, bookmarks,
@@ -144,7 +166,7 @@ milestone has shipped; card view has an owning milestone.
 
 Exit: ADO1-5 samples and NorthWind run against `JSNwind.mdb`.
 
-## M8 -- Persistence and property pages
+## M9 -- Persistence and property pages
 
 - Our `WriteProperties`/`ReadProperties` routed through the same friend setters;
   add-in import + IDE save converts sample forms to our `.frm`/`.frx`
@@ -153,21 +175,21 @@ Exit: ADO1-5 samples and NorthWind run against `JSNwind.mdb`.
 
 Exit: all ported sample forms load in the IDE with correct design-time state.
 
-## M9 -- Styling extras
+## M10 -- Styling extras
 
 - Full `JSFormatStyle` application, `JSFmtConditions` conditional formatting,
   preview rows, tooltips, scroll tips
 
 Exit: Using FormatStyles, ADO5 conditional formatting, Preview Rows samples.
 
-## M10 -- Printing
+## M11 -- Printing
 
 - `JSPrinterProperties`, pagination, `PrintGrid`, `GEXPreview` rendering/toolbar/
   zoom, `PrintPreview` handshake between controls
 
 Exit: the three Print & PrintPreview samples.
 
-## M11 -- Long tail (optional, in rough order of value)
+## M12 -- Long tail (optional, in rough order of value)
 
 - OLE drag & drop (`JSDataObject`), `SaveLayout`/`LoadLayout`/`LayoutString`
 - RDS / DataEnvironment / HTML samples: likely skip (obsolete)

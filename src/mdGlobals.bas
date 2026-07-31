@@ -30,7 +30,6 @@ Public Const INTERFACESAFE_FOR_UNTRUSTED_CALLER As Long = 1
 Public Const INTERFACESAFE_FOR_UNTRUSTED_DATA As Long = 2
 
 '--- painting
-Public Const TRANSPARENT                As Long = 1
 Public Const OPAQUE                     As Long = 2
 Public Const PS_SOLID                   As Long = 0
 Public Const PATINVERT                  As Long = &H5A0049
@@ -47,7 +46,6 @@ Public Const DT_NOCLIP                  As Long = &H100
 Public Const GWL_STYLE                  As Long = -16
 Public Const WS_VSCROLL                 As Long = &H200000
 Public Const WS_HSCROLL                 As Long = &H100000
-Public Const SB_HORZ                    As Long = 0
 Public Const SB_VERT                    As Long = 1
 Public Const SIF_RANGE                  As Long = 1
 Public Const SIF_PAGE                   As Long = 2
@@ -60,7 +58,6 @@ Public Const SIF_TRACKPOS               As Long = &H10
 Public Const SM_CXVSCROLL               As Long = 2
 Public Const SM_CYHSCROLL               As Long = 3
 Public Const WM_VSCROLL                 As Long = &H115
-Public Const WM_HSCROLL                  As Long = &H114
 Public Const WM_KEYDOWN                  As Long = &H100
 Public Const WM_LBUTTONDOWN              As Long = &H201
 Public Const WM_LBUTTONUP                As Long = &H202
@@ -75,13 +72,25 @@ Public Const SB_LINEUP                  As Long = 0
 Public Const SB_LINEDOWN                As Long = 1
 Public Const SB_PAGEUP                  As Long = 2
 Public Const SB_PAGEDOWN                As Long = 3
-Public Const SB_LINELEFT                As Long = 0
-Public Const SB_LINERIGHT               As Long = 1
-Public Const SB_PAGELEFT                As Long = 2
-Public Const SB_PAGERIGHT               As Long = 3
 Public Const SB_THUMBPOSITION           As Long = 4
 Public Const SB_THUMBTRACK              As Long = 5
 Public Const EBMODE_DESIGN              As Long = 0
+Public Const WM_MOUSEACTIVATE           As Long = &H21
+Public Const WM_CTLCOLORSCROLLBAR       As Long = &H137
+Public Const MA_NOACTIVATE              As Long = 3
+Public Const DFC_SCROLL                 As Long = 3
+Public Const DFCS_SCROLLLEFT            As Long = 2
+Public Const DFCS_SCROLLRIGHT           As Long = 3
+Public Const DFCS_INACTIVE              As Long = &H100
+Public Const DFC_BUTTON                 As Long = 4
+Public Const DFCS_BUTTONPUSH            As Long = &H10
+Public Const EDGE_SUNKEN                As Long = &HA
+Public Const BF_RECT                    As Long = &HF
+
+Public Type POINTAPI
+    X                       As Long
+    Y                       As Long
+End Type
 
 Public Type RECT
     Left                    As Long
@@ -146,6 +155,10 @@ Public Declare Function ReleaseDC Lib "user32" (ByVal hWnd As Long, ByVal hDC As
 Public Declare Function GetTextMetrics Lib "gdi32" Alias "GetTextMetricsW" (ByVal hDC As Long, lpMetrics As TEXTMETRICW) As Long
 Public Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long) As Long
 Public Declare Function SetWindowLong Lib "user32" Alias "SetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long, ByVal dwNewLong As Long) As Long
+Public Declare Function WindowFromPoint Lib "user32" (ByVal xPoint As Long, ByVal yPoint As Long) As Long
+Public Declare Function GetCursorPos Lib "user32" (lpPoint As POINTAPI) As Long
+Public Declare Function DrawFrameControl Lib "user32" (ByVal hDC As Long, lpRect As RECT, ByVal un1 As Long, ByVal un2 As Long) As Long
+Public Declare Function DrawEdge Lib "user32" (ByVal hDC As Long, qrc As RECT, ByVal edge As Long, ByVal grfFlags As Long) As Long
 Public Declare Function SetWindowPos Lib "user32" (ByVal hWnd As Long, ByVal hWndInsertAfter As Long, ByVal X As Long, ByVal Y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long
 Public Declare Function SetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal fnBar As Long, lpsi As SCROLLINFO, ByVal fRedraw As Long) As Long
 Public Declare Function GetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal fnBar As Long, lpsi As SCROLLINFO) As Long
