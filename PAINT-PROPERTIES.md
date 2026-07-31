@@ -32,8 +32,8 @@ gridline is ever drawn and the golden's full colour histogram
 
 | | count | share |
 |---|---:|---:|
-| verified | 35 | 28% |
-| weak | 7 | 6% |
+| verified | 42 | 33% |
+| weak | 0 | 0% |
 | unverified | 0 | 0% |
 | partial | 1 | 1% |
 | **not implemented** | **83** | **66%** |
@@ -43,15 +43,14 @@ gridline is ever drawn and the golden's full colour histogram
 implemented** -- they store and return their value, and round-trip through the
 snapshot corpus, but the renderer never looks at them.
 
-Of the 43 the renderer does read, **35 are proven** against the original at more
-than one value and **none is now untested** -- the remaining 7 are exercised, but
-only at a single value.
+**Every property the renderer reads is now proven** against the original at two or
+more distinct values, except `LeftCol`, which is only partly consumed because
+horizontal scrolling is unimplemented.
 
-Clearing the unverified block took five scenarios (`colors-rows`,
-`colors-chrome`, `formatstyles-selection`, `column-order`,
-`default-column-width`) and turned up five real defects along the way -- three in
-gridline and marquee rendering, two in column sizing and ordering. See the M6
-notes in `CHANGELOG.md`.
+Getting there took eight scenarios and turned up **eleven** real defects. Each had
+survived because the corpus could not see it: solid gridlines hide both dotted
+rules, a black default `ForeColor` makes a wrong XOR mask invisible, and no
+scenario had ever set `GridLines` to anything but its default.
 
 Not-implemented properties by owning milestone:
 
@@ -121,9 +120,9 @@ the M2 storage commit, so that hash carries no information about painting.
 | `FormatStyles` | `JSFormatStyles` | verified | `pvSelColors` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `formatstyles-selection` overrides the `SelectedRow` system style |
 | `FrozenColumns` | `Integer` | **not impl** | -- | M3d | -- | -- |
 | `GridImages` | `JSGridImages` | **not impl** | -- | M9 | -- | -- |
-| `GridLines` | `jgexGridLinesConstants` | weak | `pvPaintRows`, `pvPaintDataRow` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | only ever set to `jgexGLBoth`, which is the default -- the other three modes are unrendered |
+| `GridLines` | `jgexGridLinesConstants` | verified | `pvPaintRows`, `pvPaintDataRow` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | all four modes: default Both, plus `gridlines-none`, `gridlines-vertical`, `gridlines-horizontal` |
 | `GridLinesColor` | `OLE_COLOR` | verified | `pvPaintRows`, `pvPaintDataRow` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-rows` (`0x0000FF`) vs default |
-| `GridLineStyle` | `jgexGridLineStyleConstants` | verified | `pvPenStyle` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-rows` (dots) vs solid default |
+| `GridLineStyle` | `jgexGridLineStyleConstants` | verified | `pvPenStyle` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-rows` (dots), `gridlines-vertical` (dashes), solid default |
 | `GroupByBoxInfoText` | `String` | verified | `pvPaintGroupByBox` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-chrome` custom text vs default |
 | `GroupByBoxVisible` | `Boolean` | verified | `pvPaint` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `headers-noborder`, `headers-single3d`, `headers-singleflat` vs default |
 | `GroupFooterStyle` | `jgexGroupFooterStyleConstants` | **not impl** | -- | M4 | -- | -- |
@@ -182,7 +181,7 @@ the M2 storage commit, so that hash carries no information about painting.
 | `JSFormatStyle.TextAlignment` | `jgexAlignmentConstants` | **not impl** | -- | M9 | -- | -- |
 | `LeftCol` | `Integer` | **partial** | `pvUpdateScrollBars` only | M3d | [`e95c15e`](../../commit/e95c15e1b1d35f09c9bbe557228ddc1329ed6c6f) | sets the horizontal thumb; the paint path ignores it, so columns do not scroll |
 | `MaskColor` | `OLE_COLOR` | **not impl** | -- | M9 | -- | -- |
-| `MultiSelect` | `jgexMultiSelectConstants` | weak | input path, rendered via `pvIsRowSelected` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `multiselect` (True) vs default False |
+| `MultiSelect` | `jgexMultiSelectConstants` | verified | input path, rendered via `pvIsRowSelected` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `multiselect` (contiguous 2-4) and `gridlines-vertical` (disjoint 1/3/6) |
 | `NewRowPos` | `jgexNewRowPositionConstants` | **not impl** | -- | M5 | -- | -- |
 | `Options` | `Long` | **not impl** | -- | unowned | -- | -- |
 | `PreviewColumn` | `Integer` | **not impl** | -- | M9 | -- | -- |
@@ -191,17 +190,17 @@ the M2 storage commit, so that hash carries no information about painting.
 | `RecordNavigator` | `Boolean` | **not impl** | -- | M3d | -- | -- |
 | `RecordNavigatorString` | `String` | **not impl** | -- | M3d | -- | -- |
 | `Redraw` | `Boolean` | **not impl** | -- | M3d | -- | -- |
-| `Row` | `Long` | weak | `pvPaintDataRow`, `pvPaintRows` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `multiselect` + ModelTests keynav; no scenario sets `Row` directly |
-| `RowColorEven` | `OLE_COLOR` | weak | `pvPaintDataRow` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `unbound-rows` -- one value only |
-| `RowColorOdd` | `OLE_COLOR` | weak | `pvPaintDataRow` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `unbound-rows` -- one value only |
+| `Row` | `Long` | verified | `pvPaintDataRow`, `pvPaintRows` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `gridlines-horizontal` sets `Row` = 3 via `post`; row 1 elsewhere |
+| `RowColorEven` | `OLE_COLOR` | verified | `pvPaintDataRow` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `unbound-rows` and `gridlines-none` (`0xE0E0FF`) |
+| `RowColorOdd` | `OLE_COLOR` | verified | `pvPaintDataRow` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `unbound-rows` and `gridlines-none` (`0xFFE0E0`) |
 | `RowCount` | `Long` | verified | `pvPaintRows`, `pvPaintDataRow`, `pvUpdateScrollBars` | M3a | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | read-only view of `ItemCount`; the dark last-row gridline depends on it |
 | `RowExpanded` | `Boolean` | **not impl** | -- | M4 | -- | -- |
 | `RowHeaders` | `Boolean` | verified | `pvPaintHeaders`, `pvPaintRows` | M3c | [`54c6101`](../../commit/54c6101c20939be5df126be4f4b84e1c541926bb) | `rowheaders`, `multiselect`, `font-segoeui` vs `no-headers-no-rowheaders` |
 | `RowHeight` | `Long` | verified | `pvPaintRows`, `pvPaintDataRow` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | never set explicitly -- exercised indirectly at 19/22/24/28/32px via the font scenarios x 3 dpi |
-| `RowSelected` | `Boolean` | weak | `pvIsRowSelected` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `multiselect` -- one selection shape only |
+| `RowSelected` | `Boolean` | verified | `pvIsRowSelected` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `multiselect` (contiguous) and `gridlines-vertical` (disjoint) |
 | `ScrollToolTipColumn` | `Integer` | **not impl** | -- | M9 | -- | -- |
 | `ScrollToolTips` | `Boolean` | **not impl** | -- | M9 | -- | -- |
-| `SelectedItems` | `JSSelectedItems` | weak | `pvIsRowSelected` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `multiselect` -- one selection shape only |
+| `SelectedItems` | `JSSelectedItems` | verified | `pvIsRowSelected` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `multiselect` (contiguous) and `gridlines-vertical` (disjoint) |
 | `SelectionStyle` | `jgexSelectionStyleConstants` | **not impl** | -- | M9 | -- | -- |
 | `ShowEmptyFields` | `Boolean` | **not impl** | -- | M9 | -- | -- |
 | `ShowToolTips` | `Boolean` | **not impl** | -- | M9 | -- | -- |
@@ -223,17 +222,27 @@ only be wrong in a way the corpus can see.
 | `column-order` | `JSColumn.ColPosition` | invalid `ColPosition` blanks the grid |
 | `default-column-width` | `DefaultColumnWidth` | new columns ignored it, defaulting to 1000 **px** |
 
-What remains for M6:
+The three `gridlines-*` scenarios each carry 5-6 properties rather than one, so
+clearing the weak block cost three captures instead of seven -- recording is the
+slow part of the loop, so scenarios are packed deliberately.
 
-1. **Vary the 7 weak entries**: a second rendered value for `BackColorBkg`,
-   `RowColorEven`, `RowColorOdd`, `SelectedItems`/`RowSelected`, `Row`,
-   `MultiSelect`, and the three non-default `GridLines` modes.
-2. **Harden invalid `ColPosition`.** The original ignores an out-of-range value
-   and keeps declaration order; we render an empty grid, because
-   `ItemByPosition` finds no column at the expected slot. Not covered by a
-   golden -- the corpus now uses valid positions -- but it is a real defect.
-3. Record 144dpi goldens for the five new scenarios next time the machine is at
-   150% scaling.
+The corpus is recorded and verified at **96, 120 and 144 dpi**.
+
+Note on goldens and the system accent: it changed twice during this work
+(`0x0078D7` -> `0x0078D4` -> back), and every selected row carries it. A golden
+set recorded in an earlier session can therefore fail on colour alone while the
+geometry is perfect -- the tell is a diff whose only pairs are the accent and its
+XOR complement. Re-record rather than debug. `golden/144` currently holds the
+older accent and wants a re-record next time the machine is at 150%.
+
+What remains for M6: **`LeftCol`** stays `partial` until horizontal scrolling
+lands (M3d remainder).
+
+One rule is recorded as an empirical table rather than a derivation: where the
+row header's border pair lands per `GridLines` value (`Vertical` +1,
+`Horizontal` -1, `Both`/`None` unchanged). Four goldens agree, but no mechanical
+reason was found for the single-direction modes pulling in opposite directions,
+so treat it as measured, not understood.
 
 ## Maintenance
 

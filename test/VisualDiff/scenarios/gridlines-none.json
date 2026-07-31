@@ -1,0 +1,29 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "gridlines-none",
+    "width": 400,
+    "height": 260,
+    "apply": "before-show",
+    "props": {
+        "GridLines": 0,
+        "RowHeaders": true,
+        "UseEvenOddColor": true,
+        "RowColorEven": 0xE0E0FF,
+        "RowColorOdd": 0xFFE0E0,
+        "BackColorBkg": 0x206040,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1200 },
+            { "Caption": "Beta", "Width": 1200 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "one", "1" ],
+            [ "two", "2" ],
+            [ "three", "3" ],
+            [ "four", "4" ],
+            [ "five", "5" ],
+            [ "six", "6" ]
+        ]
+    }
+}

@@ -85,6 +85,8 @@ Private Declare Function GdipCreateBitmapFromFile Lib "gdiplus" (ByVal fileName 
 Private Declare Function GdipCreateHBITMAPFromBitmap Lib "gdiplus" (ByVal hGdipBmp As Long, hBmpReturn As Long, ByVal background As Long) As Long
 Private Declare Function CreateDIBSection Lib "gdi32" (ByVal hdc As Long, lpBI As BITMAPINFOHEADER, ByVal wUsage As Long, lplpVoid As Long, ByVal hSection As Long, ByVal dwOffset As Long) As Long
 Private Declare Function GetObjectApi Lib "gdi32" Alias "GetObjectA" (ByVal hObject As Long, ByVal nCount As Long, lpObject As Any) As Long
+'--- DWM
+Private Declare Function DwmSetWindowAttribute Lib "dwmapi" (ByVal hWnd As Long, ByVal dwAttribute As Long, pvAttribute As Any, ByVal cbAttribute As Long) As Long
 
 Private Type BITMAP
     bmType                  As Long
@@ -134,6 +136,23 @@ Public Function ScreenDpi() As Long
     ScreenDpi = GetDeviceCaps(hdc, LOGPIXELSY)
     Call ReleaseDC(0, hdc)
 End Function
+
+Public Sub DisableWindowTransitions(ByVal hWnd As Long)
+    Const FUNC_NAME     As String = "DisableWindowTransitions"
+    Const DWMWA_TRANSITIONS_FORCEDISABLED As Long = 3
+    Dim lValue          As Long
+
+    '--- DWM fades a window in when it is first shown, so a scenario form can
+    '--- be captured mid-transition. Must be set while the form is still
+    '--- hidden. dwmapi is missing pre-Vista, where the declare fails to
+    '--- resolve on first call, hence the handler
+    On Error GoTo EH
+    lValue = 1
+    Call DwmSetWindowAttribute(hWnd, DWMWA_TRANSITIONS_FORCEDISABLED, lValue, 4)
+    Exit Sub
+EH:
+    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+End Sub
 
 Public Function CaptureWindowClient(ByVal hWnd As Long, lWidth As Long, lHeight As Long, baBits() As Byte) As Boolean
     Dim uRect           As RECT

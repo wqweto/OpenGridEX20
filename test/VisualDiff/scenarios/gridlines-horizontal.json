@@ -1,0 +1,25 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "gridlines-horizontal",
+    "width": 400,
+    "height": 260,
+    "apply": "before-show",
+    "props": {
+        "GridLines": 2,
+        "RowHeaders": true,
+        "Columns": [
+            { "Caption": "First", "Width": 1200 },
+            { "Caption": "Second", "Width": 900 },
+            { "Caption": "Third", "Width": 1200 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "a1", "b1", "c1" ],
+            [ "a2", "b2", "c2" ],
+            [ "a3", "b3", "c3" ],
+            [ "a4", "b4", "c4" ]
+        ]
+    },
+    "post": { "Row": 3 }
+}

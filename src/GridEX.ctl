@@ -1075,9 +1075,14 @@ Public Property Let Row(ByVal lValue As Long)
     Dim lLastRow        As Long
 
     If m_lRow <> lValue Then
-        lLastRow = m_lRow
-        m_lRow = lValue
-        RaiseEvent RowColChange(lLastRow, m_nCol)
+        pvSetRow lValue
+        '--- an assignment from outside collapses the selection onto the new
+        '--- row, silently: navigation and drag go through pvSetRow instead
+        '--- and apply their own selection, keeping SelectionChange ordering
+        m_oSelectedItems.Clear
+        pvAddSel m_lRow
+        m_lSelAnchor = m_lRow
+        pvInvalidate
     End If
 End Property
 
@@ -2274,6 +2279,7 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
     Dim hPrevFont       As Long
     Dim uRect           As RECT
     Dim lPainted        As Long
+    Dim lExtra          As Long
 
     lRowH = m_lRowHeight
     If m_bRowHeaders Then
@@ -2304,6 +2310,12 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
         Call SelectObject(hDC, hPrevFont)
     End If
     lRowsBottom = lY + lPainted * lRowH
+    '--- under vertical-only gridlines the row header's border pair ends one
+    '--- line below the block, and the gridlines run down to meet it, while
+    '--- the cells themselves still stop at the block bottom
+    If m_eGridLines = jgexGLVertical Then
+        lExtra = 1
+    End If
     If m_bEmptyRows Then
         '--- empty rows continue the grid to the bottom edge
         pvFillRect hDC, lHdrW, lRowsBottom, lHdrW + lTotalW, ScaleHeight, m_clrBackColor
@@ -2317,7 +2329,8 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
         lRowsBottom = ScaleHeight
     Else
         '--- background below the last row
-        pvFillRect hDC, 0, lRowsBottom, lHdrW + lTotalW, ScaleHeight, m_clrBackColorBkg
+        pvFillRect hDC, 0, lRowsBottom + lExtra, lHdrW, ScaleHeight, m_clrBackColorBkg
+        pvFillRect hDC, lHdrW, lRowsBottom, lHdrW + lTotalW, ScaleHeight, m_clrBackColorBkg
     End If
     If lPainted > 0 Or m_bEmptyRows Then
         '--- focus marquee on the current row; the XOR runs against the DC
@@ -2332,7 +2345,11 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
                 Set oCol = m_oColumns.ItemByPosition(nIdx)
                 If oCol.Visible Then
                     lCum = lCum + ToPixels(oCol.Width)
-                    pvLine hDC, lHdrW + lCum - 1, lY, lHdrW + lCum - 1, lRowsBottom, m_clrGridLinesColor, pvPenStyle()
+                    If m_eGridLineStyle = jgexGLSDashes Then
+                        pvDashedVLine hDC, lHdrW + lCum - 1, lY, lRowsBottom + lExtra, m_clrGridLinesColor, lY, lRowH, lRowsBottom
+                    Else
+                        pvLine hDC, lHdrW + lCum - 1, lY, lHdrW + lCum - 1, lRowsBottom + lExtra, m_clrGridLinesColor, pvPenStyle()
+                    End If
                 End If
             Next
         End If
@@ -2355,6 +2372,7 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
     Dim sText           As String
     Dim lClipR          As Long
     Dim lMarqueeR       As Long
+    Dim lLineR          As Long
 
     '--- the current row is always shown selected, as in the original
     bSelected = pvIsRowSelected(lRow) Or (m_lRow >= 1 And lRow = m_lRow)
@@ -2372,6 +2390,9 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         clrText = m_clrForeColor
     End If
     If lHdrW > 0 Then
+        '--- the header cell can be shorter than the row, and what shows below
+        '--- it is the grid background rather than the row's own color
+        pvFillRect hDC, 0, lRowTop, lHdrW, lRowTop + lRowH, m_clrBackColor
         '--- the record-selector arrow marks the current row only
         pvPaintRowHeader hDC, lRowTop, lRowH, lHdrW, (lRow = m_lRow)
     End If
@@ -2396,17 +2417,23 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
                 If lMarqueeR >= 0 And lClipR > lMarqueeR Then
                     lClipR = lMarqueeR
                 End If
-                pvDrawText hDC, sText, lX + 2, lRowTop, lX + lW - 3, lRowTop + lRowH - 1, clrText, clrBack, oCol.TextAlignment, lX, lClipR
+                pvDrawText hDC, sText, lX + 2, lRowTop, lX + lW - 3, lRowTop + pvRowContentH(lRowH), clrText, clrBack, oCol.TextAlignment, lX, lClipR
             End If
             lX = lX + lW
         End If
     Next
     If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLHorizontal Then
+        '--- with no vertical gridline claiming the block's last pixel column
+        '--- the horizontal line runs one further right, as the marquee does
+        lLineR = lHdrW + lTotalW
+        If m_eGridLines = jgexGLHorizontal Then
+            lLineR = lLineR + 1
+        End If
         If lRow = RowCount Then
             '--- the line under the last data row is drawn dark
-            pvLine hDC, lHdrW, lRowTop + lRowH - 1, lHdrW + lTotalW, lRowTop + lRowH - 1, vb3DDKShadow, PS_SOLID
+            pvLine hDC, lHdrW, lRowTop + lRowH - 1, lLineR, lRowTop + lRowH - 1, vb3DDKShadow, PS_SOLID
         Else
-            pvLine hDC, lHdrW, lRowTop + lRowH - 1, lHdrW + lTotalW, lRowTop + lRowH - 1, m_clrGridLinesColor, pvPenStyle()
+            pvLine hDC, lHdrW, lRowTop + lRowH - 1, lLineR, lRowTop + lRowH - 1, m_clrGridLinesColor, pvPenStyle()
         End If
     End If
 End Sub
@@ -2433,11 +2460,17 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
     '--- and ForeColor like a two-color pattern brush would -- the ForeColor
     '--- pass is invisible at the default black, which is why it only shows
     '--- up once a scenario sets the property
-    lRight = lHdrW + lTotalW - 2
+    '--- the vertical gridline claims the last pixel column of the block, so
+    '--- the marquee stops one short of it -- with vertical lines off it runs
+    '--- all the way out, mirroring pvRowContentH on the other axis
+    lRight = lHdrW + lTotalW - 1
+    If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLVertical Then
+        lRight = lRight - 1
+    End If
     If lRight > ScaleWidth - 1 Then
         lRight = ScaleWidth - 1
     End If
-    lBottom = lRowTop + lRowH - 2
+    lBottom = lRowTop + pvRowContentH(lRowH) - 1
     lStartB = 1
     If (lBottom - lRowTop) Mod 2 = 1 Then
         lStartB = 0
@@ -2492,15 +2525,27 @@ End Sub
 
 Private Sub pvPaintRowHeader(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, ByVal bCurrent As Boolean)
     Dim lIdx            As Long
+    Dim lC              As Long
 
-    '--- a Double3D header-like cell per row
-    pvFillRect hDC, 1, lRowTop + 1, lHdrW - 2, lRowTop + lRowH - 2, m_clrBackColorHeader
+    '--- a Double3D header-like cell per row. Where its border pair lands is
+    '--- an empirical table, one entry per GridLines value, each measured off
+    '--- a golden -- no mechanical rule was found that explains why the
+    '--- single-direction modes pull it in opposite directions
+    Select Case m_eGridLines
+    Case jgexGLVertical
+        lC = lRowH
+    Case jgexGLHorizontal
+        lC = lRowH - 2
+    Case Else
+        lC = lRowH - 1
+    End Select
+    pvFillRect hDC, 1, lRowTop + 1, lHdrW - 2, lRowTop + lC - 1, m_clrBackColorHeader
     pvLine hDC, 0, lRowTop, lHdrW, lRowTop, vb3DHighlight, PS_SOLID
-    pvLine hDC, 0, lRowTop, 0, lRowTop + lRowH - 2, vb3DHighlight, PS_SOLID
-    pvLine hDC, 0, lRowTop + lRowH - 2, lHdrW, lRowTop + lRowH - 2, vb3DShadow, PS_SOLID
-    pvLine hDC, 0, lRowTop + lRowH - 1, lHdrW, lRowTop + lRowH - 1, vb3DDKShadow, PS_SOLID
-    pvLine hDC, lHdrW - 2, lRowTop, lHdrW - 2, lRowTop + lRowH - 2, vb3DShadow, PS_SOLID
-    pvLine hDC, lHdrW - 1, lRowTop, lHdrW - 1, lRowTop + lRowH - 1, vb3DDKShadow, PS_SOLID
+    pvLine hDC, 0, lRowTop, 0, lRowTop + lC - 1, vb3DHighlight, PS_SOLID
+    pvLine hDC, 0, lRowTop + lC - 1, lHdrW, lRowTop + lC - 1, vb3DShadow, PS_SOLID
+    pvLine hDC, 0, lRowTop + lC, lHdrW, lRowTop + lC, vb3DDKShadow, PS_SOLID
+    pvLine hDC, lHdrW - 2, lRowTop, lHdrW - 2, lRowTop + lC - 1, vb3DShadow, PS_SOLID
+    pvLine hDC, lHdrW - 1, lRowTop, lHdrW - 1, lRowTop + lC, vb3DDKShadow, PS_SOLID
     '--- current row arrow marker
     If bCurrent Then
         For lIdx = 0 To 5
@@ -2522,6 +2567,16 @@ Private Function pvCellText(ByVal lRowIndex As Long, ByVal nColIndex As Integer)
                 pvCellText = CStr(vValue)
             End If
         End Select
+    End If
+End Function
+
+Private Function pvRowContentH(ByVal lRowH As Long) As Long
+    '--- the horizontal gridline takes the row's last pixel line, so text and
+    '--- the focus marquee center in one pixel less -- with horizontal lines
+    '--- off the original uses the whole row height instead
+    pvRowContentH = lRowH
+    If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLHorizontal Then
+        pvRowContentH = lRowH - 1
     End If
 End Function
 
@@ -2713,6 +2768,38 @@ Private Sub pvSelColors(clrBack As OLE_COLOR, clrFore As OLE_COLOR)
         clrBack = oStyle.BackColor
         clrFore = oStyle.ForeColor
     End If
+End Sub
+
+Private Sub pvDashedVLine(ByVal hDC As Long, ByVal lX As Long, ByVal lY1 As Long, ByVal lY2 As Long, ByVal clrLine As OLE_COLOR, ByVal lRowsTop As Long, ByVal lRowH As Long, ByVal lWrapEnd As Long)
+    Dim hBrush          As Long
+    Dim hPrevBrush      As Long
+    Dim lIdx            As Long
+    Dim lOfs            As Long
+
+    '--- dashes run 3 on / 3 off and the phase restarts at every row top, so a
+    '--- row height that is not a multiple of 6 (19px at 96dpi) leaves a run of
+    '--- four across the row boundary, exactly as the original draws it
+    pvFillRect hDC, lX, lY1, lX + 1, lY2, m_clrBackColorBkg
+    hBrush = CreateSolidBrush(pvColor(clrLine))
+    hPrevBrush = SelectObject(hDC, hBrush)
+    For lIdx = lY1 To lY2 - 1
+        lOfs = lIdx - lRowsTop
+        If lRowH > 0 Then
+            If lIdx < lWrapEnd Then
+                lOfs = lOfs Mod lRowH
+            Else
+                '--- past the last row the phase keeps running from that row's
+                '--- top instead of restarting, which is what decides whether
+                '--- the block's closing line is drawn at all
+                lOfs = lIdx - (lWrapEnd - lRowH)
+            End If
+        End If
+        If lOfs Mod 6 < 3 Then
+            Call PatBlt(hDC, lX, lIdx, 1, 1, PATCOPY)
+        End If
+    Next
+    Call SelectObject(hDC, hPrevBrush)
+    Call DeleteObject(hBrush)
 End Sub
 
 Private Sub pvDottedLine(ByVal hDC As Long, ByVal lX1 As Long, ByVal lY1 As Long, ByVal lX2 As Long, ByVal lY2 As Long, ByVal clrLine As OLE_COLOR)
@@ -2933,7 +3020,7 @@ Private Sub pvOnMouseDrag(ByVal lY As Long)
     End If
     lRow = pvClampRow(m_lFirstItem + (lY - lTopHdr) \ m_lRowHeight)
     If lRow <> m_lRow Then
-        Row = lRow
+        pvSetRow lRow
         pvSetRangeSel m_lSelAnchor, lRow
         EnsureVisible m_lRow
     End If
@@ -3037,10 +3124,23 @@ Private Sub pvOnKeyDown(ByVal nKeyCode As Integer, ByVal nShift As Integer)
     End Select
 End Sub
 
+Private Sub pvSetRow(ByVal lValue As Long)
+    Dim lLastRow        As Long
+
+    '--- moves the current row without touching the selection: the row is
+    '--- painted selected, so it still has to repaint
+    If m_lRow <> lValue Then
+        lLastRow = m_lRow
+        m_lRow = lValue
+        pvInvalidate
+        RaiseEvent RowColChange(lLastRow, m_nCol)
+    End If
+End Sub
+
 '--- moves the current cell and updates the selection accordingly
 Private Sub pvNavigate(ByVal lRow As Long, ByVal nCol As Integer, ByVal nShift As Integer, ByVal bCtrlToggle As Boolean)
     If lRow >= 1 And lRow <= RowCount Then
-        Row = lRow
+        pvSetRow lRow
     End If
     If nCol >= 1 Then
         Col = nCol

@@ -1,0 +1,27 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "gridlines-vertical",
+    "width": 400,
+    "height": 260,
+    "apply": "before-show",
+    "props": {
+        "GridLines": 1,
+        "GridLineStyle": 1,
+        "RowHeaders": true,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1200 },
+            { "Caption": "Beta", "Width": 1200 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "one", "1" ],
+            [ "two", "2" ],
+            [ "three", "3" ],
+            [ "four", "4" ],
+            [ "five", "5" ],
+            [ "six", "6" ]
+        ]
+    },
+    "select": [ 1, 3, 6 ]
+}

@@ -321,6 +321,12 @@ End Sub
 ' Control events
 '=========================================================================
 
+Private Sub Form_Load()
+    '--- the window exists but is still hidden here, so the DWM open
+    '--- transition can be suppressed before the first Show
+    DisableWindowTransitions hWnd
+End Sub
+
 Private Sub m_oExt_ObjectEvent(Info As EventInfo)
     Const FUNC_NAME     As String = "m_oExt_ObjectEvent"
     Dim lRowIndex       As Long

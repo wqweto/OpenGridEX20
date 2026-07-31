@@ -76,6 +76,13 @@ Attribute ItemByPosition.VB_Description = "Returns a specific JSColumn based on 
             Exit For
         End If
     Next
+    '--- duplicate or out-of-range ColPosition leaves slots unclaimed; falling
+    '--- back to declaration order keeps the grid rendering instead of blanking
+    If ItemByPosition Is Nothing Then
+        If ColPosition >= 1 And ColPosition <= m_cItems.Count Then
+            Set ItemByPosition = m_cItems.Item(ColPosition)
+        End If
+    End If
 End Function
 
 Public Sub Remove(ByVal vntIndexKey As Variant)
