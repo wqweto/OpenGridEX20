@@ -2423,10 +2423,15 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
     Dim lY              As Long
     Dim lStartB         As Long
     Dim lDxRight        As Long
+    Dim lPass           As Long
 
     '--- XOR checkerboard anchored per column: a border pixel is inverted
     '--- when (x - column left) + (y - row top) is odd, which a single
-    '--- row-wide DrawFocusRect only reproduces on even column boundaries
+    '--- row-wide DrawFocusRect only reproduces on even column boundaries.
+    '--- Every border pixel is inverted, alternating the mask between white
+    '--- and ForeColor like a two-color pattern brush would -- the ForeColor
+    '--- pass is invisible at the default black, which is why it only shows
+    '--- up once a scenario sets the property
     lRight = lHdrW + lTotalW - 2
     If lRight > ScaleWidth - 1 Then
         lRight = ScaleWidth - 1
@@ -2436,46 +2441,52 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
     If (lBottom - lRowTop) Mod 2 = 1 Then
         lStartB = 0
     End If
-    lDxRight = -1
-    hBrush = CreateSolidBrush(vbWhite)
-    hPrevBrush = SelectObject(hDC, hBrush)
-    lCum = lHdrW
-    For nIdx = 1 To m_oColumns.Count
-        Set oCol = m_oColumns.ItemByPosition(nIdx)
-        If oCol.Visible Then
-            lW = ToPixels(oCol.Width)
-            For lX = lCum + 1 To lCum + lW - 1 Step 2
-                If lX <= lRight Then
-                    Call PatBlt(hDC, lX, lRowTop, 1, 1, PATINVERT)
+    For lPass = 0 To 1
+        lDxRight = -1
+        If lPass = 0 Then
+            hBrush = CreateSolidBrush(vbWhite)
+        Else
+            hBrush = CreateSolidBrush(pvColor(m_clrForeColor))
+        End If
+        hPrevBrush = SelectObject(hDC, hBrush)
+        lCum = lHdrW
+        For nIdx = 1 To m_oColumns.Count
+            Set oCol = m_oColumns.ItemByPosition(nIdx)
+            If oCol.Visible Then
+                lW = ToPixels(oCol.Width)
+                For lX = lCum + 1 - lPass To lCum + lW - 1 Step 2
+                    If lX <= lRight Then
+                        Call PatBlt(hDC, lX, lRowTop, 1, 1, PATINVERT)
+                    End If
+                Next
+                For lX = lCum + lStartB + lPass To lCum + lW - 1 Step 2
+                    If lX <= lRight Then
+                        Call PatBlt(hDC, lX, lBottom, 1, 1, PATINVERT)
+                    End If
+                Next
+                If lRight >= lCum And lRight < lCum + lW Then
+                    lDxRight = lRight - lCum
                 End If
-            Next
-            For lX = lCum + lStartB To lCum + lW - 1 Step 2
-                If lX <= lRight Then
-                    Call PatBlt(hDC, lX, lBottom, 1, 1, PATINVERT)
-                End If
-            Next
-            If lRight >= lCum And lRight < lCum + lW Then
-                lDxRight = lRight - lCum
+                lCum = lCum + lW
             End If
-            lCum = lCum + lW
+        Next
+        '--- outer vertical edges, phased by their own column-relative x
+        For lY = lRowTop + 1 + lPass To lBottom - 1 Step 2
+            Call PatBlt(hDC, lHdrW, lY, 1, 1, PATINVERT)
+        Next
+        If lDxRight >= 0 Then
+            lY = lRowTop + 1 + lPass
+            If lDxRight Mod 2 = 1 Then
+                lY = lRowTop + 2 + lPass
+            End If
+            Do While lY <= lBottom - 1
+                Call PatBlt(hDC, lRight, lY, 1, 1, PATINVERT)
+                lY = lY + 2
+            Loop
         End If
+        Call SelectObject(hDC, hPrevBrush)
+        Call DeleteObject(hBrush)
     Next
-    '--- outer vertical edges, phased by their own column-relative x
-    For lY = lRowTop + 1 To lBottom - 1 Step 2
-        Call PatBlt(hDC, lHdrW, lY, 1, 1, PATINVERT)
-    Next
-    If lDxRight >= 0 Then
-        lY = lRowTop + 1
-        If lDxRight Mod 2 = 1 Then
-            lY = lRowTop + 2
-        End If
-        Do While lY <= lBottom - 1
-            Call PatBlt(hDC, lRight, lY, 1, 1, PATINVERT)
-            lY = lY + 2
-        Loop
-    End If
-    Call SelectObject(hDC, hPrevBrush)
-    Call DeleteObject(hBrush)
 End Sub
 
 Private Sub pvPaintRowHeader(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, ByVal bCurrent As Boolean)
@@ -2703,6 +2714,37 @@ Private Sub pvSelColors(clrBack As OLE_COLOR, clrFore As OLE_COLOR)
     End If
 End Sub
 
+Private Sub pvDottedLine(ByVal hDC As Long, ByVal lX1 As Long, ByVal lY1 As Long, ByVal lX2 As Long, ByVal lY2 As Long, ByVal clrLine As OLE_COLOR)
+    Dim hBrush          As Long
+    Dim hPrevBrush      As Long
+    Dim lIdx            As Long
+
+    '--- the whole run is laid down in the control background first: a dotted
+    '--- gridline's gaps show it, not the row color underneath
+    If lY1 = lY2 Then
+        pvFillRect hDC, lX1, lY1, lX2, lY1 + 1, m_clrBackColorBkg
+    Else
+        pvFillRect hDC, lX1, lY1, lX1 + 1, lY2, m_clrBackColorBkg
+    End If
+    hBrush = CreateSolidBrush(pvColor(clrLine))
+    hPrevBrush = SelectObject(hDC, hBrush)
+    If lY1 = lY2 Then
+        For lIdx = lX1 To lX2 - 1
+            If (lIdx + lY1) Mod 2 = 0 Then
+                Call PatBlt(hDC, lIdx, lY1, 1, 1, PATCOPY)
+            End If
+        Next
+    Else
+        For lIdx = lY1 To lY2 - 1
+            If (lX1 + lIdx) Mod 2 = 0 Then
+                Call PatBlt(hDC, lX1, lIdx, 1, 1, PATCOPY)
+            End If
+        Next
+    End If
+    Call SelectObject(hDC, hPrevBrush)
+    Call DeleteObject(hBrush)
+End Sub
+
 Private Sub pvFillRect(ByVal hDC As Long, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long, ByVal clrFill As OLE_COLOR)
     Dim uRect           As RECT
     Dim hBrush          As Long
@@ -2723,6 +2765,14 @@ Private Sub pvLine(ByVal hDC As Long, ByVal lX1 As Long, ByVal lY1 As Long, ByVa
     Dim hPen            As Long
     Dim hPrevPen        As Long
 
+    '--- GDI's cosmetic PS_DOT renders 3-on/3-off, while the original's dotted
+    '--- gridlines are 1-on/1-off anchored on odd coordinates -- the same
+    '--- absolute-parity pattern the focus marquee uses -- so they are stamped
+    '--- as explicit pixels instead
+    If lPenStyle = PS_DOT Then
+        pvDottedLine hDC, lX1, lY1, lX2, lY2, clrLine
+        Exit Sub
+    End If
     hPen = CreatePen(lPenStyle, 1, pvColor(clrLine))
     hPrevPen = SelectObject(hDC, hPen)
     Call MoveToEx(hDC, lX1, lY1, 0)

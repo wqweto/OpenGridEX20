@@ -32,9 +32,9 @@ gridline is ever drawn and the golden's full colour histogram
 
 | | count | share |
 |---|---:|---:|
-| verified | 19 | 15% |
-| weak | 8 | 6% |
-| unverified | 15 | 12% |
+| verified | 30 | 24% |
+| weak | 7 | 6% |
+| unverified | 5 | 4% |
 | partial | 1 | 1% |
 | **not implemented** | **83** | **66%** |
 | **total** | **126** | |
@@ -43,9 +43,16 @@ gridline is ever drawn and the golden's full colour histogram
 implemented** -- they store and return their value, and round-trip through the
 snapshot corpus, but the renderer never looks at them.
 
-Of the 43 the renderer does read, only **19 (15% of the surface) are proven**
-against the original at more than one value. **15 have no covering test at all**,
-and 8 more are exercised at a single value.
+Of the 43 the renderer does read, **30 are now proven** against the original at
+more than one value. **5 still have no covering test**, and 7 more are exercised
+at a single value.
+
+The `colors-rows` and `colors-chrome` scenarios cleared 11 entries in one pass
+and, in doing so, found three real rendering defects that no other scenario could
+have surfaced -- see the M6 notes in `CHANGELOG.md`. The five that remain need a
+`formatstyles-selection` scenario (`FormatStyles`, `JSFormatStyle.BackColor`,
+`JSFormatStyle.ForeColor`), a `column-order` scenario (`JSColumn.ColPosition`)
+and one setting `DefaultColumnWidth`.
 
 Not-implemented properties by owning milestone:
 
@@ -81,11 +88,11 @@ the M2 storage commit, so that hash carries no information about painting.
 | `AllowColumnDrag` | `Boolean` | **not impl** | -- | unowned | -- | -- |
 | `AllowRowSizing` | `Boolean` | **not impl** | -- | unowned | -- | -- |
 | `AutomaticArrange` | `Boolean` | **not impl** | -- | unowned | -- | -- |
-| `BackColor` | `OLE_COLOR` | **unverified** | `pvPaintDataRow`, `pvPaintRows` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | set by `gridlines-dots-colors`, which has no rows -- `0xC0FFC0` is absent from the golden |
-| `BackColorBkg` | `OLE_COLOR` | weak | `pvPaintRows` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `gridlines-dots-colors` -- renders, one value only |
-| `BackColorGBBox` | `OLE_COLOR` | **unverified** | `pvPaintGroupByBox` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | no scenario sets it |
-| `BackColorHeader` | `OLE_COLOR` | **unverified** | `pvPaintHeaderCell`, `pvPaintRowHeader`, `pvPaintRows` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | no scenario sets it |
-| `BackColorInfoText` | `OLE_COLOR` | **unverified** | `pvPaintGroupByBox` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | no scenario sets it |
+| `BackColor` | `OLE_COLOR` | verified | `pvPaintDataRow`, `pvPaintRows` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-rows` (`0xC0FFC0`) vs default |
+| `BackColorBkg` | `OLE_COLOR` | verified | `pvPaintRows` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-rows` (`0x404040`), `gridlines-dots-colors` (`0x808080`) |
+| `BackColorGBBox` | `OLE_COLOR` | verified | `pvPaintGroupByBox` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-chrome` (`0x604020`) vs default |
+| `BackColorHeader` | `OLE_COLOR` | verified | `pvPaintHeaderCell`, `pvPaintRowHeader`, `pvPaintRows` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-chrome` (`0x8000FF`) vs default |
+| `BackColorInfoText` | `OLE_COLOR` | verified | `pvPaintGroupByBox` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-chrome` (`0x30A0C0`) vs default |
 | `BackColorRowGroup` | `OLE_COLOR` | **not impl** | -- | M4 | -- | -- |
 | `BorderStyle` | `jgexBorderStyleConstants` | **not impl** | -- | M9 | -- | -- |
 | `CardBorders` | `Boolean` | **not impl** | -- | unowned | -- | -- |
@@ -108,17 +115,17 @@ the M2 storage commit, so that hash carries no information about painting.
 | `FirstItem` | `Long` | verified | `pvPaintRows`, `pvUpdateScrollBars` | M3d | [`e95c15e`](../../commit/e95c15e1b1d35f09c9bbe557228ddc1329ed6c6f) | `scrolled` sets 4 in its `post` block; 1 elsewhere |
 | `FmtConditions` | `JSFmtConditions` | **not impl** | -- | M9 | -- | -- |
 | `Font` | `Font` | verified | `pvPaintRows`, `pvPaintGroupByBox` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `font-large`, `font-tahoma`, `font-segoeui` + default |
-| `ForeColor` | `OLE_COLOR` | **unverified** | `pvPaintDataRow` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | no scenario sets it |
-| `ForeColorHeader` | `OLE_COLOR` | **unverified** | `pvPaintHeaderCell` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | no scenario sets it |
-| `ForeColorInfoText` | `OLE_COLOR` | **unverified** | `pvPaintGroupByBox` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | no scenario sets it |
+| `ForeColor` | `OLE_COLOR` | verified | `pvPaintDataRow` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-rows` (`0xFF0000`) vs default -- also drives the marquee XOR mask |
+| `ForeColorHeader` | `OLE_COLOR` | verified | `pvPaintHeaderCell` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-chrome` (`0x00FFFF`) vs default |
+| `ForeColorInfoText` | `OLE_COLOR` | verified | `pvPaintGroupByBox` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-chrome` (`0x0020FF`) vs default |
 | `ForeColorRowGroup` | `OLE_COLOR` | **not impl** | -- | M4 | -- | -- |
 | `FormatStyles` | `JSFormatStyles` | **unverified** | `pvSelColors` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | only the system styles at their defaults -- see the `JSFormatStyle.*` rows |
 | `FrozenColumns` | `Integer` | **not impl** | -- | M3d | -- | -- |
 | `GridImages` | `JSGridImages` | **not impl** | -- | M9 | -- | -- |
 | `GridLines` | `jgexGridLinesConstants` | weak | `pvPaintRows`, `pvPaintDataRow` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | only ever set to `jgexGLBoth`, which is the default -- the other three modes are unrendered |
-| `GridLinesColor` | `OLE_COLOR` | **unverified** | `pvPaintRows`, `pvPaintDataRow` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | same scenario, same reason -- no blue pixel in the golden |
-| `GridLineStyle` | `jgexGridLineStyleConstants` | **unverified** | `pvPenStyle` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `gridlines-dots-colors` has no rows, so dotted data gridlines are never drawn |
-| `GroupByBoxInfoText` | `String` | **unverified** | `pvPaintGroupByBox` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | no scenario sets it |
+| `GridLinesColor` | `OLE_COLOR` | verified | `pvPaintRows`, `pvPaintDataRow` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-rows` (`0x0000FF`) vs default |
+| `GridLineStyle` | `jgexGridLineStyleConstants` | verified | `pvPenStyle` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-rows` (dots) vs solid default |
+| `GroupByBoxInfoText` | `String` | verified | `pvPaintGroupByBox` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-chrome` custom text vs default |
 | `GroupByBoxVisible` | `Boolean` | verified | `pvPaint` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `headers-noborder`, `headers-single3d`, `headers-singleflat` vs default |
 | `GroupFooterStyle` | `jgexGroupFooterStyleConstants` | **not impl** | -- | M4 | -- | -- |
 | `Groups` | `JSGroups` | **not impl** | -- | M4 | -- | -- |
@@ -208,13 +215,10 @@ the M2 storage commit, so that hash carries no information about painting.
 The **unverified** block is cheap to clear because the harness already supports
 everything needed -- it is scenario authoring, not control work:
 
-1. **Give `gridlines-dots-colors` rows.** One edit fixes four entries at once
-   (`GridLinesColor`, `GridLineStyle`, `GridLines`, `BackColor`), none of which
-   can be proven while the scenario renders no data area.
-2. **Add a `colors-*` pair** setting `ForeColor`, `BackColorHeader`,
-   `ForeColorHeader`, `BackColorGBBox`, `BackColorInfoText`, `ForeColorInfoText`
-   and `GroupByBoxInfoText` to distinctive non-system values, in two variants so
-   each gets two rendered values.
+1. ~~Give `gridlines-dots-colors` rows.~~ Done differently: `colors-rows` adds a
+   rows-bearing scenario with dotted, coloured gridlines, which leaves the
+   existing 144dpi goldens valid instead of invalidating them.
+2. ~~Add a `colors-*` pair.~~ Done -- `colors-rows` and `colors-chrome`.
 3. **Add `formatstyles-selection`** overriding the `SelectedRow` system style,
    which is the only way `pvSelColors` -- and with it `JSFormatStyle.BackColor`
    and `JSFormatStyle.ForeColor` -- is exercised beyond defaults.

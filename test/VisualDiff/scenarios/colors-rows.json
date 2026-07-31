@@ -1,0 +1,27 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "colors-rows",
+    "width": 400,
+    "height": 260,
+    "apply": "before-show",
+    "props": {
+        "GridLines": -1,
+        "GridLineStyle": 2,
+        "GridLinesColor": 0x0000FF,
+        "BackColor": 0xC0FFC0,
+        "ForeColor": 0xFF0000,
+        "BackColorBkg": 0x404040,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1200 },
+            { "Caption": "Beta", "Width": 1200 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "one", "1" ],
+            [ "two", "2" ],
+            [ "three", "3" ],
+            [ "four", "4" ]
+        ]
+    }
+}

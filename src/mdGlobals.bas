@@ -34,6 +34,7 @@ Public Const TRANSPARENT                As Long = 1
 Public Const OPAQUE                     As Long = 2
 Public Const PS_SOLID                   As Long = 0
 Public Const PATINVERT                  As Long = &H5A0049
+Public Const PATCOPY                    As Long = &HF00021
 Public Const PS_DASH                    As Long = 1
 Public Const PS_DOT                     As Long = 2
 Public Const DT_CENTER                  As Long = 1
