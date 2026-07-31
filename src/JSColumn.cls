@@ -494,6 +494,10 @@ Friend Sub frInit(ByVal nIndex As Integer, sCaption As String, ByVal eColumnType
     m_sKey = sKey
 End Sub
 
+Friend Property Let frWidthPx(ByVal lValue As Long)
+    m_lWidth = lValue
+End Property
+
 Friend Sub frSetIndex(ByVal nIndex As Integer)
     m_nIndex = nIndex
 End Sub
@@ -518,7 +522,7 @@ Private Sub Class_Initialize()
     m_bShowCaptionInCardView = True
     m_eEditType = jgexEditTextBox
     m_eSortType = jgexSortTypeString
-    m_lWidth = 1000
+    m_lWidth = 100
     m_nHeaderIcon = -1
     m_nDefaultIcon = -1
     m_lMinRowsInCardView = 1

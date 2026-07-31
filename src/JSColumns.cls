@@ -26,6 +26,7 @@ DefObj A-Z
 '=========================================================================
 
 Private m_cItems                    As Collection
+Private m_lDefaultWidth             As Long
 
 '=========================================================================
 ' Properties
@@ -56,6 +57,8 @@ Public Function Add(Optional ByVal Caption As String, Optional ByVal ColumnType 
 Attribute Add.VB_Description = "Adds a JSColumn and returns a reference to the newly created object."
     Set Add = New JSColumn
     Add.frInit m_cItems.Count + 1, Caption, ColumnType, EditType, Key
+    '--- a new column takes the control's DefaultColumnWidth, as in the original
+    Add.frWidthPx = m_lDefaultWidth
     If LenB(Key) <> 0 Then
         m_cItems.Add Add, Key
     Else
@@ -97,9 +100,18 @@ Private Sub pvReindex()
 End Sub
 
 '=========================================================================
+' Friend methods
+'=========================================================================
+
+Friend Property Let frDefaultWidth(ByVal lValue As Long)
+    m_lDefaultWidth = lValue
+End Property
+
+'=========================================================================
 ' Base class events
 '=========================================================================
 
 Private Sub Class_Initialize()
     Set m_cItems = New Collection
+    m_lDefaultWidth = 100
 End Sub

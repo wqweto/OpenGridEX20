@@ -32,9 +32,9 @@ gridline is ever drawn and the golden's full colour histogram
 
 | | count | share |
 |---|---:|---:|
-| verified | 30 | 24% |
+| verified | 35 | 28% |
 | weak | 7 | 6% |
-| unverified | 5 | 4% |
+| unverified | 0 | 0% |
 | partial | 1 | 1% |
 | **not implemented** | **83** | **66%** |
 | **total** | **126** | |
@@ -43,16 +43,15 @@ gridline is ever drawn and the golden's full colour histogram
 implemented** -- they store and return their value, and round-trip through the
 snapshot corpus, but the renderer never looks at them.
 
-Of the 43 the renderer does read, **30 are now proven** against the original at
-more than one value. **5 still have no covering test**, and 7 more are exercised
-at a single value.
+Of the 43 the renderer does read, **35 are proven** against the original at more
+than one value and **none is now untested** -- the remaining 7 are exercised, but
+only at a single value.
 
-The `colors-rows` and `colors-chrome` scenarios cleared 11 entries in one pass
-and, in doing so, found three real rendering defects that no other scenario could
-have surfaced -- see the M6 notes in `CHANGELOG.md`. The five that remain need a
-`formatstyles-selection` scenario (`FormatStyles`, `JSFormatStyle.BackColor`,
-`JSFormatStyle.ForeColor`), a `column-order` scenario (`JSColumn.ColPosition`)
-and one setting `DefaultColumnWidth`.
+Clearing the unverified block took five scenarios (`colors-rows`,
+`colors-chrome`, `formatstyles-selection`, `column-order`,
+`default-column-width`) and turned up five real defects along the way -- three in
+gridline and marquee rendering, two in column sizing and ordering. See the M6
+notes in `CHANGELOG.md`.
 
 Not-implemented properties by owning milestone:
 
@@ -106,7 +105,7 @@ the M2 storage commit, so that hash carries no information about painting.
 | `ColumnHeaders` | `Boolean` | verified | `pvPaint` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `no-headers-no-rowheaders` (False) vs default True |
 | `Columns` | `JSColumns` | verified | `pvPaintHeaders`, `pvPaintDataRow`, `pvPaintRows`, `pvPaintRowMarquee` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | all 20 scenarios -- see the `JSColumn.*` rows |
 | `ContinuousScroll` | `Boolean` | **not impl** | -- | M3d | -- | -- |
-| `DefaultColumnWidth` | `Long` | **unverified** | via `JSColumns.Add` at init | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | no scenario sets it |
+| `DefaultColumnWidth` | `Long` | verified | via `JSColumns.Add` at init | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `default-column-width` (2100tw -> 140px columns) vs default |
 | `DefaultGroupMode` | `jgexDefaultGroupModeConstants` | **not impl** | -- | M4 | -- | -- |
 | `DetectRowDrag` | `Boolean` | **not impl** | -- | unowned | -- | -- |
 | `EditMode` | `jgexEditModeConstants` | **not impl** | -- | M5 | -- | -- |
@@ -119,7 +118,7 @@ the M2 storage commit, so that hash carries no information about painting.
 | `ForeColorHeader` | `OLE_COLOR` | verified | `pvPaintHeaderCell` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-chrome` (`0x00FFFF`) vs default |
 | `ForeColorInfoText` | `OLE_COLOR` | verified | `pvPaintGroupByBox` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `colors-chrome` (`0x0020FF`) vs default |
 | `ForeColorRowGroup` | `OLE_COLOR` | **not impl** | -- | M4 | -- | -- |
-| `FormatStyles` | `JSFormatStyles` | **unverified** | `pvSelColors` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | only the system styles at their defaults -- see the `JSFormatStyle.*` rows |
+| `FormatStyles` | `JSFormatStyles` | verified | `pvSelColors` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `formatstyles-selection` overrides the `SelectedRow` system style |
 | `FrozenColumns` | `Integer` | **not impl** | -- | M3d | -- | -- |
 | `GridImages` | `JSGridImages` | **not impl** | -- | M9 | -- | -- |
 | `GridLines` | `jgexGridLinesConstants` | weak | `pvPaintRows`, `pvPaintDataRow` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | only ever set to `jgexGLBoth`, which is the default -- the other three modes are unrendered |
@@ -141,7 +140,7 @@ the M2 storage commit, so that hash carries no information about painting.
 | `JSColumn.CardCaption` | `Boolean` | **not impl** | -- | unowned | -- | -- |
 | `JSColumn.CardIcon` | `Boolean` | **not impl** | -- | unowned | -- | -- |
 | `JSColumn.CellStyle` | `String` | **not impl** | -- | M9 | -- | -- |
-| `JSColumn.ColPosition` | `Integer` | **unverified** | `pvPaintRows` (via `ItemByPosition`) | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | no scenario reorders columns |
+| `JSColumn.ColPosition` | `Integer` | verified | `pvPaintRows` (via `ItemByPosition`) | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `column-order` reorders 3 columns to 1/2/3 from declaration order |
 | `JSColumn.ColumnType` | `jgexColumnTypeConstants` | **not impl** | -- | M9 | -- | -- |
 | `JSColumn.DefaultIcon` | `Integer` | **not impl** | -- | M9 | -- | -- |
 | `JSColumn.EditType` | `jgexEditTypeConstants` | **not impl** | -- | M5 | -- | -- |
@@ -165,7 +164,7 @@ the M2 storage commit, so that hash carries no information about painting.
 | `JSColumn.Visible` | `Boolean` | verified | `pvPaintRows`, `pvPaintDataRow`, `pvPaintHeaders` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `hidden-column` (False) vs default True |
 | `JSColumn.Width` | `Long` | verified | `pvPaintRows`, `pvPaintDataRow`, `pvPaintHeaders` | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | 900/1200/1400/1500/1800tw across the corpus |
 | `JSColumn.WordWrap` | `Boolean` | **not impl** | -- | M9 | -- | -- |
-| `JSFormatStyle.BackColor` | `OLE_COLOR` | **unverified** | `pvSelColors` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | only the `SelectedRow` system default is rendered |
+| `JSFormatStyle.BackColor` | `OLE_COLOR` | verified | `pvSelColors` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `formatstyles-selection` (`0x004080`) vs the system default |
 | `JSFormatStyle.BackgroundPicture` | `Picture` | **not impl** | -- | M9 | -- | -- |
 | `JSFormatStyle.DrawModeBackGroundPicture` | `jgexDrawModePictureBackgroundConstants` | **not impl** | -- | M9 | -- | -- |
 | `JSFormatStyle.FontBold` | `Boolean` | **not impl** | -- | M9 | -- | -- |
@@ -175,7 +174,7 @@ the M2 storage commit, so that hash carries no information about painting.
 | `JSFormatStyle.FontSize` | `Currency` | **not impl** | -- | M9 | -- | -- |
 | `JSFormatStyle.FontStrikeThru` | `Boolean` | **not impl** | -- | M9 | -- | -- |
 | `JSFormatStyle.FontUnderline` | `Boolean` | **not impl** | -- | M9 | -- | -- |
-| `JSFormatStyle.ForeColor` | `OLE_COLOR` | **unverified** | `pvSelColors` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | only the `SelectedRow` system default is rendered |
+| `JSFormatStyle.ForeColor` | `OLE_COLOR` | verified | `pvSelColors` | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `formatstyles-selection` (`0x80FFFF`) vs the system default |
 | `JSFormatStyle.Picture` | `Picture` | **not impl** | -- | M9 | -- | -- |
 | `JSFormatStyle.PictureDrawMode` | `jgexPictureDrawModeConstants` | **not impl** | -- | M9 | -- | -- |
 | `JSFormatStyle.PictureHorzAlignment` | `jgexHorzPictureAlignmentConstants` | **not impl** | -- | M9 | -- | -- |
@@ -212,24 +211,29 @@ the M2 storage commit, so that hash carries no information about painting.
 
 ## Closing the gaps
 
-The **unverified** block is cheap to clear because the harness already supports
-everything needed -- it is scenario authoring, not control work:
+The unverified block is **cleared**. Five scenarios did it, and each defect they
+found had been invisible for a structural reason worth remembering: a rule can
+only be wrong in a way the corpus can see.
 
-1. ~~Give `gridlines-dots-colors` rows.~~ Done differently: `colors-rows` adds a
-   rows-bearing scenario with dotted, coloured gridlines, which leaves the
-   existing 144dpi goldens valid instead of invalidating them.
-2. ~~Add a `colors-*` pair.~~ Done -- `colors-rows` and `colors-chrome`.
-3. **Add `formatstyles-selection`** overriding the `SelectedRow` system style,
-   which is the only way `pvSelColors` -- and with it `JSFormatStyle.BackColor`
-   and `JSFormatStyle.ForeColor` -- is exercised beyond defaults.
-4. **Add `column-order`** setting `JSColumn.ColPosition`, the one paint-consumed
-   column member with no coverage.
-5. **Vary the weak ones**: a second value for `BackColorBkg`, `RowColorEven`,
-   `RowColorOdd`, `SelectedItems`/`RowSelected`, and the three non-default
-   `GridLines` modes.
+| scenario | closed | found |
+|---|---|---|
+| `colors-rows` | `BackColor`, `ForeColor`, `GridLinesColor`, `GridLineStyle`, `BackColorBkg` | dotted-pen duty cycle, dotted-gap colour, marquee XOR mask |
+| `colors-chrome` | the 6 header / group-by-box / info-text colours | -- |
+| `formatstyles-selection` | `FormatStyles`, `JSFormatStyle.BackColor`, `JSFormatStyle.ForeColor` | -- |
+| `column-order` | `JSColumn.ColPosition` | invalid `ColPosition` blanks the grid |
+| `default-column-width` | `DefaultColumnWidth` | new columns ignored it, defaulting to 1000 **px** |
 
-Anything that then disagrees with the original becomes a control fix, which is
-the point of doing this before more surface is built on top.
+What remains for M6:
+
+1. **Vary the 7 weak entries**: a second rendered value for `BackColorBkg`,
+   `RowColorEven`, `RowColorOdd`, `SelectedItems`/`RowSelected`, `Row`,
+   `MultiSelect`, and the three non-default `GridLines` modes.
+2. **Harden invalid `ColPosition`.** The original ignores an out-of-range value
+   and keeps declaration order; we render an empty grid, because
+   `ItemByPosition` finds no column at the expected slot. Not covered by a
+   golden -- the corpus now uses valid positions -- but it is a real defect.
+3. Record 144dpi goldens for the five new scenarios next time the machine is at
+   150% scaling.
 
 ## Maintenance
 

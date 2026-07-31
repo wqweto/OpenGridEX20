@@ -1,0 +1,20 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "default-column-width",
+    "width": 400,
+    "height": 260,
+    "apply": "before-show",
+    "props": {
+        "DefaultColumnWidth": 2100,
+        "Columns": [
+            { "Caption": "Wide" },
+            { "Caption": "AlsoWide" }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "a1", "b1" ],
+            [ "a2", "b2" ]
+        ]
+    }
+}

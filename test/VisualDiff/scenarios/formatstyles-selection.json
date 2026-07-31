@@ -1,0 +1,25 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "formatstyles-selection",
+    "width": 400,
+    "height": 260,
+    "apply": "before-show",
+    "props": {
+        "RowHeaders": true,
+        "FormatStyles": [
+            { "Name": "SelectedRow", "BackColor": 0x004080, "ForeColor": 0x80FFFF }
+        ],
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1200 },
+            { "Caption": "Beta", "Width": 1200 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "one", "1" ],
+            [ "two", "2" ],
+            [ "three", "3" ],
+            [ "four", "4" ]
+        ]
+    }
+}

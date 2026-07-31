@@ -880,6 +880,7 @@ End Property
 Public Property Let DefaultColumnWidth(ByVal lValue As Long)
     '--- stored in pixels; snapped to nearest like the original
     m_lDefaultColumnWidth = ToPixels(lValue)
+    m_oColumns.frDefaultWidth = m_lDefaultColumnWidth
 End Property
 
 Public Property Get View() As jgexViewConstants

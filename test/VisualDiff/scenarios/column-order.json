@@ -1,0 +1,22 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "column-order",
+    "width": 400,
+    "height": 260,
+    "apply": "before-show",
+    "props": {
+        "DefaultColumnWidth": 1500,
+        "Columns": [
+            { "Caption": "First", "Width": 1200, "ColPosition": 3 },
+            { "Caption": "Second", "Width": 900, "ColPosition": 1 },
+            { "Caption": "Third", "Width": 1200, "ColPosition": 2 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "a1", "b1", "c1" ],
+            [ "a2", "b2", "c2" ],
+            [ "a3", "b3", "c3" ]
+        ]
+    }
+}
