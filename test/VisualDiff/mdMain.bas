@@ -40,8 +40,15 @@ Public Sub Main()
     Dim lDiff           As Long
     Dim sReport         As String
     Dim sGolden         As String
+    Dim lDpi            As Long
+    Dim sDpi            As String
 
     On Error GoTo EH
+    '--- goldens are per DPI: the embedded manifest makes the harness run at
+    '--- the real system DPI, while __COMPAT_LAYER=DPIUNAWARE forces the
+    '--- 96dpi (OS-virtualized) mode from the same executable
+    lDpi = ScreenDpi()
+    sDpi = "\" & lDpi
     aArgs = Split(Command$)
     If UBound(aArgs) >= 0 Then
         sMode = LCase$(aArgs(0))
@@ -60,8 +67,16 @@ Public Sub Main()
     Else
         sProgId = STR_PROGID_ORIGINAL
     End If
-    If Not pvAddLicense(sProgId) Then
-        TestSkip "no design license for " & sProgId
+    If sMode = "metrics" Then
+        Assert FontMetrics("MS Sans Serif", 8) & sDpi & "dpi", True
+        Assert FontMetrics("Tahoma", 8) & sDpi & "dpi", True
+        Assert FontMetrics("Tahoma", 12) & sDpi & "dpi", True
+        Assert FontMetrics("Segoe UI", 9) & sDpi & "dpi", True
+        TestsDone
+        Exit Sub
+    End If
+    If Not pvCanCreate(sProgId) Then
+        TestSkip "control not available: " & sProgId
         Exit Sub
     End If
     For Each vFile In EnumFiles(App.Path & "\scenarios", "*.json")
@@ -73,26 +88,27 @@ Public Sub Main()
             If Not oForm.RunScenario(sProgId, C2Obj(vDoc), baBits, lWidth, lHeight) Then
                 Assert sMode & " " & sName & " (capture failed)", False
             Else
-                sGolden = App.Path & "\golden\" & sName & ".png"
+                sGolden = App.Path & "\golden" & sDpi & "\" & sName & ".png"
                 Select Case sMode
                 Case "record"
-                    Assert "record " & sName, SavePng(sGolden, lWidth, lHeight, baBits)
+                    pvEnsureDir App.Path & "\golden" & sDpi
+                    Assert "record " & sName & sDpi & "dpi", SavePng(sGolden, lWidth, lHeight, baBits)
                 Case "dump"
-                    pvEnsureOutputDir
-                    WriteTextFile App.Path & "\output\" & sName & ".dump.json", oForm.DumpState()
-                    Assert "dump " & sName, True
+                    pvEnsureDir App.Path & "\output" & sDpi
+                    WriteTextFile App.Path & "\output" & sDpi & "\" & sName & ".dump.json", oForm.DumpState()
+                    Assert "dump " & sName & sDpi & "dpi", True
                 Case "selftest", "verify"
                     If Not LoadPng(sGolden, lGoldenW, lGoldenH, baGolden) Then
-                        Assert sMode & " " & sName & " (no golden)", False
+                        Assert sMode & " " & sName & sDpi & "dpi (no golden)", False
                     ElseIf lGoldenW <> lWidth Or lGoldenH <> lHeight Then
-                        Assert sMode & " " & sName & " (golden size mismatch)", False
+                        Assert sMode & " " & sName & sDpi & "dpi (golden size mismatch: golden " & lGoldenW & "x" & lGoldenH & " actual " & lWidth & "x" & lHeight & ")", False
                     Else
                         lDiff = DiffBits(baGolden, baBits, lWidth, lHeight, sReport)
                         If lDiff > 0 Then
-                            pvEnsureOutputDir
-                            SavePng App.Path & "\output\" & sName & ".actual.png", lWidth, lHeight, baBits
+                            pvEnsureDir App.Path & "\output" & sDpi
+                            SavePng App.Path & "\output" & sDpi & "\" & sName & ".actual.png", lWidth, lHeight, baBits
                         End If
-                        Assert sMode & " " & sName & IIf(lDiff > 0, " diff=" & lDiff & "px " & sReport, vbNullString), lDiff = 0
+                        Assert sMode & " " & sName & sDpi & "dpi" & IIf(lDiff > 0, " diff=" & lDiff & "px " & sReport, vbNullString), lDiff = 0
                     End If
                 End Select
             End If
@@ -108,19 +124,34 @@ EH:
     TestsDone
 End Sub
 
-Private Sub pvEnsureOutputDir()
-    If LenB(Dir$(App.Path & "\output", vbDirectory)) = 0 Then
-        MkDir App.Path & "\output"
+Private Sub pvEnsureDir(sPath As String)
+    Dim sParent         As String
+
+    sParent = Left$(sPath, InStrRev(sPath, "\") - 1)
+    If LenB(Dir$(sParent, vbDirectory)) = 0 Then
+        MkDir sParent
+    End If
+    If LenB(Dir$(sPath, vbDirectory)) = 0 Then
+        MkDir sPath
     End If
 End Sub
 
-Private Function pvAddLicense(sProgId As String) As Boolean
-    Const FUNC_NAME     As String = "pvAddLicense"
+Private Function pvCanCreate(sProgId As String) As Boolean
+    Const FUNC_NAME     As String = "pvCanCreate"
+    Dim oForm           As frmHost
 
+    '--- no Licenses.Add needed: RemoveUnusedControlInfo=0 keeps the design
+    '--- license of the referenced original OCX compiled into the harness
     On Error GoTo EH
-    Licenses.Add sProgId
-    pvAddLicense = True
+    Set oForm = New frmHost
+    oForm.Controls.Add sProgId, "ctlProbe"
+    pvCanCreate = True
+QH:
+    If Not oForm Is Nothing Then
+        Unload oForm
+    End If
     Exit Function
 EH:
     Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    GoTo QH
 End Function

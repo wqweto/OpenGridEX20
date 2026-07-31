@@ -209,9 +209,12 @@ Attribute Reset.VB_Description = "Clears all properties in a JSFormatStyle objec
     m_bFontItalic = False
     m_bFontUnderline = False
     m_bFontStrikeThru = False
-    m_cyFontSize = 8.25
-    m_sFontName = "MS Sans Serif"
-    m_nFontCharset = pvDefaultCharset()
+    With NewStdFont()
+        m_cyFontSize = .Size
+        m_sFontName = .Name
+        '--- original defaults to the system locale charset (e.g. 204 Cyrillic)
+        m_nFontCharset = .Charset
+    End With
     m_eTextAlignment = jgexAlignLeft
     Set m_oBackgroundPicture = Nothing
     Set m_oPicture = Nothing
@@ -232,17 +235,6 @@ End Property
 Friend Property Let frIsSystem(ByVal bValue As Boolean)
     m_bIsSystem = bValue
 End Property
-
-'=========================================================================
-' Functions
-'=========================================================================
-
-Private Function pvDefaultCharset() As Integer
-    Dim oFont           As New StdFont
-
-    '--- original defaults to the system locale charset (e.g. 204 Cyrillic)
-    pvDefaultCharset = oFont.Charset
-End Function
 
 '=========================================================================
 ' Base class events

@@ -2183,7 +2183,7 @@ Private Sub pvPaintGroupByBox(ByVal hDC As Long, lY As Long)
     '--- info box is sized by the info text extent
     Call DrawText(hDC, StrPtr(m_sGroupByBoxInfoText), Len(m_sGroupByBoxInfoText), uRect, DT_SINGLELINE Or DT_CALCRECT)
     pvFillRect hDC, 4, lY + 5, 12 + uRect.Right, lY + 5 + lBoxH, m_clrBackColorInfoText
-    pvDrawText hDC, m_sGroupByBoxInfoText, 7, lY + 5, 7 + uRect.Right, lY + 5 + lBoxH, m_clrForeColorInfoText, m_clrBackColorInfoText, jgexAlignLeft
+    pvDrawText hDC, m_sGroupByBoxInfoText, 7, lY + 5, 7 + uRect.Right, lY + 5 + lBoxH, m_clrForeColorInfoText, m_clrBackColorInfoText, jgexAlignLeft, 7, 7 + uRect.Right
     Call SelectObject(hDC, hPrevFont)
     lY = lY + lTotalH
 End Sub
@@ -2251,7 +2251,9 @@ Private Sub pvPaintHeaderCell(ByVal hDC As Long, ByVal lX As Long, ByVal lY As L
         pvLine hDC, lX + lW - 1, lY, lX + lW - 1, lY + lH, vb3DDKShadow, PS_SOLID
     End Select
     If LenB(sCaption) <> 0 Then
-        pvDrawText hDC, sCaption, lX + 2, lY + 2, lX + lW - 2, lY + lH - 1, m_clrForeColorHeader, m_clrBackColorHeader, eAlign
+        '--- DT_VCENTER over the full cell height, not an inset rect: same
+        '--- result at 96dpi, a pixel higher at 120dpi
+        pvDrawText hDC, sCaption, lX + 2, lY, lX + lW - 2, lY + lH, m_clrForeColorHeader, m_clrBackColorHeader, eAlign, lX + 2, lX + lW - 2
     End If
 End Sub
 
@@ -2264,6 +2266,8 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
     Dim lRowTop         As Long
     Dim lRowsBottom     As Long
     Dim lCum            As Long
+    Dim lCumF           As Long
+    Dim lW              As Long
     Dim nIdx            As Integer
     Dim oCol            As JSColumn
     Dim hPrevFont       As Long
@@ -2319,18 +2323,7 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
         '--- background color which the original keeps at BackColor, and
         '--- vertical gridlines paint over the marquee dots
         If m_lRow >= lFirst And m_lRow < lFirst + lPainted Then
-            uRect.Left = lHdrW
-            uRect.Top = lY + (m_lRow - lFirst) * lRowH
-            '--- clip the marquee right edge to the visible width when the
-            '--- columns overflow it
-            If lHdrW + lTotalW > ScaleWidth Then
-                uRect.Right = ScaleWidth
-            Else
-                uRect.Right = lHdrW + lTotalW - 1
-            End If
-            uRect.Bottom = uRect.Top + lRowH - 1
-            Call SetBkColor(hDC, pvColor(m_clrBackColor))
-            Call DrawFocusRect(hDC, uRect)
+            pvPaintRowMarquee hDC, lY + (m_lRow - lFirst) * lRowH, lRowH, lHdrW, lTotalW
         End If
         '--- vertical gridlines over the rows block
         If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLVertical Then
@@ -2359,6 +2352,8 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
     Dim oCol            As JSColumn
     Dim lW              As Long
     Dim sText           As String
+    Dim lClipR          As Long
+    Dim lMarqueeR       As Long
 
     '--- the current row is always shown selected, as in the original
     bSelected = pvIsRowSelected(lRow) Or (m_lRow >= 1 And lRow = m_lRow)
@@ -2380,6 +2375,15 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         pvPaintRowHeader hDC, lRowTop, lRowH, lHdrW, (lRow = m_lRow)
     End If
     pvFillRect hDC, lHdrW, lRowTop, lHdrW + lTotalW, lRowTop + lRowH, clrBack
+    '--- text of the current row clips inside the marquee, so a cell running
+    '--- past the client edge stops short of the marquee's right border
+    lMarqueeR = -1
+    If lRow = m_lRow Then
+        lMarqueeR = lHdrW + lTotalW - 2
+        If lMarqueeR > ScaleWidth - 1 Then
+            lMarqueeR = ScaleWidth - 1
+        End If
+    End If
     lX = lHdrW
     For nIdx = 1 To m_oColumns.Count
         Set oCol = m_oColumns.ItemByPosition(nIdx)
@@ -2387,7 +2391,11 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
             lW = ToPixels(oCol.Width)
             sText = pvCellText(lRow, oCol.Index)
             If LenB(sText) <> 0 Then
-                pvDrawText hDC, sText, lX + 2, lRowTop, lX + lW - 4, lRowTop + lRowH - 1, clrText, clrBack, oCol.TextAlignment
+                lClipR = lX + lW
+                If lMarqueeR >= 0 And lClipR > lMarqueeR Then
+                    lClipR = lMarqueeR
+                End If
+                pvDrawText hDC, sText, lX + 2, lRowTop, lX + lW - 3, lRowTop + lRowH - 1, clrText, clrBack, oCol.TextAlignment, lX, lClipR
             End If
             lX = lX + lW
         End If
@@ -2400,6 +2408,74 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
             pvLine hDC, lHdrW, lRowTop + lRowH - 1, lHdrW + lTotalW, lRowTop + lRowH - 1, m_clrGridLinesColor, pvPenStyle()
         End If
     End If
+End Sub
+
+Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, ByVal lTotalW As Long)
+    Dim hBrush          As Long
+    Dim hPrevBrush      As Long
+    Dim lRight          As Long
+    Dim lBottom         As Long
+    Dim lCum            As Long
+    Dim nIdx            As Integer
+    Dim oCol            As JSColumn
+    Dim lW              As Long
+    Dim lX              As Long
+    Dim lY              As Long
+    Dim lStartB         As Long
+    Dim lDxRight        As Long
+
+    '--- XOR checkerboard anchored per column: a border pixel is inverted
+    '--- when (x - column left) + (y - row top) is odd, which a single
+    '--- row-wide DrawFocusRect only reproduces on even column boundaries
+    lRight = lHdrW + lTotalW - 2
+    If lRight > ScaleWidth - 1 Then
+        lRight = ScaleWidth - 1
+    End If
+    lBottom = lRowTop + lRowH - 2
+    lStartB = 1
+    If (lBottom - lRowTop) Mod 2 = 1 Then
+        lStartB = 0
+    End If
+    lDxRight = -1
+    hBrush = CreateSolidBrush(vbWhite)
+    hPrevBrush = SelectObject(hDC, hBrush)
+    lCum = lHdrW
+    For nIdx = 1 To m_oColumns.Count
+        Set oCol = m_oColumns.ItemByPosition(nIdx)
+        If oCol.Visible Then
+            lW = ToPixels(oCol.Width)
+            For lX = lCum + 1 To lCum + lW - 1 Step 2
+                If lX <= lRight Then
+                    Call PatBlt(hDC, lX, lRowTop, 1, 1, PATINVERT)
+                End If
+            Next
+            For lX = lCum + lStartB To lCum + lW - 1 Step 2
+                If lX <= lRight Then
+                    Call PatBlt(hDC, lX, lBottom, 1, 1, PATINVERT)
+                End If
+            Next
+            If lRight >= lCum And lRight < lCum + lW Then
+                lDxRight = lRight - lCum
+            End If
+            lCum = lCum + lW
+        End If
+    Next
+    '--- outer vertical edges, phased by their own column-relative x
+    For lY = lRowTop + 1 To lBottom - 1 Step 2
+        Call PatBlt(hDC, lHdrW, lY, 1, 1, PATINVERT)
+    Next
+    If lDxRight >= 0 Then
+        lY = lRowTop + 1
+        If lDxRight Mod 2 = 1 Then
+            lY = lRowTop + 2
+        End If
+        Do While lY <= lBottom - 1
+            Call PatBlt(hDC, lRight, lY, 1, 1, PATINVERT)
+            lY = lY + 2
+        Loop
+    End If
+    Call SelectObject(hDC, hPrevBrush)
+    Call DeleteObject(hBrush)
 End Sub
 
 Private Sub pvPaintRowHeader(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, ByVal bCurrent As Boolean)
@@ -2524,14 +2600,14 @@ Private Sub pvUpdateScrollBars()
     bNeedV = (m_lRowHeight > 0 And RowCount > 0 And RowCount * m_lRowHeight > lAvailH)
     bNeedH = (lColsW > lAvailW)
     If bNeedV Then
-        lAvailW = lAvailW - 17
+        lAvailW = lAvailW - GetSystemMetrics(SM_CXVSCROLL)
         bNeedH = (lColsW > lAvailW)
     End If
     If bNeedH Then
-        lAvailH = lAvailH - 17
+        lAvailH = lAvailH - GetSystemMetrics(SM_CYHSCROLL)
         bNeedV = (m_lRowHeight > 0 And RowCount > 0 And RowCount * m_lRowHeight > lAvailH)
         If bNeedV Then
-            lAvailW = ScaleWidth - 17
+            lAvailW = ScaleWidth - GetSystemMetrics(SM_CXVSCROLL)
         End If
     End If
     lStyle = GetWindowLong(UserControl.hWnd, GWL_STYLE)
@@ -2655,9 +2731,10 @@ Private Sub pvLine(ByVal hDC As Long, ByVal lX1 As Long, ByVal lY1 As Long, ByVa
     Call DeleteObject(hPen)
 End Sub
 
-Private Sub pvDrawText(ByVal hDC As Long, sText As String, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long, ByVal clrText As OLE_COLOR, ByVal clrBack As OLE_COLOR, ByVal eAlign As jgexAlignmentConstants)
+Private Sub pvDrawText(ByVal hDC As Long, sText As String, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long, ByVal clrText As OLE_COLOR, ByVal clrBack As OLE_COLOR, ByVal eAlign As jgexAlignmentConstants, ByVal ClipLeft As Long, ByVal ClipRight As Long)
     Dim uRect           As RECT
     Dim lFlags          As Long
+    Dim lSaved          As Long
 
     uRect.Left = lLeft
     uRect.Top = lTop
@@ -2670,12 +2747,19 @@ Private Sub pvDrawText(ByVal hDC As Long, sText As String, ByVal lLeft As Long, 
     Case jgexAlignRight
         lFlags = lFlags Or DT_RIGHT
     End Select
+    '--- text is positioned in its own rect but clipped separately: data
+    '--- cells clip to the whole cell so ClearType fringes bleed into the
+    '--- inset like the original's, headers clip to the text rect
+    lSaved = SaveDC(hDC)
+    Call IntersectClipRect(hDC, ClipLeft, lTop, ClipRight, lBottom)
+    lFlags = lFlags Or DT_NOCLIP
     '--- opaque so glyph anti-aliasing blends against the known cell
     '--- background exactly like the original
     Call SetBkMode(hDC, OPAQUE)
     Call SetBkColor(hDC, pvColor(clrBack))
     Call SetTextColor(hDC, pvColor(clrText))
     Call DrawText(hDC, StrPtr(sText), Len(sText), uRect, lFlags)
+    Call RestoreDC(hDC, lSaved)
 End Sub
 
 Private Function pvSelectFont(ByVal hDC As Long, oFont As Font) As Long
@@ -2684,6 +2768,24 @@ Private Function pvSelectFont(ByVal hDC As Long, oFont As Font) As Long
     Set pFont = oFont
     pvSelectFont = SelectObject(hDC, pFont.hFont)
 End Function
+
+Private Sub pvInheritAmbientFont()
+    Const FUNC_NAME     As String = "pvInheritAmbientFont"
+
+    '--- the control takes its fonts from the container, as the original
+    '--- does -- which is why the same scenario renders differently under a
+    '--- host form using MS Sans Serif and one using Tahoma. Swapping the
+    '--- object does not raise FontChanged, so the font-derived row and
+    '--- header heights are recalculated explicitly
+    On Error GoTo EH
+    Set m_oFont = CloneFont(Ambient.Font)
+    Set m_oColumnHeaderFont = CloneFont(Ambient.Font)
+    m_oFont_FontChanged vbNullString
+    m_oColumnHeaderFont_FontChanged vbNullString
+    Exit Sub
+EH:
+    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+End Sub
 
 Private Sub pvSubclass()
     Set m_pSubclass = InitSubclassingThunk(hWnd, Me, pvAddressOfSubclassProc.ControlSubclassProc(0, 0, 0, 0, 0))
@@ -3022,12 +3124,8 @@ Private Sub UserControl_Initialize()
     Set m_oSelectedItems = New JSSelectedItems
     Set m_oFormatStyles = New JSFormatStyles
     Set m_oPrinterProperties = New JSPrinterProperties
-    Set m_oFont = New StdFont
-    m_oFont.Name = "MS Sans Serif"
-    m_oFont.Size = 8.25
-    Set m_oColumnHeaderFont = New StdFont
-    m_oColumnHeaderFont.Name = "MS Sans Serif"
-    m_oColumnHeaderFont.Size = 8.25
+    Set m_oFont = NewStdFont()
+    Set m_oColumnHeaderFont = NewStdFont()
     m_clrBackColor = vbWindowBackground
     m_clrForeColor = vbWindowText
     m_clrBackColorHeader = vbButtonFace
@@ -3058,8 +3156,10 @@ Private Sub UserControl_Initialize()
     m_eCursorLocation = jgexUseServer
     m_eBorderStyle = jgexFixed
     m_lDefaultColumnWidth = 100
-    m_lColumnHeaderHeight = 19
-    m_lRowHeight = 19
+    '--- both heights follow their font, so they are DPI-dependent (19px
+    '--- and 19/22px at 96/120dpi); derive them instead of hardcoding
+    m_oColumnHeaderFont_FontChanged vbNullString
+    m_oFont_FontChanged vbNullString
     m_lImageWidth = 16
     m_lImageHeight = 16
     m_lCardWidth = 250
@@ -3082,12 +3182,14 @@ End Sub
 
 Private Sub UserControl_InitProperties()
     '--- a freshly placed control starts with two default empty columns
+    pvInheritAmbientFont
     m_oColumns.Add(vbNullString).Width = ToTwips(m_lDefaultColumnWidth)
     m_oColumns.Add(vbNullString).Width = ToTwips(m_lDefaultColumnWidth)
     pvSubclass
 End Sub
 
 Private Sub UserControl_ReadProperties(PropBag As PropertyBag)
+    pvInheritAmbientFont
     pvSubclass
 End Sub
 

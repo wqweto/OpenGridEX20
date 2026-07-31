@@ -304,7 +304,7 @@ End Property
 Public Property Get PageHeaderFont() As Font
 Attribute PageHeaderFont.VB_Description = "Returns/sets a Font object used to draw page headers in a document."
     If m_oPageHeaderFont Is Nothing Then
-        Set m_oPageHeaderFont = pvDefaultFont()
+        Set m_oPageHeaderFont = NewStdFont()
     End If
     Set PageHeaderFont = m_oPageHeaderFont
 End Property
@@ -316,7 +316,7 @@ End Property
 Public Property Get PageFooterFont() As Font
 Attribute PageFooterFont.VB_Description = "Returns/sets a Font object used to draw page footers in a document."
     If m_oPageFooterFont Is Nothing Then
-        Set m_oPageFooterFont = pvDefaultFont()
+        Set m_oPageFooterFont = NewStdFont()
     End If
     Set PageFooterFont = m_oPageFooterFont
 End Property
@@ -383,11 +383,7 @@ End Sub
 '=========================================================================
 
 Private Function pvDefaultFont() As Font
-    Dim oFont           As New StdFont
-
-    oFont.Name = "MS Sans Serif"
-    oFont.Size = 8.25
-    Set pvDefaultFont = oFont
+    Set pvDefaultFont = NewStdFont()
 End Function
 
 '=========================================================================

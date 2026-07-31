@@ -1,7 +1,9 @@
 @echo off
 setlocal
-rem --- records the golden corpus from the original control, then
-rem --- self-tests the harness (fresh original capture vs golden = zero diff)
+rem --- records the golden corpus from the original control at BOTH DPIs and
+rem --- self-tests the harness (a fresh original capture must diff to zero).
+rem --- Goldens land in golden\<dpi>\, so recording on a 125% machine fills
+rem --- golden\96 (forced DPI-unaware) and golden\120 (manifest DPI aware).
 pushd "%~dp0"
 
 if not exist VisualDiff.exe (
@@ -9,6 +11,17 @@ if not exist VisualDiff.exe (
     exit /b 1
 )
 if not exist golden mkdir golden
+
+call :record "DPIUNAWARE" "96dpi"
+if errorlevel 1 exit /b 1
+call :record "" "system dpi"
+if errorlevel 1 exit /b 1
+echo Golden corpus recorded and self-test PASSED at both DPIs
+exit /b 0
+
+:record
+set "__COMPAT_LAYER=%~1"
+echo === recording %~2 ===
 if exist VisualDiff.out.txt del VisualDiff.out.txt
 start /wait VisualDiff.exe record
 findstr /C:"RESULT: PASSED" VisualDiff.out.txt >nul || (
@@ -23,4 +36,4 @@ findstr /C:"RESULT: PASSED" VisualDiff.out.txt >nul || (
     exit /b 1
 )
 type VisualDiff.out.txt
-echo Golden corpus recorded and self-test PASSED
+exit /b 0

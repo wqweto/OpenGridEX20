@@ -6,8 +6,8 @@
     "apply": "before-show",
     "props": {
         "UseEvenOddColor": true,
-        "RowColorEven": 16775920,
-        "RowColorOdd": 16777215,
+        "RowColorEven": 0xFFFAF0,
+        "RowColorOdd": 0xFFFFFF,
         "Columns": [
             { "Caption": "Product", "Width": 1800 },
             { "Caption": "Qty", "Width": 900, "TextAlignment": 1 },

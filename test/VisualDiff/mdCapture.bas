@@ -15,6 +15,7 @@ DefObj A-Z
 Private Const SRCCOPY                       As Long = &HCC0020
 Private Const DIB_RGB_COLORS                As Long = 0
 Private Const BI_RGB                        As Long = 0
+Private Const LOGPIXELSY                    As Long = 90
 
 Private Type RECT
     Left                    As Long
@@ -40,6 +41,31 @@ End Type
 Private Declare Function GetClientRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
 Private Declare Function GetDC Lib "user32" (ByVal hWnd As Long) As Long
 Private Declare Function ReleaseDC Lib "user32" (ByVal hWnd As Long, ByVal hdc As Long) As Long
+Private Declare Function GetDeviceCaps Lib "gdi32" (ByVal hdc As Long, ByVal nIndex As Long) As Long
+Private Declare Function GetTextMetrics Lib "gdi32" Alias "GetTextMetricsW" (ByVal hdc As Long, lpMetrics As TEXTMETRICW) As Long
+
+Private Type TEXTMETRICW
+    tmHeight                As Long
+    tmAscent                As Long
+    tmDescent               As Long
+    tmInternalLeading       As Long
+    tmExternalLeading       As Long
+    tmAveCharWidth          As Long
+    tmMaxCharWidth          As Long
+    tmWeight                As Long
+    tmOverhang              As Long
+    tmDigitizedAspectX      As Long
+    tmDigitizedAspectY      As Long
+    tmFirstChar             As Integer
+    tmLastChar              As Integer
+    tmDefaultChar           As Integer
+    tmBreakChar             As Integer
+    tmItalic                As Byte
+    tmUnderlined            As Byte
+    tmStruckOut             As Byte
+    tmPitchAndFamily        As Byte
+    tmCharSet               As Byte
+End Type
 Private Declare Function CreateCompatibleDC Lib "gdi32" (ByVal hdc As Long) As Long
 Private Declare Function CreateCompatibleBitmap Lib "gdi32" (ByVal hdc As Long, ByVal nWidth As Long, ByVal nHeight As Long) As Long
 Private Declare Function SelectObject Lib "gdi32" (ByVal hdc As Long, ByVal hObject As Long) As Long
@@ -73,6 +99,41 @@ End Type
 '=========================================================================
 ' Functions
 '=========================================================================
+
+Public Function FontMetrics(sName As String, ByVal sngSize As Single) As String
+    Dim oFont           As StdFont
+    Dim pFont           As IFont
+    Dim hdc             As Long
+    Dim hPrevFont       As Long
+    Dim uTm             As TEXTMETRICW
+
+    Set oFont = New StdFont
+    oFont.Name = sName
+    oFont.Size = sngSize
+    Set pFont = oFont
+    hdc = GetDC(0)
+    hPrevFont = SelectObject(hdc, pFont.hFont)
+    Call GetTextMetrics(hdc, uTm)
+    Call SelectObject(hdc, hPrevFont)
+    Call ReleaseDC(0, hdc)
+    '--- OLE snaps the requested size to the nearest available one for raster
+    '--- fonts, so the realized size is reported too
+    FontMetrics = sName & " " & sngSize & "->" & oFont.Size & ": height=" & uTm.tmHeight & _
+        " ascent=" & uTm.tmAscent & " descent=" & uTm.tmDescent & _
+        " intlead=" & uTm.tmInternalLeading & " extlead=" & uTm.tmExternalLeading & _
+        " avgw=" & uTm.tmAveCharWidth
+End Function
+
+Public Function ScreenDpi() As Long
+    Dim hdc             As Long
+
+    '--- 96 when the process is DPI-unaware (the OS virtualizes it), the
+    '--- real system DPI (120 at 125%, 144 at 150%) when the embedded
+    '--- manifest declares dpiAware
+    hdc = GetDC(0)
+    ScreenDpi = GetDeviceCaps(hdc, LOGPIXELSY)
+    Call ReleaseDC(0, hdc)
+End Function
 
 Public Function CaptureWindowClient(ByVal hWnd As Long, lWidth As Long, lHeight As Long, baBits() As Byte) As Boolean
     Dim uRect           As RECT

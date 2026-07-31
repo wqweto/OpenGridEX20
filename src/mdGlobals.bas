@@ -33,6 +33,7 @@ Public Const INTERFACESAFE_FOR_UNTRUSTED_DATA As Long = 2
 Public Const TRANSPARENT                As Long = 1
 Public Const OPAQUE                     As Long = 2
 Public Const PS_SOLID                   As Long = 0
+Public Const PATINVERT                  As Long = &H5A0049
 Public Const PS_DASH                    As Long = 1
 Public Const PS_DOT                     As Long = 2
 Public Const DT_CENTER                  As Long = 1
@@ -41,6 +42,7 @@ Public Const DT_VCENTER                 As Long = 4
 Public Const DT_SINGLELINE              As Long = &H20
 Public Const DT_CALCRECT                As Long = &H400
 Public Const DT_NOPREFIX                As Long = &H800
+Public Const DT_NOCLIP                  As Long = &H100
 Public Const GWL_STYLE                  As Long = -16
 Public Const WS_VSCROLL                 As Long = &H200000
 Public Const WS_HSCROLL                 As Long = &H100000
@@ -54,6 +56,8 @@ Public Const SWP_NOMOVE                 As Long = 2
 Public Const SWP_NOZORDER               As Long = 4
 Public Const SWP_FRAMECHANGED           As Long = &H20
 Public Const SIF_TRACKPOS               As Long = &H10
+Public Const SM_CXVSCROLL               As Long = 2
+Public Const SM_CYHSCROLL               As Long = 3
 Public Const WM_VSCROLL                 As Long = &H115
 Public Const WM_HSCROLL                  As Long = &H114
 Public Const WM_KEYDOWN                  As Long = &H100
@@ -128,6 +132,10 @@ Public Declare Function SetTextColor Lib "gdi32" (ByVal hDC As Long, ByVal crCol
 Public Declare Function SetBkColor Lib "gdi32" (ByVal hDC As Long, ByVal crColor As Long) As Long
 Public Declare Function DrawText Lib "user32" Alias "DrawTextW" (ByVal hDC As Long, ByVal lpStr As Long, ByVal nCount As Long, lpRect As RECT, ByVal wFormat As Long) As Long
 Public Declare Function DrawFocusRect Lib "user32" (ByVal hDC As Long, lpRect As RECT) As Long
+Public Declare Function PatBlt Lib "gdi32" (ByVal hDC As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal dwRop As Long) As Long
+Public Declare Function IntersectClipRect Lib "gdi32" (ByVal hDC As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long) As Long
+Public Declare Function SaveDC Lib "gdi32" (ByVal hDC As Long) As Long
+Public Declare Function RestoreDC Lib "gdi32" (ByVal hDC As Long, ByVal nSavedDC As Long) As Long
 Public Declare Function GetDC Lib "user32" (ByVal hWnd As Long) As Long
 Public Declare Function ReleaseDC Lib "user32" (ByVal hWnd As Long, ByVal hDC As Long) As Long
 Public Declare Function GetTextMetrics Lib "gdi32" Alias "GetTextMetricsW" (ByVal hDC As Long, lpMetrics As TEXTMETRICW) As Long
@@ -137,6 +145,7 @@ Public Declare Function SetWindowPos Lib "user32" (ByVal hWnd As Long, ByVal hWn
 Public Declare Function SetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal fnBar As Long, lpsi As SCROLLINFO, ByVal fRedraw As Long) As Long
 Public Declare Function GetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal fnBar As Long, lpsi As SCROLLINFO) As Long
 Public Declare Function GetKeyState Lib "user32" (ByVal nVirtKey As Long) As Integer
+Public Declare Function GetSystemMetrics Lib "user32" (ByVal nIndex As Long) As Long
 
 '=========================================================================
 ' Functions
@@ -165,6 +174,24 @@ Public Function FontTextHeight(oFont As Font) As Long
     Call SelectObject(hDC, hPrevFont)
     Call ReleaseDC(0, hDC)
     FontTextHeight = uTm.tmHeight
+End Function
+
+Public Function NewStdFont() As StdFont
+    Dim oFont           As New StdFont
+
+    '--- the single place a default font is minted: only the typeface is
+    '--- pinned, the size is whatever StdFont itself defaults to, so no
+    '--- point size is hardcoded anywhere in the control
+    oFont.Name = "MS Sans Serif"
+    Set NewStdFont = oFont
+End Function
+
+Public Function CloneFont(pFont As IFont) As StdFont
+    '--- IFont.Clone copies every attribute in one call and hands back an
+    '--- independent font, so a container's ambient font is never aliased
+    If Not pFont Is Nothing Then
+        pFont.Clone CloneFont
+    End If
 End Function
 
 Public Function SearchCollection(ByVal pCol As IVBCollection, Index As Variant, Optional RetVal As Variant) As Boolean

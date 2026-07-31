@@ -7,9 +7,9 @@
     "props": {
         "GridLines": -1,
         "GridLineStyle": 2,
-        "GridLinesColor": 255,
-        "BackColor": 12648384,
-        "BackColorBkg": 8421504,
+        "GridLinesColor": 0x0000FF,
+        "BackColor": 0xC0FFC0,
+        "BackColorBkg": 0x808080,
         "Columns": [
             { "Caption": "Alpha", "Width": 1200 },
             { "Caption": "Beta", "Width": 1200 }

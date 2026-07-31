@@ -10,14 +10,28 @@ if errorlevel 1 (
     type errors.log
     exit /b 1
 )
+
+rem --- the embedded manifest makes the harness DPI aware, so it renders at
+rem --- the real system DPI; __COMPAT_LAYER=DPIUNAWARE forces the 96dpi
+rem --- (OS-virtualized) mode out of the same executable. Both are verified.
+call :verify "DPIUNAWARE" "96dpi"
+if errorlevel 1 exit /b 1
+call :verify "" "system dpi"
+if errorlevel 1 exit /b 1
+echo VisualDiff verify PASSED at both DPIs
+exit /b 0
+
+:verify
+set "__COMPAT_LAYER=%~1"
 if exist VisualDiff.out.txt del VisualDiff.out.txt
 start /wait VisualDiff.exe verify
 if not exist VisualDiff.out.txt (
-    echo FAILED: VisualDiff.out.txt not produced
+    echo FAILED: VisualDiff.out.txt not produced ^(%~2^)
     exit /b 1
 )
 findstr /C:"RESULT: PASSED" VisualDiff.out.txt >nul || (
+    echo --- FAILED at %~2 ---
     type VisualDiff.out.txt
     exit /b 1
 )
-echo VisualDiff verify PASSED
+exit /b 0

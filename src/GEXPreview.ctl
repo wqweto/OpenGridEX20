@@ -169,17 +169,38 @@ Private Sub IObjectSafety_SetInterfaceSafetyOptions(ByVal riid As Long, ByVal dw
 End Sub
 
 '=========================================================================
+' Functions
+'=========================================================================
+
+Private Sub pvInheritAmbientFont()
+    Const FUNC_NAME     As String = "pvInheritAmbientFont"
+
+    '--- the toolbar font is inherited from the container, as the original does
+    On Error GoTo EH
+    Set m_oToolbarFont = CloneFont(Ambient.Font)
+    Exit Sub
+EH:
+    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+End Sub
+
+'=========================================================================
 ' Base class events
 '=========================================================================
 
 Private Sub UserControl_Initialize()
-    Set m_oToolbarFont = New StdFont
-    m_oToolbarFont.Name = "MS Sans Serif"
-    m_oToolbarFont.Size = 8.25
+    Set m_oToolbarFont = NewStdFont()
     m_clrBackColor = vbButtonFace
     m_bToolbarVisible = True
     m_lCurrentPage = 1
     m_sPageSetupText = "Page Setup..."
     m_sPrintText = "Print..."
     m_sCloseButtonText = "Close"
+End Sub
+
+Private Sub UserControl_InitProperties()
+    pvInheritAmbientFont
+End Sub
+
+Private Sub UserControl_ReadProperties(PropBag As PropertyBag)
+    pvInheritAmbientFont
 End Sub

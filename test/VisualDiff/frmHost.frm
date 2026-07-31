@@ -1,14 +1,23 @@
 VERSION 5.00
-Begin VB.Form frmHost
+Begin VB.Form frmHost 
    Caption         =   "VisualDiff host"
-   ClientHeight    =   3900
+   ClientHeight    =   6210
    ClientLeft      =   60
-   ClientTop       =   345
-   ClientWidth     =   6000
+   ClientTop       =   350
+   ClientWidth     =   8790
+   BeginProperty Font 
+      Name            =   "Tahoma"
+      Size            =   8
+      Charset         =   204
+      Weight          =   400
+      Underline       =   0   'False
+      Italic          =   0   'False
+      Strikethrough   =   0   'False
+   EndProperty
    LinkTopic       =   "Form1"
-   ScaleHeight     =   260
+   ScaleHeight     =   621
    ScaleMode       =   3  'Pixel
-   ScaleWidth      =   400
+   ScaleWidth      =   879
    ShowInTaskbar   =   0   'False
    StartUpPosition =   2  'CenterScreen
 End
@@ -148,6 +157,7 @@ Private Sub pvCreateAndApply(sProgId As String, oScenario As Object)
     Set m_oExt = Controls.Add(sProgId, "ctlGrid")
     m_oExt.Move 0, 0, ScaleWidth, ScaleHeight
     m_oExt.Visible = True
+    pvSetDefaultFonts
     Set oProps = C2Obj(JsonValue(oScenario, "props"))
     If Not oProps Is Nothing Then
         pvApplyProps oProps
@@ -157,6 +167,27 @@ Private Sub pvCreateAndApply(sProgId As String, oScenario As Object)
         pvTryCall "HoldFields"
     End If
 End Sub
+
+Private Sub pvSetDefaultFonts()
+    Const FUNC_NAME     As String = "pvSetDefaultFonts"
+
+    '--- a control added at run-time inherits the host form ambient font, so
+    '--- the scenario baseline is restored explicitly: the form itself is
+    '--- Tahoma because ambient MS Sans Serif wrecks the original control's
+    '--- layout at 144dpi, but the grid must still default to MS Sans Serif
+    On Error GoTo EH
+    CallByName m_oExt.Object, "Font", VbSet, pvNewFont()
+    CallByName m_oExt.Object, "ColumnHeaderFont", VbSet, pvNewFont()
+    Exit Sub
+EH:
+    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+End Sub
+
+Private Function pvNewFont() As StdFont
+    Set pvNewFont = New StdFont
+    pvNewFont.Name = "MS Sans Serif"
+    pvNewFont.Size = 8
+End Function
 
 Private Sub pvFeedData(sProgId As String)
     Dim lItemCount      As Long
