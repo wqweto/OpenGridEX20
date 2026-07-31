@@ -34,18 +34,36 @@ Private m_oVBE                      As VBIDE.VBE
 '=========================================================================
 
 Private Sub IDTExtensibility2_OnConnection(ByVal Application As Object, ByVal ConnectMode As AddInDesignerObjects.ext_ConnectMode, ByVal AddInInst As Object, custom() As Variant)
+    Const FUNC_NAME     As String = "IDTExtensibility2_OnConnection"
+
+    On Error GoTo EH
     Set m_oVBE = Application
     If ConnectMode = ext_cm_AfterStartup Then
         ExportActiveProject m_oVBE
     End If
+    Exit Sub
+EH:
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub IDTExtensibility2_OnStartupComplete(custom() As Variant)
+    Const FUNC_NAME     As String = "IDTExtensibility2_OnStartupComplete"
+
+    On Error GoTo EH
     ExportActiveProject m_oVBE
+    Exit Sub
+EH:
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub IDTExtensibility2_OnDisconnection(ByVal RemoveMode As AddInDesignerObjects.ext_DisconnectMode, custom() As Variant)
+    Const FUNC_NAME     As String = "IDTExtensibility2_OnDisconnection"
+
+    On Error GoTo EH
     Set m_oVBE = Nothing
+    Exit Sub
+EH:
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub IDTExtensibility2_OnAddInsUpdate(custom() As Variant)

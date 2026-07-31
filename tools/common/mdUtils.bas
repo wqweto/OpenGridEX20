@@ -95,3 +95,33 @@ Public Function EnumFiles(sFolder As String, Optional sMask As String = "*") As 
         sFile = Dir$
     Loop
 End Function
+
+Public Sub LogError(sMessage As String, Optional ByVal lLine As Long)
+    Static bDisabled    As Boolean
+    Dim lFile           As Long
+    Dim sPath           As String
+
+    '--- an unhandled error in an event pops a modal dialog which wedges an
+    '--- automated run until the watchdog kills it, so every handler reports
+    '--- here instead. Reporting can never take the run down itself: a
+    '--- failure to write just disables the log for the rest of the session
+    If lLine <> 0 Then
+        sMessage = sMessage & " at line " & lLine
+    End If
+    Debug.Print sMessage
+    If bDisabled Then
+        Exit Sub
+    End If
+    On Error GoTo EH
+    sPath = App.Path & "\output"
+    If LenB(Dir$(sPath, vbDirectory)) = 0 Then
+        MkDir sPath
+    End If
+    lFile = FreeFile
+    Open sPath & "\errors.log" For Append As #lFile
+    Print #lFile, Format$(Now, "yyyy-mm-dd hh:nn:ss ") & sMessage
+    Close #lFile
+    Exit Sub
+EH:
+    bDisabled = True
+End Sub

@@ -180,7 +180,7 @@ Private Sub pvInheritAmbientFont()
     Set m_oToolbarFont = CloneFont(Ambient.Font)
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 '=========================================================================

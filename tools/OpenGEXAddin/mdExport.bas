@@ -52,7 +52,7 @@ Public Sub ExportActiveProject(oVBE As VBIDE.VBE)
     WriteTextFile sOutDir & "\" & sSample & ".done", sSummary
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
     WriteTextFile sOutDir & "\" & sSample & ".err", "Error &H" & Hex$(Err.Number) & " " & Err.Description & " [" & FUNC_NAME & "]"
 End Sub
 
@@ -72,7 +72,7 @@ Private Function pvExportForm(oComp As VBIDE.VBComponent, sOutDir As String, sSa
     Next
     Exit Function
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
     '--- damaged forms (e.g. missing .frx) cannot open a designer; salvage
     '--- the textual propbag keys from the .frm instead
     pvExportForm = pvExportFormRaw(oComp, sOutDir, sSample, sErrors)
@@ -115,7 +115,7 @@ Private Function pvExportFormRaw(oComp As VBIDE.VBComponent, sOutDir As String, 
     Next
     Exit Function
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
     sErrors = sErrors & " " & oComp.Name & ": &H" & Hex$(Err.Number) & " " & Err.Description
 End Function
 
@@ -152,7 +152,7 @@ Private Function pvExportControl(oCtl As VBIDE.VBControl, oComp As VBIDE.VBCompo
     End If
     Exit Function
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
     sErrors = sErrors & " " & oComp.Name & "!" & sCtlName & ": &H" & Hex$(Err.Number) & " " & Err.Description
 End Function
 

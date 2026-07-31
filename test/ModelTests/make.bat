@@ -11,7 +11,9 @@ if errorlevel 1 (
     exit /b 1
 )
 if exist ModelTests.out.txt del ModelTests.out.txt
-start /wait ModelTests.exe
+rem --- run under a watchdog: a wedged test run must not hang the loop
+powershell -NoProfile -Command "$p = Start-Process '.\ModelTests.exe' -PassThru; if (-not $p.WaitForExit(120000)) { $p.Kill(); Write-Host 'TIMEOUT: killed after 120s'; exit 1 }; exit 0"
+if errorlevel 1 exit /b 1
 if not exist ModelTests.out.txt (
     echo FAILED: ModelTests.out.txt not produced
     exit /b 1

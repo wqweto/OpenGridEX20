@@ -28,7 +28,8 @@ exit /b 0
 :verify
 set "__COMPAT_LAYER=%~1"
 if exist VisualDiff.out.txt del VisualDiff.out.txt
-start /wait VisualDiff.exe verify %MASK%
+rem --- watchdog: a wedged run must not hang the loop
+powershell -NoProfile -Command "$p = Start-Process '.\VisualDiff.exe' -ArgumentList 'verify','%MASK%' -PassThru; if (-not $p.WaitForExit(300000)) { $p.Kill(); Write-Host 'TIMEOUT: killed after 300s'; exit 1 }"
 if not exist VisualDiff.out.txt (
     echo FAILED: VisualDiff.out.txt not produced ^(%~2^)
     exit /b 1

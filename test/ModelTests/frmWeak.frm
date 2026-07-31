@@ -56,34 +56,75 @@ Public EventLog                     As String
 '=========================================================================
 
 Private Sub GridEX1_UnboundReadData(ByVal RowIndex As Long, ByVal Bookmark As Variant, ByVal Values As JSRowData)
+    Const FUNC_NAME     As String = "GridEX1_UnboundReadData"
     Dim nIdx            As Integer
 
+    On Error GoTo EH
     EventLog = EventLog & "Read(" & RowIndex & ")" & C2Str(Bookmark) & ";"
     For nIdx = 1 To Values.ColCount
         Values(nIdx) = "R" & RowIndex & "C" & nIdx
     Next
+    Exit Sub
+EH:
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub GridEX1_RowColChange(ByVal LastRow As Long, ByVal LastCol As Integer)
+    Const FUNC_NAME     As String = "GridEX1_RowColChange"
+
+    On Error GoTo EH
     EventLog = EventLog & "RowCol(" & LastRow & "," & LastCol & ");"
+    Exit Sub
+EH:
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub GridEX1_FirstItemChange()
+    Const FUNC_NAME     As String = "GridEX1_FirstItemChange"
+
+    On Error GoTo EH
     EventLog = EventLog & "First;"
+    Exit Sub
+EH:
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub GridEX1_Click()
+    Const FUNC_NAME     As String = "GridEX1_Click"
+
+    On Error GoTo EH
     EventLog = EventLog & "Click;"
+    Exit Sub
+EH:
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub GridEX1_ColumnHeaderClick(ByVal Column As JSColumn)
+    Const FUNC_NAME     As String = "GridEX1_ColumnHeaderClick"
+
+    On Error GoTo EH
     EventLog = EventLog & "HdrClick(" & Column.Caption & ");"
+    Exit Sub
+EH:
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub GridEX1_SelectionChange()
+    Const FUNC_NAME     As String = "GridEX1_SelectionChange"
+
+    On Error GoTo EH
     EventLog = EventLog & "Sel;"
+    Exit Sub
+EH:
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub GridEX1_KeyPress(KeyAscii As Integer)
+    Const FUNC_NAME     As String = "GridEX1_KeyPress"
+
+    On Error GoTo EH
     EventLog = EventLog & "Press(" & KeyAscii & ");"
+    Exit Sub
+EH:
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub

@@ -100,6 +100,7 @@ Public Sub Main()
                 Set oForm = New frmHost
                 If oForm.RunScenario(sProgId, C2Obj(vDoc), baBits, lWidth, lHeight) Then
                     Assert "--- " & sProgId & " / " & sName & " ---", True
+                    Assert "hWnd property returns &H" & Hex$(oForm.ControlHwnd()), True
                     pvDumpWindows oForm.hWnd, oForm.hWnd, 0
                 End If
                 Unload oForm
@@ -161,7 +162,7 @@ Public Sub Main()
     TestsDone
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
     Assert "Unhandled error &H" & Hex$(Err.Number) & " " & Err.Description & " in " & sName, False
     TestsDone
 End Sub
@@ -194,7 +195,7 @@ Private Sub pvDumpWindows(ByVal hWndRoot As Long, ByVal hWnd As Long, ByVal lLev
         If (lStyle And WS_TABSTOP) <> 0 Then
             sFlags = sFlags & " WS_TABSTOP"
         End If
-        Assert Space$(lLevel * 2) & "[" & sClass & "] at (" & uWin.Left - uRoot.Left & "," & uWin.Top - uRoot.Top & ") " & _
+        Assert Space$(lLevel * 2) & "&H" & Hex$(hChild) & " [" & sClass & "] at (" & uWin.Left - uRoot.Left & "," & uWin.Top - uRoot.Top & ") " & _
             uWin.Right - uWin.Left & "x" & uWin.Bottom - uWin.Top & " client " & uClient.Right & "x" & uClient.Bottom & sFlags, True
         pvDumpWindows hWndRoot, hChild, lLevel + 1
         hChild = GetWindow(hChild, GW_HWNDNEXT)
@@ -229,6 +230,6 @@ QH:
     End If
     Exit Function
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
     GoTo QH
 End Function

@@ -52,7 +52,7 @@ QH:
     Unload Me
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
     WriteTextFile App.Path & "\SnapshotError.txt", "Error &H" & Hex$(Err.Number) & " " & Err.Description
     GoTo QH
 End Sub

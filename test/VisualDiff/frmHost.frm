@@ -104,7 +104,11 @@ Public Function RunScenario(sProgId As String, oScenario As Object, baBits() As 
     RunScenario = pvCaptureStable(hWnd, lWidth, lHeight, baBits)
     Exit Function
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+End Function
+
+Public Function ControlHwnd() As Long
+    ControlHwnd = pvControlHwnd()
 End Function
 
 Private Function pvControlHwnd() As Long
@@ -114,7 +118,7 @@ Private Function pvControlHwnd() As Long
     pvControlHwnd = C2Lng(CallByName(m_oExt.Object, "hWnd", VbGet))
     Exit Function
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Function
 
 Private Sub pvSettle(ByVal lRetries As Long)
@@ -194,7 +198,7 @@ Private Sub pvSetDefaultFonts()
     CallByName m_oExt.Object, "ColumnHeaderFont", VbSet, pvNewFont()
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Function pvNewFont() As StdFont
@@ -259,8 +263,7 @@ Private Sub pvFeedAdoRows()
     CallByName m_oExt.Object, "ADORecordset", VbSet, oRs
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
-    pvLogError "adofeed: &H" & Hex$(Err.Number) & " " & Err.Description
+    LogError "adofeed: &H" & Hex$(Err.Number) & " " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub pvApplyProps(oProps As Object)
@@ -270,22 +273,9 @@ Private Sub pvApplyProps(oProps As Object)
     ImportObject m_oExt.Object, m_sClass, oProps
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
     '--- surface import errors in the runner log (Debug.Print is invisible
     '--- in the compiled exe)
-    pvLogError "import: &H" & Hex$(Err.Number) & " " & Err.Description
-End Sub
-
-Private Sub pvLogError(sText As String)
-    Dim lFile           As Long
-
-    If LenB(Dir$(App.Path & "\output", vbDirectory)) = 0 Then
-        MkDir App.Path & "\output"
-    End If
-    lFile = FreeFile
-    Open App.Path & "\output\host-errors.log" For Append As #lFile
-    Print #lFile, sText
-    Close #lFile
+    LogError "import: &H" & Hex$(Err.Number) & " " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub pvSelectRows(oList As Object)
@@ -308,7 +298,7 @@ Private Sub pvSelectRows(oList As Object)
     oGrid.Refresh
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub pvTrySet(sProp As String, ByVal vValue As Variant)
@@ -318,7 +308,7 @@ Private Sub pvTrySet(sProp As String, ByVal vValue As Variant)
     CallByName m_oExt.Object, sProp, VbLet, vValue
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub pvTryCall(sMethod As String)
@@ -328,7 +318,7 @@ Private Sub pvTryCall(sMethod As String)
     CallByName m_oExt.Object, sMethod, VbMethod
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 '=========================================================================
@@ -336,9 +326,15 @@ End Sub
 '=========================================================================
 
 Private Sub Form_Load()
+    Const FUNC_NAME     As String = "Form_Load"
+
     '--- the window exists but is still hidden here, so the DWM open
     '--- transition can be suppressed before the first Show
+    On Error GoTo EH
     DisableWindowTransitions hWnd
+    Exit Sub
+EH:
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub m_oExt_ObjectEvent(Info As EventInfo)
@@ -363,5 +359,5 @@ Private Sub m_oExt_ObjectEvent(Info As EventInfo)
     End If
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub

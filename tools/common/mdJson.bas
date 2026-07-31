@@ -157,7 +157,7 @@ Private Function PrintError(sFunction As String) As VbMsgBoxResult
     #ElseIf ImplUseDebugLog Then
         DebugLog MODULE_NAME, sFunction & "(" & Erl & ")", Err.Description & " &H" & Hex$(Err.Number), vbLogEventTypeError
     #Else
-        Debug.Print "Critical error: " & Err.Description & " [" & MODULE_NAME & "." & sFunction & "]"
+        LogError "Critical error: " & Err.Description & " [" & MODULE_NAME & "." & sFunction & "]", Erl
     #End If
 End Function
 

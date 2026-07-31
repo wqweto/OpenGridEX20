@@ -153,7 +153,7 @@ Public Sub DisableWindowTransitions(ByVal hWnd As Long)
     Call DwmSetWindowAttribute(hWnd, DWMWA_TRANSITIONS_FORCEDISABLED, lValue, 4)
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Public Function CaptureWindowFull(ByVal hWnd As Long, lWidth As Long, lHeight As Long, baBits() As Byte) As Boolean

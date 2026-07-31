@@ -2649,9 +2649,12 @@ Private Sub pvInvalidate()
     On Error GoTo EH
     pvUpdateScrollBars
     picGrid.Refresh
+    If m_bRecordNavigator Then
+        UserControl.Refresh
+    End If
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Function pvTopHeight() As Long
@@ -2791,6 +2794,35 @@ Private Function pvNavigatorWidth() As Long
     If pvNavLayout(uNav) Then
         pvNavigatorWidth = uNav.Width
     End If
+End Function
+
+Private Sub pvOnNavigatorClick(ByVal lX As Long, ByVal lY As Long)
+    Dim uNav            As UcsNavLayout
+
+    '--- painted buttons, so hit-testing is done here rather than by a control
+    If Not pvNavLayout(uNav) Then
+        Exit Sub
+    End If
+    If pvPtInRect(uNav.BtnFirst, lX, lY) Then
+        Row = 1
+    ElseIf pvPtInRect(uNav.BtnPrev, lX, lY) Then
+        If m_lRow > 1 Then
+            Row = m_lRow - 1
+        End If
+    ElseIf pvPtInRect(uNav.BtnNext, lX, lY) Then
+        If m_lRow < RowCount Then
+            Row = m_lRow + 1
+        End If
+    ElseIf pvPtInRect(uNav.BtnLast, lX, lY) Then
+        Row = RowCount
+    Else
+        Exit Sub
+    End If
+    EnsureVisible m_lRow
+End Sub
+
+Private Function pvPtInRect(uRect As RECT, ByVal lX As Long, ByVal lY As Long) As Boolean
+    pvPtInRect = (lX >= uRect.Left And lX < uRect.Right And lY >= uRect.Top And lY < uRect.Bottom)
 End Function
 
 Private Sub pvNavButton(ByVal hDC As Long, uBtn As RECT)
@@ -3233,7 +3265,7 @@ Private Sub pvInheritAmbientFont()
     m_oColumnHeaderFont_FontChanged vbNullString
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub pvSubclass()
@@ -3255,17 +3287,25 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
     Dim nShift          As Integer
     Dim nKeyAscii       As Integer
 
+    If hWnd = UserControl.hWnd Then
+        '--- the outer control is the band: navigator clicks plus the child
+        '--- scrollbar's colour and activation messages
+        Select Case wMsg
+        Case WM_LBUTTONDOWN
+            pvOnNavigatorClick pvLoWord(lParam), pvHiWord(lParam)
+        Case WM_MOUSEACTIVATE
+            If pvHitScrollBar() Then
+                ControlSubclassProc = MA_NOACTIVATE
+                Handled = True
+            End If
+        Case WM_CTLCOLORSCROLLBAR
+            Handled = True
+        End Select
+        GoTo QH
+    End If
     Select Case wMsg
     Case WM_VSCROLL
         pvOnVScroll wParam And &HFFFF&
-    Case WM_MOUSEACTIVATE
-        '--- the child scrollbar would take focus on click like any control,
-        '--- so activation is refused for clicks that land on it -- the grid
-        '--- itself still activates normally
-        If pvHitScrollBar() Then
-            ControlSubclassProc = MA_NOACTIVATE
-            Handled = True
-        End If
         Handled = True
     Case WM_KEYDOWN
         nKeyCode = CInt(wParam And &HFFFF&)
@@ -3288,9 +3328,8 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
     Case WM_CHAR
         nKeyAscii = CInt(wParam And &HFFFF&)
         RaiseEvent KeyPress(nKeyAscii)
-    Case WM_CTLCOLORSCROLLBAR
-        Handled = True
     End Select
+QH:
     '--- note: performance optimization for design-time subclassing
     If Not Handled And ThunkPrivateData(m_pSubclassPic) = EBMODE_DESIGN Then
         Handled = True
@@ -3723,7 +3762,7 @@ Private Sub UserControl_Paint()
     End If
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub picGrid_Paint()
@@ -3733,7 +3772,7 @@ Private Sub picGrid_Paint()
     pvPaint picGrid.hDC
     Exit Sub
 EH:
-    Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
 Private Sub UserControl_Resize()
