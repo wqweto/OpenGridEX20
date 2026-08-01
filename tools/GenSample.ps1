@@ -15,8 +15,8 @@ enum constant names from the Public Enum blocks in src\GridEX.ctl, so the
 output reads `jgexUnbound` rather than `99`.
 
 .EXAMPLE
-powershell -File GenSample.ps1 -Snapshot ..\test\snapshots\Unbound-1_Form1_GridEX1.json
-powershell -File GenSample.ps1 -Snapshot ..\test\snapshots\Unbound-2_Form1_GridEX1.json -Out mdSetup.bas
+powershell -File GenSample.ps1 -Snapshot ..\test\snapshots\015-Unbound-1_Form1_GridEX1.json
+powershell -File GenSample.ps1 -Snapshot ..\test\snapshots\016-Unbound-2_Form1_GridEX1.json -Out mdSetup.bas
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Snapshot,

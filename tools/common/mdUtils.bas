@@ -96,10 +96,22 @@ Public Function EnumFiles(sFolder As String, Optional sMask As String = "*") As 
     Loop
 End Function
 
+'--- every file a test run produces lands in a single output folder next to
+'--- the exe, so the project folder holds sources only and the whole lot can
+'--- be wiped (or gitignored) as one
+Public Function OutputFile(sName As String) As String
+    Dim sPath           As String
+
+    sPath = App.Path & "\output"
+    If LenB(Dir$(sPath, vbDirectory)) = 0 Then
+        MkDir sPath
+    End If
+    OutputFile = sPath & "\" & sName
+End Function
+
 Public Sub LogError(sMessage As String, Optional ByVal lLine As Long)
     Static bDisabled    As Boolean
     Dim lFile           As Long
-    Dim sPath           As String
 
     '--- an unhandled error in an event pops a modal dialog which wedges an
     '--- automated run until the watchdog kills it, so every handler reports
@@ -113,12 +125,8 @@ Public Sub LogError(sMessage As String, Optional ByVal lLine As Long)
         Exit Sub
     End If
     On Error GoTo EH
-    sPath = App.Path & "\output"
-    If LenB(Dir$(sPath, vbDirectory)) = 0 Then
-        MkDir sPath
-    End If
     lFile = FreeFile
-    Open sPath & "\errors.log" For Append As #lFile
+    Open OutputFile("errors.log") For Append As #lFile
     Print #lFile, Format$(Now, "yyyy-mm-dd hh:nn:ss ") & sMessage
     Close #lFile
     Exit Sub

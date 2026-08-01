@@ -78,6 +78,12 @@ EH:
     pvExportForm = pvExportFormRaw(oComp, sOutDir, sSample, sErrors)
 End Function
 
+'--- export.ps1 numbers the samples in its own walk order and passes the
+'--- NNN- prefix down, so a re-export reproduces the file names exactly
+Private Function pvPrefix() As String
+    pvPrefix = Environ$("OPENGEX_PREFIX")
+End Function
+
 Private Function pvExportFormRaw(oComp As VBIDE.VBComponent, sOutDir As String, sSample As String, sErrors As String) As Long
     Const FUNC_NAME     As String = "pvExportFormRaw"
     Dim aLines()        As String
@@ -107,7 +113,7 @@ Private Function pvExportFormRaw(oComp As VBIDE.VBComponent, sOutDir As String, 
                 JsonValue(oJson, "control") = sCtlName
                 JsonValue(oJson, "progid") = aParts(1)
                 Set JsonValue(oJson, "raw") = pvParseRawKeys(oComp.FileNames(1), sCtlName)
-                WriteTextFile sOutDir & "\" & sSample & "_" & oComp.Name & "_" & sCtlName & ".json", JsonDump(oJson) & vbCrLf
+                WriteTextFile sOutDir & "\" & pvPrefix() & sSample & "_" & oComp.Name & "_" & sCtlName & ".json", JsonDump(oJson) & vbCrLf
                 pvExportFormRaw = pvExportFormRaw + 1
                 sErrors = sErrors & " " & oComp.Name & "!" & sCtlName & ": raw-only (designer failed)"
             End Select
@@ -145,7 +151,7 @@ Private Function pvExportControl(oCtl As VBIDE.VBControl, oComp As VBIDE.VBCompo
                 If Not oRaw Is Nothing Then
                     Set JsonValue(oJson, "raw") = oRaw
                 End If
-                WriteTextFile sOutDir & "\" & sSample & "_" & oComp.Name & "_" & sCtlName & ".json", JsonDump(oJson) & vbCrLf
+                WriteTextFile sOutDir & "\" & pvPrefix() & sSample & "_" & oComp.Name & "_" & sCtlName & ".json", JsonDump(oJson) & vbCrLf
                 pvExportControl = 1
             End Select
         End Select

@@ -164,6 +164,20 @@ All notable changes to this project will be documented in this file.
 - `tools\GenSample.ps1` turns a snapshot recorded from the original into plain VB6 that configures our control, so a Janus sample ports by re-pointing the reference and calling the generated `Sub`. It mirrors `mdImport.bas` assignment for assignment: scalars, enums as constant names, fonts, `Add` arguments per collection, and -- recursively -- read-only sub-objects such as `PrinterProperties` or a condition's `FormatStyle`, including parameterized `HeaderString(1..3)`. Collections carrying persistable properties of their own snapshot as an object with an `items` array rather than a bare array, which is what `FmtConditions` is; the generator handles both shapes
 - `pvTestGeneratedSetup` round-trips the three generated modules (`Unbound-1`, `Unbound-2`, `Unbound-Collection`) against the snapshots they came from: 159 model tests pass. `GridImages` is out of scope on both sides -- pictures cannot be written as code literals, a ported sample keeps them in its own `.frx`
 
+### Changed (test harness layout)
+
+- Everything a ModelTests run produces now lands in `test\ModelTests\output\`:
+  the results file, the round-trip dumps, the per-snapshot `.expected`/`.actual`
+  diffs, the error log and the VB6 compiler log. The project folder had grown 51
+  generated files around 8 sources. `OutputFile()` in `mdUtils.bas` builds the
+  path and creates the folder, so every writer goes through one place, and
+  `.gitignore` drops four patterns for one
+- Snapshots renamed `NNN-<sample>_<form>_<control>.json`, matching the scenario
+  convention. `NNN` is the sample's position in `export.ps1`'s walk, passed to
+  the add-in as `OPENGEX_PREFIX`, so a re-export reproduces the names rather
+  than dropping the numbering. The walk sorts ordinally now -- a culture-aware
+  sort could renumber the corpus on another machine
+
 ### Fixed (test harness)
 
 - Every event handler in the test projects, the add-in and both controls logs through `LogError` instead of a bare `Debug.Print`, which is invisible in a compiled exe: the message goes to `output\errors.log` next to the runner (`%TEMP%` for the OCX), timestamped, and the logger disables itself rather than fail. Handlers pass `Erl`, so a procedure carrying VB6 line numbers pinpoints the failing line -- which is how the hang below was tracked down. `frmHost`'s local `pvLogError` folded into it

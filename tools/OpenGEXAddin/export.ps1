@@ -39,21 +39,28 @@ if (-not (Test-Path $sVb6)) { throw "VB6.EXE not found: $sVb6" }
 if (-not (Test-Path $sSamplesRoot)) { throw "Original samples not found: $sSamplesRoot" }
 New-Item -ItemType Directory -Force $sOutDir | Out-Null
 
+#--- ordinal sort, so the sample index below is the same on any machine and
+#--- locale -- it becomes the NNN- prefix every snapshot file carries
 $aVbps = Get-ChildItem $sSamplesRoot -Recurse -Filter *.vbp | Where-Object {
     $sRel = $_.FullName.Substring($sSamplesRoot.Length)
     -not ($aExclude | Where-Object { $sRel -like "*$_*" })
-} | Sort-Object FullName
+} | Sort-Object { $_.FullName } -CaseSensitive
 
 $aFailed = @()
 $lDone = 0
+$lIdx = 0
 Set-AddinLoad 1
 try {
     foreach ($oVbp in $aVbps) {
+        $lIdx++
         $sSample = (Split-Path -Leaf (Split-Path -Parent $oVbp.FullName)) -replace '[^A-Za-z0-9]+', '-'
         if ($sSample -notlike $SampleFilter) { continue }
         Remove-Item "$sOutDir\$sSample.done", "$sOutDir\$sSample.err" -ErrorAction SilentlyContinue
         $env:OPENGEX_SNAPSHOT_DIR = $sOutDir
         $env:OPENGEX_SAMPLE = $sSample
+        #--- counted over the unfiltered list, so -SampleFilter cannot shift
+        #--- the numbering of the samples it does export
+        $env:OPENGEX_PREFIX = '{0:D3}-' -f $lIdx
         Write-Host "Exporting $sSample ..." -NoNewline
         $oProc = Start-Process $sVb6 -ArgumentList "`"$($oVbp.FullName)`"" -PassThru
         $dDeadline = (Get-Date).AddSeconds($TimeoutSec)

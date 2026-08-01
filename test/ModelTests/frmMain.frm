@@ -102,7 +102,7 @@ Private Sub Form_Load()
     Dim lIdx            As Long
 
     On Error GoTo EH
-    TestInit App.Path & "\ModelTests.out.txt"
+    TestInit OutputFile("ModelTests.out.txt")
     pvTestColumns
     pvTestValueList
     pvTestFormatStyles
@@ -313,8 +313,8 @@ Private Sub pvTestRoundTrip()
     ImportObject GridEX1.Object, "GridEX", oProps
     Assert "checkpoint import", True
     sJson2 = SnapshotToJson(GridEX1.Object, "GridEX", False)
-    WriteTextFile App.Path & "\RoundTrip1.json", sJson1
-    WriteTextFile App.Path & "\RoundTrip2.json", sJson2
+    WriteTextFile OutputFile("RoundTrip1.json"), sJson1
+    WriteTextFile OutputFile("RoundTrip2.json"), sJson2
     Assert "GridEX round-trip lossless", (sJson1 = sJson2)
     '--- GEXPreview pair
     With GEXPreview1
@@ -540,11 +540,11 @@ Private Sub pvTestGeneratedSetup()
     For lIdx = 1 To 3
         Select Case lIdx
         Case 1
-            sName = "Unbound-1_Form1_GridEX1.json"
+            sName = "015-Unbound-1_Form1_GridEX1.json"
         Case 2
-            sName = "Unbound-2_Form1_GridEX1.json"
+            sName = "016-Unbound-2_Form1_GridEX1.json"
         Case Else
-            sName = "Unbound-Collection_frmUnboundCol_GridEX1.json"
+            sName = "019-Unbound-Collection_frmUnboundCol_GridEX1.json"
         End Select
         JsonParse ReadTextFile(App.Path & "\..\snapshots\" & sName), vDoc
         Set oProps = JsonValue(C2Obj(vDoc), "props")
@@ -568,8 +568,8 @@ Private Sub pvTestGeneratedSetup()
         JsonValue(oProps, "GridImages") = Empty
         JsonValue(oProps2, "GridImages") = Empty
         If JsonDump(oProps) <> JsonDump(oProps2) Then
-            WriteTextFile App.Path & "\" & sName & ".gen-expected.txt", JsonDump(oProps)
-            WriteTextFile App.Path & "\" & sName & ".gen-actual.txt", JsonDump(oProps2)
+            WriteTextFile OutputFile(sName & ".gen-expected.txt"), JsonDump(oProps)
+            WriteTextFile OutputFile(sName & ".gen-actual.txt"), JsonDump(oProps2)
         End If
         Assert "generated setup " & sName, (JsonDump(oProps) = JsonDump(oProps2))
         Unload oForm
@@ -757,8 +757,8 @@ Private Sub pvTestSnapshotCorpus()
             sJson1 = JsonDump(oProps)
             sJson2 = JsonDump(oProps2)
             If sJson1 <> sJson2 Then
-                WriteTextFile App.Path & "\" & sName & ".expected.txt", sJson1
-                WriteTextFile App.Path & "\" & sName & ".actual.txt", sJson2
+                WriteTextFile OutputFile(sName & ".expected.txt"), sJson1
+                WriteTextFile OutputFile(sName & ".actual.txt"), sJson2
             End If
             Assert "corpus round-trip " & sName, (sJson1 = sJson2)
             Unload oForm

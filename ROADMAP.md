@@ -29,8 +29,10 @@ Exit: `src\make.bat` builds and registers clean, surface diff shows no drift.
   porting, aligned with source compatibility), and a one-command export add-in
 - Freeze the JSON snapshot schema (also used later by tests)
 - `tools\OpenGEXAddin`: export-only VB6 add-in wrapping the engine; batch-export
-  all sample grids to `test\snapshots\` (needs original control installed;
-  not on the critical path -- may slide to just before sample-based exits)
+  all sample grids to `test\snapshots\` as `NNN-<sample>_<form>_<control>.json`,
+  where `NNN` is the sample's position in `export.ps1`'s ordinal walk, so a
+  re-export reproduces the names (needs original control installed; not on the
+  critical path -- may slide to just before sample-based exits)
 
 Exit: engine + schema frozen; sample form grid state captured as JSON incl.
 `raw` section; unknown propbag keys (`IntProp*`, `MethodHoldFields`, ...)
