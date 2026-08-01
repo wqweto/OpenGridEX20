@@ -5,11 +5,18 @@
     "height": 260,
     "apply": "before-show",
     "props": {
-        "HeaderStyle": 0,
+        "HeaderStyle": 2,
         "ColumnHeaderHeight": 400,
         "Columns": [
             { "Caption": "Alpha", "Width": 1400, "HeaderAlignment": 2 },
             { "Caption": "Beta", "Width": 1400 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "a1", "b1" ],
+            [ "a2", "b2" ],
+            [ "a3", "b3" ]
         ]
     }
 }

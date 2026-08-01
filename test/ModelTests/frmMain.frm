@@ -117,6 +117,7 @@ Private Sub Form_Load()
     pvTestUnbound
     pvTestScroll
     pvTestScrollProps
+    pvTestSorting
     pvTestKeyNav
     pvTestMouse
     pvTestNavigator
@@ -543,6 +544,45 @@ Private Sub pvTestScrollProps()
         .Redraw = True
         AssertEquals "Redraw back on", True, .Redraw
         AssertEquals "Redraw: changes made while off are kept", 60, .RowCount
+    End With
+    Unload oForm
+End Sub
+
+Private Sub pvTestSorting()
+    Dim oForm           As frmWeak
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add "Alpha"
+        .Columns.Add("Beta").SortType = jgexSortTypeNumeric
+        .DataMode = jgexUnbound
+        .ItemCount = 4
+        .Rebind
+        '--- frmWeak fills row N as "R<N>C<col>", so Alpha already ascends;
+        '--- descending is the interesting direction
+        .SortKeys.Add 1, jgexSortDescending
+        .Refresh
+        AssertEquals "Sort: SortKeys.Count", 1, .SortKeys.Count
+        AssertEquals "Sort: first row is the last data row", 4, .RowIndex(1)
+        AssertEquals "Sort: last row is the first data row", 1, .RowIndex(4)
+        AssertEquals "Sort: cell text follows the row", "R4C1", .GetRowData(.RowIndex(1)).Value(1)
+        '--- the current row rides along: Rebind left it on data row 1, which
+        '--- descending sends to the bottom
+        AssertEquals "Sort: current row follows its data", 4, .Row
+        AssertEquals "Sort: selection follows its data", 4, .SelectedItems.Item(1).RowPosition
+        AssertEquals "Sort: selection keeps its row index", 1, .SelectedItems.Item(1).RowIndex
+        '--- flipping the key in place re-sorts, as the samples do from a
+        '--- header click
+        .SortKeys.Item(1).SortOrder = jgexSortAscending
+        .Refresh
+        AssertEquals "Sort: flipped key re-sorts", 1, .RowIndex(1)
+        AssertEquals "Sort: current row follows the flip", 1, .Row
+        '--- and clearing puts the rows back in the order they came in
+        .SortKeys.Clear
+        .Refresh
+        AssertEquals "Sort: cleared keys restore data order", 3, .RowIndex(3)
+        AssertEquals "Sort: RowCount unchanged by sorting", 4, .RowCount
     End With
     Unload oForm
 End Sub

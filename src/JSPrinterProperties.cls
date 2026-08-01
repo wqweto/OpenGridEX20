@@ -379,7 +379,7 @@ Attribute PageSetup.VB_Description = "Displays the page setup dialog."
 End Sub
 
 '=========================================================================
-' Functions
+' Methods
 '=========================================================================
 
 Private Function pvDefaultFont() As Font

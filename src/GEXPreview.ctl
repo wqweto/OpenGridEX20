@@ -169,7 +169,7 @@ Private Sub IObjectSafety_SetInterfaceSafetyOptions(ByVal riid As Long, ByVal dw
 End Sub
 
 '=========================================================================
-' Functions
+' Methods
 '=========================================================================
 
 Private Sub pvInheritAmbientFont()

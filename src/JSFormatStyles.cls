@@ -100,7 +100,7 @@ Friend Function frItemOrNothing(sName As String) As JSFormatStyle
 End Function
 
 '=========================================================================
-' Functions
+' Methods
 '=========================================================================
 
 Private Sub pvAddSystem(sName As String, ByVal clrBack As OLE_COLOR, ByVal clrFore As OLE_COLOR)

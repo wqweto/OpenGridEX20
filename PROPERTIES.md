@@ -67,15 +67,15 @@ gridline is ever drawn and the golden's full colour histogram
 
 | | count | share |
 |---|---:|---:|
-| verified | 49 | 39% |
+| verified | 52 | 41% |
 | weak | 0 | 0% |
 | unverified | 0 | 0% |
 | partial | 0 | 0% |
 | n/a (state only) | 1 | 1% |
-| **not implemented** | **76** | **60%** |
+| **not implemented** | **73** | **58%** |
 | **total** | **126** | |
 
-**50 of 126 (40%) are read by the paint path**; the other **76 (60%) are not
+**53 of 126 (42%) are read by the paint path**; the other **73 (58%) are not
 implemented** -- they store and return their value, and round-trip through the
 snapshot corpus, but the renderer never looks at them.
 
@@ -83,7 +83,7 @@ snapshot corpus, but the renderer never looks at them.
 more distinct values. Two of them cannot be proven by a picture and are pinned
 by `ModelTests` instead: `ContinuousScroll` only shows up mid-drag, and `Redraw`
 suppresses painting rather than changing it. `Col` is state with no pixels of
-its own -- it is listed to record that, not as a gap. The 76 that remain are
+its own -- it is listed to record that, not as a gap. The 73 that remain are
 unimplemented, each owned by a later milestone.
 
 Getting there took eight scenarios and turned up **eleven** real defects. Each had
@@ -96,7 +96,7 @@ Not-implemented properties by owning milestone:
 | milestone | count |
 |---|---:|
 | M10 styling extras | 38 |
-| M4 sorting/grouping | 16 |
+| M4 sorting/grouping | 13 |
 | M6 card view | 12 |
 | M5 editing | 5 |
 | **unowned** | **5** |
@@ -116,7 +116,7 @@ Five remain unowned: the drag/resize affordances (`AllowColumnDrag`,
 ### The matrix
 
 Scenario names refer to `test\VisualDiff\scenarios\NNN-*.json`, numbered in
-creation order; all 34 are verified at 96 and 120 dpi, and the first 28 at 144 as
+creation order; all 37 are verified at 96 and 120 dpi, and the first 28 at 144 as
 well. The `Commit` column records where the property started affecting pixels,
 not where it was first stored -- every member was declared in the M2 storage
 commit, so that hash carries no information about painting.
@@ -169,7 +169,7 @@ commit, so that hash carries no information about painting.
 | `GroupByBoxVisible` | `Boolean` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `010-headers-noborder`, `011-headers-single3d`, `012-headers-singleflat` vs default |
 | `GroupFooterStyle` | `jgexGroupFooterStyleConstants` | **not impl** | M4 | -- | -- |
 | `Groups` | `JSGroups` | **not impl** | M4 | -- | -- |
-| `HeaderStyle` | `jgexHeaderStyleConstants` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `003-headers-flat`, `010-headers-noborder`, `011-headers-single3d`, `012-headers-singleflat` (4 values) |
+| `HeaderStyle` | `jgexHeaderStyleConstants` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | all four values: default 0 everywhere, `010-headers-noborder` (1), `012-headers-singleflat` and `003-headers-flat` (2, the latter over a 400tw header with rows), `011-headers-single3d` (3) |
 | `HideSelection` | `Boolean` | **not impl** | M10 | -- | -- |
 | `ImageHeight` | `Integer` | **not impl** | M10 | -- | -- |
 | `ImageWidth` | `Integer` | **not impl** | M10 | -- | -- |
@@ -197,8 +197,8 @@ commit, so that hash carries no information about painting.
 | `JSColumn.MaxRowsInCardView` | `Long` | **not impl** | M6 | -- | -- |
 | `JSColumn.MinRowsInCardView` | `Long` | **not impl** | M6 | -- | -- |
 | `JSColumn.ShowCaptionInCardView` | `Boolean` | **not impl** | M6 | -- | -- |
-| `JSColumn.SortOrder` | `jgexSortOrderConstants` | **not impl** | M4 | -- | -- |
-| `JSColumn.SortType` | `jgexSortTypeConstants` | **not impl** | M4 | -- | -- |
+| `JSColumn.SortOrder` | `jgexSortOrderConstants` | verified | M4 | -- | drives the header arrow: `035-sorted-column` (ascending) vs `037-sorted-descending` |
+| `JSColumn.SortType` | `jgexSortTypeConstants` | verified | M4 | -- | `037-sorted-descending` sorts Beta as numeric; string default in `035-sorted-column` |
 | `JSColumn.TextAlignment` | `jgexAlignmentConstants` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | 1 in `006-unbound-rows`, 2 in `019-font-segoeui`, default 0 elsewhere |
 | `JSColumn.TotalRowFormat` | `String` | **not impl** | M4 | -- | -- |
 | `JSColumn.TotalRowPrefix` | `String` | **not impl** | M4 | -- | -- |
@@ -246,7 +246,7 @@ commit, so that hash carries no information about painting.
 | `SelectionStyle` | `jgexSelectionStyleConstants` | **not impl** | M10 | -- | -- |
 | `ShowEmptyFields` | `Boolean` | **not impl** | M10 | -- | -- |
 | `ShowToolTips` | `Boolean` | **not impl** | M10 | -- | -- |
-| `SortKeys` | `JSSortKeys` | **not impl** | M4 | -- | -- |
+| `SortKeys` | `JSSortKeys` | verified | M4 | -- | `035-sorted-column` (ascending on a string column), `037-sorted-descending` (descending, numeric `SortType`), `036-sort-tall-header` (glyph anchor), unsorted elsewhere |
 | `UseEvenOddColor` | `Boolean` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `006-unbound-rows` (True) vs default False |
 | `View` | `jgexViewConstants` | **not impl** | M6 | -- | -- |
 
@@ -304,6 +304,25 @@ no amount of reading the docs would have produced:
   `SetScrollInfo` over VB6's mapping. Reading the original's window back beats
   inferring geometry from pixels, and `scrollinfo` mode in the harness now does
   exactly that for any scenario.
+
+M4 opened with sorting, and its goldens settled three things about the header
+arrow that guessing would not have:
+
+- It is a **fixed 8x7 bitmap** -- the original draws the same pixels at 120dpi as
+  at 96, so it does not scale with the header font or the DPI.
+- It sits on the **caption's baseline**, not centred in the header band: with the
+  header stretched to 600 twips (`036-sort-tall-header`) a centred glyph lands
+  two pixels high. The vertical rule is `(headerH - tmHeight + 1) \ 2 + tmAscent
+  - 1`, the same round-half-up centring the record navigator uses.
+- Ascending is engraved shadow-left/highlight-right with a **highlighted base**;
+  descending mirrors it and the flat edge on top is **shadow**, not highlight --
+  one row of pixels, and the only part of the glyph a mirror got wrong.
+
+Sorting also had to answer what happens to the current row and the selection: the
+original keeps both on the data they were on, so `Row` and every `JSSelectedItem`
+are remapped through the new order rather than left on their old positions. The
+sort itself is a merge sort, chosen because it is stable -- rows with equal keys
+keep the order the client app supplied them in.
 
 M7 is complete. Horizontal scrolling landed with it, since `LeftCol` was the one
 property the renderer only partly consumed. The scrollbar band that came out of
@@ -497,9 +516,9 @@ prove.
 | `JSSelectedItem.RowType` | `jgexRowTypeConstants` | consumed | -- | -- | `ModelTests` pvTestRowData |
 | `JSSelectedItems.Count` | `Long` | consumed | -- | -- | `ModelTests` pvTestColumns |
 | `JSSelectedItems.Item(Index)` | `JSSelectedItem` | consumed | -- | -- | `ModelTests` pvTestColumns |
-| `JSSortKey.ColIndex` | `Integer` | storage | M4 | -- | `ModelTests` pvTestSortKeysGroups |
+| `JSSortKey.ColIndex` | `Integer` | consumed | -- | -- | `ModelTests` pvTestSorting, `035-sorted-column` |
 | `JSSortKey.Index` | `Integer` | consumed | -- | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `ModelTests` pvTestColumns |
-| `JSSortKey.SortOrder` | `jgexSortOrderConstants` | storage | M4 | -- | `Samples` frmUnbound1 |
+| `JSSortKey.SortOrder` | `jgexSortOrderConstants` | consumed | -- | -- | `ModelTests` pvTestSorting flips it in place, `037-sorted-descending` |
 | `JSSortKeys.Count` | `Long` | consumed | -- | -- | `ModelTests` pvTestColumns |
 | `JSSortKeys.Item(Index)` | `JSSortKey` | consumed | -- | -- | `ModelTests` pvTestColumns |
 | `JSValueItem.IconIndex` | `Integer` | consumed | -- | -- | `ModelTests` pvTestRowData |

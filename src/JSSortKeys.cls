@@ -26,6 +26,7 @@ DefObj A-Z
 '=========================================================================
 
 Private m_cItems                    As Collection
+Private m_pOwner                    As GridEX
 
 '=========================================================================
 ' Properties
@@ -56,23 +57,46 @@ Public Function Add(ByVal ColIndex As Integer, ByVal SortOrder As jgexSortOrderC
 Attribute Add.VB_Description = "Adds a JSSortKey object to the collection and returns a reference to the newly created object."
     Set Add = New JSSortKey
     Add.frInit 0, ColIndex, SortOrder
+    Add.frSetOwner m_pOwner
     If Index > 0 And Index <= m_cItems.Count Then
         m_cItems.Add Add, Before:=Index
     Else
         m_cItems.Add Add
     End If
     pvReindex
+    pvNotify
 End Function
 
 Public Sub Remove(ByVal Index As Integer)
 Attribute Remove.VB_Description = "Removes a specific member from the collection."
     m_cItems.Remove Index
     pvReindex
+    pvNotify
 End Sub
 
 Public Sub Clear()
 Attribute Clear.VB_Description = "Removes all objects in a collection."
     Set m_cItems = New Collection
+    pvNotify
+End Sub
+
+'=========================================================================
+' Methods
+'=========================================================================
+
+Friend Sub frInit(ByVal oCtl As GridEX)
+    '--- weak, as everywhere else the object model points back at its owner
+    Call CopyMemory(m_pOwner, oCtl, PTR_SIZE)
+End Sub
+
+Friend Sub frTerm()
+    Call CopyMemory(m_pOwner, NULL_PTR, PTR_SIZE)
+End Sub
+
+Private Sub pvNotify()
+    If Not m_pOwner Is Nothing Then
+        m_pOwner.frSortChanged True
+    End If
 End Sub
 
 Private Sub pvReindex()

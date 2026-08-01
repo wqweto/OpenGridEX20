@@ -1,0 +1,23 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "sorted-column",
+    "width": 400,
+    "height": 200,
+    "apply": "before-show",
+    "props": {
+        "RowHeaders": true,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500 },
+            { "Caption": "Beta", "Width": 1500 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "delta", "4" ],
+            [ "alpha", "1" ],
+            [ "charlie", "3" ],
+            [ "bravo", "2" ]
+        ]
+    },
+    "post": { "SortKeys": [ { "ColIndex": 1, "SortOrder": 1 } ] }
+}

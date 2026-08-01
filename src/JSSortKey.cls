@@ -28,6 +28,7 @@ DefObj A-Z
 Private m_nIndex                    As Integer
 Private m_nColIndex                 As Integer
 Private m_eSortOrder                As jgexSortOrderConstants
+Private m_pOwner                    As GridEX
 
 '=========================================================================
 ' Properties
@@ -45,6 +46,9 @@ End Property
 
 Public Property Let ColIndex(ByVal nValue As Integer)
     m_nColIndex = nValue
+    If Not m_pOwner Is Nothing Then
+        m_pOwner.frSortChanged True
+    End If
 End Property
 
 Public Property Get SortOrder() As jgexSortOrderConstants
@@ -54,6 +58,11 @@ End Property
 
 Public Property Let SortOrder(ByVal eValue As jgexSortOrderConstants)
     m_eSortOrder = eValue
+    '--- flipping a key in place re-sorts, which is how the samples toggle
+    '--- ascending/descending from a header click
+    If Not m_pOwner Is Nothing Then
+        m_pOwner.frSortChanged True
+    End If
 End Property
 
 '=========================================================================
@@ -68,4 +77,12 @@ End Sub
 
 Friend Sub frSetIndex(ByVal nIndex As Integer)
     m_nIndex = nIndex
+End Sub
+
+Friend Sub frSetOwner(ByVal oCtl As GridEX)
+    Call CopyMemory(m_pOwner, oCtl, PTR_SIZE)
+End Sub
+
+Friend Sub frTerm()
+    Call CopyMemory(m_pOwner, NULL_PTR, PTR_SIZE)
 End Sub

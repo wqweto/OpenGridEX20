@@ -1,0 +1,16 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "sort-tall-header",
+    "width": 400,
+    "height": 200,
+    "apply": "before-show",
+    "props": {
+        "ColumnHeaderHeight": 600,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500 },
+            { "Caption": "Beta", "Width": 1500 }
+        ]
+    },
+    "unbound": { "rows": [ [ "b", "2" ], [ "a", "1" ] ] },
+    "post": { "SortKeys": [ { "ColIndex": 1, "SortOrder": 1 } ] }
+}

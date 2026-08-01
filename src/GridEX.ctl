@@ -678,6 +678,16 @@ End Type
 
 Private m_aRows()                   As UcsRowData
 Private m_lRowsUBound               As Long
+Private m_aOrder()                  As Long
+Private m_lOrderCount               As Long
+Private m_bSortDirty                As Boolean
+Private m_bInSet                    As Boolean
+Private m_bInOrdering               As Boolean
+Private m_lSortKeys                 As Long
+Private m_aSortCol()                As Integer
+Private m_aSortDir()                As Long
+Private m_aSortType()               As Long
+Private m_aSortVals()               As Variant
 
 '=========================================================================
 ' Properties
@@ -990,6 +1000,8 @@ End Property
 
 Public Property Let ItemCount(ByVal lValue As Long)
     m_lItemCount = lValue
+    '--- rows appearing or going invalidates the order the same way a key does
+    frSortChanged
 End Property
 
 Public Property Get DataMode() As jgexDataModeConstants
@@ -1129,6 +1141,7 @@ Public Property Let RowBookmark(ByVal RowIndex As Long, ByVal vntValue As Varian
 End Property
 
 Public Property Get Row() As Long
+    pvEnsureOrder
 Attribute Row.VB_Description = "Returns/sets the current row/card position."
     Row = m_lRow
 End Property
@@ -1429,6 +1442,7 @@ Public Property Let MultiSelect(ByVal bValue As Boolean)
 End Property
 
 Public Property Get SelectedItems() As JSSelectedItems
+    pvEnsureOrder
 Attribute SelectedItems.VB_Description = "Returns the JSSelectedItems collection in the control."
     Set SelectedItems = m_oSelectedItems
 End Property
@@ -1908,11 +1922,11 @@ End Sub
 
 Public Function RowIndex(ByVal RowPosition As Long) As Long
 Attribute RowIndex.VB_Description = "Returns the original index of a row."
-    '--- no grouping/sorting yet: position maps 1:1 to original index;
-    '--- group rows will return 0 once grouping lands
+    '--- a sort moves rows around, so this is where the client app asks what
+    '--- it is actually looking at; group rows will return 0 once grouping lands
     If RowPosition >= 1 And RowPosition <= RowCount Then
         If Not IsGroupItem(RowPosition) Then
-            RowIndex = RowPosition
+            RowIndex = pvDataRow(RowPosition)
         End If
     End If
 End Function
@@ -1942,6 +1956,7 @@ End Sub
 
 Public Sub Rebind(Optional HoldSortSettings As Variant)
 Attribute Rebind.VB_Description = "Forces re-creation of the recordset."
+    m_bInSet = True
     pvResetRows True
     pvApplyHoldSort HoldSortSettings
     '--- binding positions the current cell on the first row/column and
@@ -1962,6 +1977,7 @@ Attribute Rebind.VB_Description = "Forces re-creation of the recordset."
     Else
         m_nCol = 0
     End If
+    m_bInSet = False
     pvInvalidate
 End Sub
 
@@ -2140,8 +2156,240 @@ Attribute GetRowData.VB_Description = "Returns a JSRowData object representing a
 End Function
 
 '=========================================================================
-' Functions
+' Methods
 '=========================================================================
+
+Friend Sub frSortChanged(Optional ByVal bInvalidate As Boolean)
+    '--- the sort keys are public objects, so a change can arrive from
+    '--- anywhere: their accessors call in here and the order is rebuilt the
+    '--- next time anyone asks for a row. Callers that are mid-operation --
+    '--- ItemCount, a row reset -- only mark, as a repaint from there would
+    '--- show a half-reset grid, and Rebind paints at the end anyway
+    m_bSortDirty = True
+    If bInvalidate And Not m_bInSet Then
+        pvInvalidate
+    End If
+End Sub
+
+Private Function pvDataRow(ByVal lPos As Long) As Long
+    '--- display position -> the row the client app knows. They differ only
+    '--- while a sort is in effect, so the map is empty the rest of the time
+    If Not m_bInOrdering Then
+        pvEnsureOrder
+    End If
+    pvDataRow = lPos
+    If m_lOrderCount > 0 And lPos >= 1 And lPos <= m_lOrderCount Then
+        pvDataRow = m_aOrder(lPos)
+    End If
+End Function
+
+Private Function pvRowPos(ByVal lRowIndex As Long) As Long
+    Dim lIdx            As Long
+
+    '--- and back: the current row follows its data across a re-sort
+    pvRowPos = lRowIndex
+    If m_lOrderCount > 0 Then
+        For lIdx = 1 To m_lOrderCount
+            If m_aOrder(lIdx) = lRowIndex Then
+                pvRowPos = lIdx
+                Exit Function
+            End If
+        Next
+    End If
+End Function
+
+Private Sub pvEnsureOrder()
+    If Not m_bSortDirty Then
+        Exit Sub
+    End If
+    m_bSortDirty = False
+    pvBuildOrder
+End Sub
+
+Private Sub pvBuildOrder()
+    '--- guards the pvDataRow calls below from re-entering the rebuild
+    Dim lIdx            As Long
+    Dim lRow            As Long
+    Dim aTemp()         As Long
+    Dim oItem           As JSSelectedItem
+
+    m_bInOrdering = True
+    lRow = pvDataRow(m_lRow)
+    If m_oSortKeys.Count = 0 Or RowCount = 0 Then
+        Erase m_aOrder
+        m_lOrderCount = 0
+    Else
+        pvDecorate
+        ReDim m_aOrder(1 To RowCount) As Long
+        For lIdx = 1 To RowCount
+            m_aOrder(lIdx) = lIdx
+        Next
+        m_lOrderCount = RowCount
+        ReDim aTemp(1 To RowCount) As Long
+        pvMergeSort m_aOrder, aTemp, 1, RowCount
+        '--- the keys are only worth their memory while sorting
+        Erase m_aSortVals
+        m_lSortKeys = 0
+    End If
+    '--- the marquee and the selection stay on the rows they were on,
+    '--- wherever those land
+    m_lRow = pvRowPos(lRow)
+    For Each oItem In m_oSelectedItems
+        oItem.frSetPosition pvRowPos(oItem.RowIndex)
+    Next
+    m_bInOrdering = False
+End Sub
+
+Private Sub pvDecorate()
+    Dim lIdx            As Long
+    Dim lRow            As Long
+    Dim oKey            As JSSortKey
+    Dim vValue          As Variant
+
+    '--- every key of every row read once, up front. Reaching through
+    '--- SortKeys/Columns and the row cache from inside the comparator costs
+    '--- eight COM calls a comparison, which is what actually dominates a
+    '--- sort -- the comparator below only touches plain arrays
+    m_lSortKeys = m_oSortKeys.Count
+    ReDim m_aSortCol(1 To m_lSortKeys) As Integer
+    ReDim m_aSortDir(1 To m_lSortKeys) As Long
+    ReDim m_aSortType(1 To m_lSortKeys) As Long
+    For lIdx = 1 To m_lSortKeys
+        Set oKey = m_oSortKeys.Item(lIdx)
+        If oKey.ColIndex >= 1 And oKey.ColIndex <= m_oColumns.Count Then
+            m_aSortCol(lIdx) = oKey.ColIndex
+            m_aSortType(lIdx) = m_oColumns.Item(oKey.ColIndex).SortType
+        End If
+        '--- the enum is +1/-1 already, so the direction multiplies straight
+        '--- into the comparison result
+        m_aSortDir(lIdx) = IIf(oKey.SortOrder = jgexSortDescending, -1, 1)
+    Next
+    ReDim m_aSortVals(1 To m_lSortKeys, 1 To RowCount) As Variant
+    For lRow = 1 To RowCount
+        '--- sorting needs every row's key, so the lazy fetch is forced here
+        pvFetchRow lRow
+        For lIdx = 1 To m_lSortKeys
+            If m_aSortCol(lIdx) > 0 Then
+                vValue = frRowValue(lRow, m_aSortCol(lIdx))
+                '--- an object in a cell has no ordering, so it sorts blank
+                If Not IsObject(vValue) Then
+                    m_aSortVals(lIdx, lRow) = vValue
+                End If
+            End If
+        Next
+    Next
+End Sub
+
+Private Sub pvInsertionSort(aIdx() As Long, ByVal lFirst As Long, ByVal lLast As Long)
+    Dim lIdx            As Long
+    Dim lJdx            As Long
+    Dim lRow            As Long
+
+    '--- stable as long as equal elements stop the shift, which is what the
+    '--- <= 0 does here
+    For lIdx = lFirst + 1 To lLast
+        lRow = aIdx(lIdx)
+        For lJdx = lIdx - 1 To lFirst Step -1
+            If pvCompareRows(aIdx(lJdx), lRow) <= 0 Then
+                Exit For
+            End If
+            aIdx(lJdx + 1) = aIdx(lJdx)
+        Next
+        aIdx(lJdx + 1) = lRow
+    Next
+End Sub
+
+Private Sub pvMergeSort(aIdx() As Long, aTemp() As Long, ByVal lFirst As Long, ByVal lLast As Long)
+    Const MIN_RUN       As Long = 16
+    Dim lMid            As Long
+    Dim lLeft           As Long
+    Dim lRight          As Long
+    Dim lIdx            As Long
+
+    '--- merge sort because it is stable: rows with equal keys keep the order
+    '--- the client app supplied them in
+    If lLast - lFirst < MIN_RUN Then
+        '--- insertion sort wins on short runs and ends the recursion early
+        pvInsertionSort aIdx, lFirst, lLast
+        Exit Sub
+    End If
+    lMid = (lFirst + lLast) \ 2
+    pvMergeSort aIdx, aTemp, lFirst, lMid
+    pvMergeSort aIdx, aTemp, lMid + 1, lLast
+    '--- already in order across the seam, which is the common case for data
+    '--- that arrives sorted: nothing to merge
+    If pvCompareRows(aIdx(lMid), aIdx(lMid + 1)) <= 0 Then
+        Exit Sub
+    End If
+    lLeft = lFirst
+    lRight = lMid + 1
+    For lIdx = lFirst To lLast
+        If lLeft > lMid Then
+            aTemp(lIdx) = aIdx(lRight)
+            lRight = lRight + 1
+        ElseIf lRight > lLast Then
+            aTemp(lIdx) = aIdx(lLeft)
+            lLeft = lLeft + 1
+        ElseIf pvCompareRows(aIdx(lRight), aIdx(lLeft)) < 0 Then
+            aTemp(lIdx) = aIdx(lRight)
+            lRight = lRight + 1
+        Else
+            aTemp(lIdx) = aIdx(lLeft)
+            lLeft = lLeft + 1
+        End If
+    Next
+    For lIdx = lFirst To lLast
+        aIdx(lIdx) = aTemp(lIdx)
+    Next
+End Sub
+
+Private Function pvCompareRows(ByVal lRow1 As Long, ByVal lRow2 As Long) As Long
+    Dim lIdx            As Long
+
+    For lIdx = 1 To m_lSortKeys
+        pvCompareRows = pvCompareValues(m_aSortVals(lIdx, lRow1), m_aSortVals(lIdx, lRow2), _
+            m_aSortType(lIdx)) * m_aSortDir(lIdx)
+        If pvCompareRows <> 0 Then
+            Exit Function
+        End If
+    Next
+End Function
+
+Private Function pvCompareValues(vValue1 As Variant, vValue2 As Variant, ByVal eSortType As jgexSortTypeConstants) As Long
+    Dim bEmpty1         As Boolean
+    Dim bEmpty2         As Boolean
+    Dim dbl1            As Double
+    Dim dbl2            As Double
+
+    '--- an empty cell sorts before anything, whatever the type
+    bEmpty1 = pvIsBlank(vValue1)
+    bEmpty2 = pvIsBlank(vValue2)
+    If bEmpty1 Or bEmpty2 Then
+        pvCompareValues = -bEmpty2 - -bEmpty1
+        Exit Function
+    End If
+    Select Case eSortType
+    Case jgexSortTypeNumeric, jgexSortTypeDate, jgexSortTypeDateTime, jgexSortTypeTime
+        dbl1 = C2Dbl(vValue1)
+        dbl2 = C2Dbl(vValue2)
+        If dbl1 < dbl2 Then
+            pvCompareValues = -1
+        ElseIf dbl1 > dbl2 Then
+            pvCompareValues = 1
+        End If
+    Case Else
+        pvCompareValues = StrComp(CStr(vValue1), CStr(vValue2), vbTextCompare)
+    End Select
+End Function
+
+Private Function pvIsBlank(vValue As Variant) As Boolean
+    Select Case VarType(vValue)
+    Case vbEmpty, vbNull, vbError
+        pvIsBlank = True
+    Case vbString
+        pvIsBlank = (LenB(vValue) = 0)
+    End Select
+End Function
 
 Private Sub pvEnsureRow(ByVal lRowIndex As Long)
     Dim lIdx            As Long
@@ -2217,6 +2465,8 @@ Private Sub pvResetRows(ByVal bFullReset As Boolean)
     For lIdx = 1 To m_lRowsUBound
         pvResetRow lIdx, bFullReset
     Next
+    '--- the values the order was built from are gone, so it is stale
+    frSortChanged
 End Sub
 
 Private Sub pvApplyHoldSort(HoldSortSettings As Variant)
@@ -2238,6 +2488,8 @@ End Sub
 Private Sub pvPaint(ByVal hDC As Long)
     Dim lY              As Long
 
+    '--- a sort the caller set up since the last paint takes effect here
+    pvEnsureOrder
     If m_bGroupByBoxVisible Then
         pvPaintGroupByBox hDC, lY
     End If
@@ -2267,6 +2519,7 @@ End Sub
 
 Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
     Dim lHdrH           As Long
+    Dim uTm             As TEXTMETRICW
     Dim lX              As Long
     Dim nIdx            As Integer
     Dim oCol            As JSColumn
@@ -2301,6 +2554,13 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
         Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
         lW = pvColWidth(oCol)
         pvPaintHeaderCell hDC, lX, lY, lW, lHdrH, oCol.Caption, oCol.HeaderAlignment
+        '--- a sorted column carries the arrow right after its caption,
+        '--- sitting on its baseline
+        If pvColSortOrder(oCol) <> 0 Then
+            uTm = FontTextMetrics(m_oColumnHeaderFont, hDC)
+            pvPaintSortGlyph hDC, lX + 2 + pvTextWidth(hDC, oCol.Caption) + 4, _
+                lY + (lHdrH - uTm.tmHeight + 1) \ 2 + uTm.tmAscent - 1, pvColSortOrder(oCol)
+        End If
         lX = lX + lW
     Next
     '--- filler cell up to the right edge (its right border is clipped off)
@@ -2310,6 +2570,60 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
     Call SelectObject(hDC, hPrevFont)
     lY = lY + lHdrH
 End Sub
+
+Private Sub pvPaintSortGlyph(ByVal hDC As Long, ByVal lX As Long, ByVal lBottom As Long, ByVal eOrder As jgexSortOrderConstants)
+    Const GLYPH_W       As Long = 8
+    Const GLYPH_H       As Long = 7
+    Dim lRow            As Long
+    Dim lEdge           As Long
+    Dim lStep           As Long
+    Dim lTop            As Long
+
+    '--- an engraved triangle: shadow down the left edge, highlight down the
+    '--- right one and along the base. A fixed 8x7 bitmap -- the original
+    '--- draws the same pixels at 120dpi as at 96 -- sitting on the caption
+    '--- baseline, which is what keeps it in place when the header grows
+    lTop = lBottom - GLYPH_H + 1
+    For lRow = 0 To GLYPH_H - 1
+        lEdge = lRow
+        If eOrder = jgexSortDescending Then
+            lEdge = GLYPH_H - 1 - lRow
+        End If
+        '--- the edges spread one pixel every second row, and the row that
+        '--- steps carries the pixel it stepped away from as well
+        lStep = (lEdge + 1) \ 2
+        pvSetPixel hDC, lX + GLYPH_W \ 2 - 1 - lStep, lTop + lRow, vb3DShadow
+        pvSetPixel hDC, lX + GLYPH_W \ 2 + lStep, lTop + lRow, vb3DHighlight
+        If lEdge Mod 2 = 1 Then
+            pvSetPixel hDC, lX + GLYPH_W \ 2 - lStep, lTop + lRow, vb3DShadow
+            pvSetPixel hDC, lX + GLYPH_W \ 2 - 1 + lStep, lTop + lRow, vb3DHighlight
+        End If
+    Next
+    If eOrder = jgexSortDescending Then
+        '--- pointing down the flat edge is on top and in shadow, the mirror
+        '--- of the highlighted base the ascending arrow stands on
+        pvLine hDC, lX, lTop, lX + GLYPH_W - 1, lTop, vb3DShadow, PS_SOLID
+    Else
+        pvLine hDC, lX + 1, lBottom, lX + GLYPH_W, lBottom, vb3DHighlight, PS_SOLID
+    End If
+End Sub
+
+Private Sub pvSetPixel(ByVal hDC As Long, ByVal lX As Long, ByVal lY As Long, ByVal clrColor As OLE_COLOR)
+    pvFillRect hDC, lX, lY, lX + 1, lY + 1, clrColor
+End Sub
+
+Private Function pvColSortOrder(oCol As JSColumn) As jgexSortOrderConstants
+    Dim lIdx            As Long
+    Dim oKey            As JSSortKey
+
+    For lIdx = 1 To m_oSortKeys.Count
+        Set oKey = m_oSortKeys.Item(lIdx)
+        If oKey.ColIndex = oCol.Index Then
+            pvColSortOrder = oKey.SortOrder
+            Exit Function
+        End If
+    Next
+End Function
 
 Private Sub pvPaintHeaderCell(ByVal hDC As Long, ByVal lX As Long, ByVal lY As Long, ByVal lW As Long, ByVal lH As Long, sCaption As String, ByVal eAlign As jgexAlignmentConstants)
     Select Case m_eHeaderStyle
@@ -2484,7 +2798,7 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
         If oCol.Visible Then
             lW = pvColWidth(oCol)
-            sText = pvCellText(lRow, oCol.Index)
+            sText = pvCellText(pvDataRow(lRow), oCol.Index)
             If LenB(sText) <> 0 Then
                 lClipR = lX + lW
                 If lMarqueeR >= 0 And lClipR > lMarqueeR Then
@@ -2808,7 +3122,7 @@ Private Function pvNavLayout(uNav As UcsNavLayout) As Boolean
     '--- but it does not scale linearly with dpi: 46px at 96 and 53px at 120,
     '--- which this fits. Two scales cannot identify the formula uniquely, so
     '--- it wants confirming against a 144dpi golden
-    lBoxW = FontTextHeight(m_oFont) + uNav.BandH + 16
+    lBoxW = FontTextMetrics(m_oFont).tmHeight + uNav.BandH + 16
     '--- the box is taller than the band and clipped by it, like the original's
     '--- TextBox (53x24 inside a 22px band at 120dpi)
     pvSetRect uNav.Box, lX, uNav.BandTop, lX + lBoxW, uNav.BandTop + uNav.BandH + 4
@@ -2981,7 +3295,7 @@ Private Sub pvPaintNavigator(ByVal hDC As Long)
     hPrevFont = pvSelectFont(hDC, m_oFont)
     '--- the labels centre on the font box, not the band: rounding the half
     '--- pixel up is what keeps them on the original's row at every scale
-    lTextH = FontTextHeight(m_oFont)
+    lTextH = FontTextMetrics(m_oFont, hDC).tmHeight
     lTextTop = uNav.BandTop + (uNav.BandH - lTextH + 1) \ 2
     pvDrawText hDC, uNav.Prefix, uNav.PrefixX, lTextTop, uNav.PrefixX + pvTextWidth(hDC, uNav.Prefix), lTextTop + lTextH, m_clrForeColorHeader, m_clrBackColorHeader, jgexAlignLeft, uNav.PrefixX, uNav.Width
     pvDrawText hDC, uNav.Middle, uNav.MiddleX, lTextTop, uNav.MiddleX + pvTextWidth(hDC, uNav.Middle), lTextTop + lTextH, m_clrForeColorHeader, m_clrBackColorHeader, jgexAlignLeft, uNav.MiddleX, uNav.Width
@@ -3712,8 +4026,13 @@ Private Function pvIsRowSelected(ByVal lPos As Long) As Boolean
 End Function
 
 Private Sub pvAddSel(ByVal lPos As Long)
-    pvEnsureRow lPos
-    m_oSelectedItems.frAdd lPos, m_aRows(lPos).Bookmark, lPos
+    Dim lRow            As Long
+
+    '--- the item remembers which row it is, not just where it sits, so a
+    '--- re-sort can move it
+    lRow = pvDataRow(lPos)
+    pvEnsureRow lRow
+    m_oSelectedItems.frAdd lPos, m_aRows(lRow).Bookmark, lRow
 End Sub
 
 Private Sub pvSetSingleSel(ByVal lPos As Long)
@@ -3830,6 +4149,7 @@ Private Sub UserControl_Initialize()
     Set m_oGridImages = New JSGridImages
     Set m_oGroups = New JSGroups
     Set m_oSortKeys = New JSSortKeys
+    m_oSortKeys.frInit Me
     Set m_oSelectedItems = New JSSelectedItems
     Set m_oFormatStyles = New JSFormatStyles
     Set m_oPrinterProperties = New JSPrinterProperties
@@ -3920,7 +4240,7 @@ End Sub
 Private Sub m_oFont_FontChanged(ByVal PropertyName As String)
     '--- default row height follows the data font unless explicitly set
     If Not m_bRowHeightSet Then
-        m_lRowHeight = FontTextHeight(m_oFont) + 3
+        m_lRowHeight = FontTextMetrics(m_oFont).tmHeight + 3
         If m_lRowHeight < 19 Then
             m_lRowHeight = 19
         End If
@@ -3930,7 +4250,7 @@ End Sub
 
 Private Sub m_oColumnHeaderFont_FontChanged(ByVal PropertyName As String)
     '--- header height always follows the header font
-    m_lColumnHeaderHeight = FontTextHeight(m_oColumnHeaderFont) + 6
+    m_lColumnHeaderHeight = FontTextMetrics(m_oColumnHeaderFont).tmHeight + 6
     pvInvalidate
 End Sub
 

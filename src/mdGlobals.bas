@@ -164,6 +164,7 @@ Public Declare Function SetWindowPos Lib "user32" (ByVal hWnd As Long, ByVal hWn
 Public Declare Function SetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal fnBar As Long, lpsi As SCROLLINFO, ByVal fRedraw As Long) As Long
 Public Declare Function GetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal fnBar As Long, lpsi As SCROLLINFO) As Long
 Public Declare Function GetKeyState Lib "user32" (ByVal nVirtKey As Long) As Integer
+Private Declare Function VariantChangeType Lib "oleaut32" (Dest As Variant, Src As Variant, ByVal wFlags As Integer, ByVal vt As VbVarType) As Long
 Public Declare Function GetSystemMetrics Lib "user32" (ByVal nIndex As Long) As Long
 
 '=========================================================================
@@ -172,6 +173,19 @@ Public Declare Function GetSystemMetrics Lib "user32" (ByVal nIndex As Long) As 
 
 '--- metric props are stored internally in pixels and exposed in twips;
 '--- conversion snaps to the nearest whole pixel like the original
+Public Function C2Dbl(vValue As Variant) As Double
+    Const VARIANT_ALPHABOOL As Long = 2
+    Dim vDest           As Variant
+
+    '--- a lenient numeric conversion for sorting: anything that cannot be
+    '--- read as a number compares as zero rather than raising
+    If VarType(vValue) = vbDouble Then
+        C2Dbl = vValue
+    ElseIf VariantChangeType(vDest, vValue, VARIANT_ALPHABOOL, vbDouble) = 0 Then
+        C2Dbl = vDest
+    End If
+End Function
+
 Public Function ToPixels(ByVal lTwips As Long) As Long
     ToPixels = (lTwips + Screen.TwipsPerPixelY \ 2) \ Screen.TwipsPerPixelY
 End Function
@@ -180,19 +194,22 @@ Public Function ToTwips(ByVal lPixels As Long) As Long
     ToTwips = lPixels * Screen.TwipsPerPixelY
 End Function
 
-Public Function FontTextHeight(oFont As Font) As Long
-    Dim pFont           As IFont
-    Dim hDC             As Long
+Public Function FontTextMetrics(pFont As IFont, Optional ByVal hDC As Long) As TEXTMETRICW
+    Dim hScreenDC       As Long
     Dim hPrevFont       As Long
-    Dim uTm             As TEXTMETRICW
 
-    Set pFont = oFont
-    hDC = GetDC(0)
+    '--- a caller in the middle of painting already has a DC; without one the
+    '--- screen's does, as the metrics depend on the font and the DPI only
+    If hDC = 0 Then
+        hScreenDC = GetDC(0)
+        hDC = hScreenDC
+    End If
     hPrevFont = SelectObject(hDC, pFont.hFont)
-    Call GetTextMetrics(hDC, uTm)
+    Call GetTextMetrics(hDC, FontTextMetrics)
     Call SelectObject(hDC, hPrevFont)
-    Call ReleaseDC(0, hDC)
-    FontTextHeight = uTm.tmHeight
+    If hScreenDC <> 0 Then
+        Call ReleaseDC(0, hScreenDC)
+    End If
 End Function
 
 Public Sub LogError(sMessage As String, Optional ByVal lLine As Long)

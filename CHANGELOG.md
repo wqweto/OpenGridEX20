@@ -164,6 +164,38 @@ All notable changes to this project will be documented in this file.
 - `tools\GenSample.ps1` turns a snapshot recorded from the original into plain VB6 that configures our control, so a Janus sample ports by re-pointing the reference and calling the generated `Sub`. It mirrors `mdImport.bas` assignment for assignment: scalars, enums as constant names, fonts, `Add` arguments per collection, and -- recursively -- read-only sub-objects such as `PrinterProperties` or a condition's `FormatStyle`, including parameterized `HeaderString(1..3)`. Collections carrying persistable properties of their own snapshot as an object with an `items` array rather than a bare array, which is what `FmtConditions` is; the generator handles both shapes
 - `pvTestGeneratedSetup` round-trips the three generated modules (`Unbound-1`, `Unbound-2`, `Unbound-Collection`) against the snapshots they came from: 159 model tests pass. `GridImages` is out of scope on both sides -- pictures cannot be written as code literals, a ported sample keeps them in its own `.frx`
 
+### Added (M4 -- sorting)
+
+- `SortKeys` sorts the rows: a stable merge sort over an index map, so equal keys
+  keep the order the client app supplied. Everything that speaks in display
+  positions goes through the map -- `RowIndex` answers what data a position
+  holds, and the current row and the selection are remapped after each re-sort
+  because the original keeps both on the data they were on, not on their old
+  positions. `JSColumn.SortType` picks the comparison; blanks sort first
+- The header sort arrow, verified at two DPIs and three header heights: a fixed
+  8x7 engraved triangle -- the original draws the same pixels at 120dpi as at 96
+  -- sitting on the caption's baseline rather than centred in the band, which is
+  what `036-sort-tall-header` (a 600 twip header) exists to pin down. Descending
+  mirrors ascending except that its flat top edge is shadow where the ascending
+  base is highlight
+- Scenarios `035-sorted-column`, `036-sort-tall-header`, `037-sorted-descending`
+  and `pvTestSorting` in `ModelTests`; `SortKeys`, `JSColumn.SortOrder` and
+  `JSColumn.SortType` move from not implemented to verified
+
+### Fixed
+
+- `003-headers-flat` set `HeaderStyle` to 0, the default, so despite its name it
+  had been painting `jgexHSDouble3D` since M3c and the flat style was covered
+  only at the default header height. It now sets 2 and carries rows; a sweep of
+  all four values over a 400 twip header found no other disagreement
+- A sort key change repainted from inside `Rebind`, which clears the keys halfway
+  through its own reset: the partial repaint toggled `WS_VSCROLL` twice in quick
+  succession and left the themed vertical scrollbar with a stale thumb, which
+  `018-both-scrollbars` caught. Rebind now paints once, at the end
+- `FontTextHeight`/`FontTextAscent` collapse into `FontTextMetrics`, which takes
+  the font as `IFont` (no cast at the call site) and an optional `hDC`, so a
+  caller already painting reuses its own DC instead of borrowing the screen's
+
 ### Changed
 
 - `PAINT-PROPERTIES.md` renamed `PROPERTIES.md` and widened from the paint matrix
