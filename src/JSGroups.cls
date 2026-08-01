@@ -25,6 +25,7 @@ DefObj A-Z
 ' Constants and member variables
 '=========================================================================
 
+Private m_pOwner                    As GridEX
 Private m_cItems                    As Collection
 
 '=========================================================================
@@ -55,24 +56,51 @@ End Property
 Public Function Add(ByVal ColIndex As Integer, ByVal SortOrder As jgexSortOrderConstants, Optional ByVal Index As Integer) As JSGroup
 Attribute Add.VB_Description = "Adds a JSGroup object to the collection and returns a reference to the newly created object."
     Set Add = New JSGroup
-    Add.frInit 0, ColIndex, SortOrder
+    Add.frInit m_pOwner, 0, ColIndex, SortOrder
     If Index > 0 And Index <= m_cItems.Count Then
         m_cItems.Add Add, Before:=Index
     Else
         m_cItems.Add Add
     End If
     pvReindex
+    pvNotify
 End Function
 
 Public Sub Clear()
 Attribute Clear.VB_Description = "Removes all objects in a collection."
     Set m_cItems = New Collection
+    pvNotify
 End Sub
 
 Public Sub Remove(ByVal Index As Integer)
 Attribute Remove.VB_Description = "Removes a specific member from the collection."
     m_cItems.Remove Index
     pvReindex
+    pvNotify
+End Sub
+
+Friend Sub frInit(ByVal oCtl As GridEX)
+    '--- weak, as everywhere else the object model points back at its owner
+    Call CopyMemory(m_pOwner, oCtl, PTR_SIZE)
+End Sub
+
+Friend Sub frTerminate()
+    Dim lIdx            As Long
+    Dim oItem           As JSGroup
+
+    '--- items the client app still holds must not keep a pointer to a
+    '--- control that is going away
+    For lIdx = 1 To m_cItems.Count
+        Set oItem = m_cItems.Item(lIdx)
+        oItem.frTerminate
+    Next
+    Call CopyMemory(m_pOwner, NULL_PTR, PTR_SIZE)
+End Sub
+
+Private Sub pvNotify()
+    If Not m_pOwner Is Nothing Then
+        m_pOwner.frSortChanged True
+    End If
 End Sub
 
 Private Sub pvReindex()

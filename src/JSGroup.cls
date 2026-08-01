@@ -25,6 +25,7 @@ DefObj A-Z
 ' Constants and member variables
 '=========================================================================
 
+Private m_pOwner                    As GridEX
 Private m_nIndex                    As Integer
 Private m_eSortOrder                As jgexSortOrderConstants
 Private m_nColIndex                 As Integer
@@ -44,6 +45,9 @@ End Property
 
 Public Property Let SortOrder(ByVal eValue As jgexSortOrderConstants)
     m_eSortOrder = eValue
+    If Not m_pOwner Is Nothing Then
+        m_pOwner.frSortChanged True
+    End If
 End Property
 
 Public Property Get ColIndex() As Integer
@@ -53,16 +57,24 @@ End Property
 
 Public Property Let ColIndex(ByVal nValue As Integer)
     m_nColIndex = nValue
+    If Not m_pOwner Is Nothing Then
+        m_pOwner.frSortChanged True
+    End If
 End Property
 
 '=========================================================================
 ' Methods
 '=========================================================================
 
-Friend Sub frInit(ByVal nIndex As Integer, ByVal nColIndex As Integer, ByVal eSortOrder As jgexSortOrderConstants)
+Friend Sub frInit(ByVal oCtl As GridEX, ByVal nIndex As Integer, ByVal nColIndex As Integer, ByVal eSortOrder As jgexSortOrderConstants)
+    Call CopyMemory(m_pOwner, oCtl, PTR_SIZE)
     m_nIndex = nIndex
     m_nColIndex = nColIndex
     m_eSortOrder = eSortOrder
+End Sub
+
+Friend Sub frTerminate()
+    Call CopyMemory(m_pOwner, NULL_PTR, PTR_SIZE)
 End Sub
 
 Friend Sub frSetIndex(ByVal nIndex As Integer)

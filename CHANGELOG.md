@@ -182,6 +182,35 @@ All notable changes to this project will be documented in this file.
   and `pvTestSorting` in `ModelTests`; `SortKeys`, `JSColumn.SortOrder` and
   `JSColumn.SortType` move from not implemented to verified
 
+### Added (M4 -- grouping)
+
+- `Groups` groups the rows: the grouped columns lead the sort keys, then a group
+  row is emitted for every level whose key changed, so a change high up restarts
+  the levels nested inside it. Group rows carry a caption, an expand box and the
+  record count of their own level; records are indented one level width (16px)
+  per group with a gridline ruling every level boundary they sit behind
+- The group-by box shows a chip per level instead of the info text: a raised
+  button carrying the column caption and the same sort arrow its header shows,
+  stepping right and half a header row down per level, joined by an elbow that
+  drops out of the chip above and meets the next one a line below its top edge
+- Both placements that would otherwise hardcode pixels are read off the font, so
+  they hold at any dpi: the group caption starts a space width plus the usual
+  two pixel text margin past the expand box (5, 7, 9 pixels at 96dpi for the
+  8.25/12/16pt strikes and 5, 8, 10 at 120dpi -- `tmAveCharWidth` matches the
+  96dpi column by coincidence and is 1-2px wide at 120), and the chip staircase
+  steps by half the column header height
+- A grouped column's header carries the same sort arrow an explicit sort key
+  gets, since grouping sorts by the column too
+- Scenarios `038-grouped-one-level`, `039-grouped-large-font`,
+  `040-group-caption-width`, `041-grouped-two-levels`, `042-sorted-two-keys`,
+  `043-group-colors` and `044-grouped-huge-font`, all passing at both DPIs;
+  `Groups`, `BackColorRowGroup` and `ForeColorRowGroup` move from not
+  implemented to verified
+- Known divergence: within a group the original leaves records in an unstable
+  order (interleaved input comes back scrambled by index position), we keep the
+  supplied order; the goldens are recorded from contiguous input where both
+  agree
+
 ### Fixed
 
 - `003-headers-flat` set `HeaderStyle` to 0, the default, so despite its name it

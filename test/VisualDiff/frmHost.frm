@@ -111,6 +111,13 @@ Public Function ControlHwnd() As Long
     ControlHwnd = pvControlHwnd()
 End Function
 
+Public Function DumpState(Optional ByVal Runtime As Boolean) As String
+    '--- runtime included on request: RowCount, Row and the rest only exist
+    '--- once the control is populated, and that is exactly what a model
+    '--- question like "does RowCount count group rows" needs
+    DumpState = SnapshotToJson(m_oExt.Object, m_sClass, Runtime)
+End Function
+
 Private Function pvControlHwnd() As Long
     Const FUNC_NAME     As String = "pvControlHwnd"
 
@@ -157,15 +164,7 @@ Private Function pvCaptureStable(ByVal lHwnd As Long, lWidth As Long, lHeight As
 End Function
 
 '=========================================================================
-' Functions
-'=========================================================================
-
-Public Function DumpState() As String
-    DumpState = SnapshotToJson(m_oExt.Object, m_sClass, False)
-End Function
-
-'=========================================================================
-' Functions
+' Methods
 '=========================================================================
 
 Private Sub pvCreateAndApply(sProgId As String, oScenario As Object)

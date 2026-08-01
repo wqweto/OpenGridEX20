@@ -133,7 +133,7 @@ commit, so that hash carries no information about painting.
 | `BackColorGBBox` | `OLE_COLOR` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `021-colors-chrome` (`0x604020`) vs default |
 | `BackColorHeader` | `OLE_COLOR` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `021-colors-chrome` (`0x8000FF`) vs default |
 | `BackColorInfoText` | `OLE_COLOR` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `021-colors-chrome` (`0x30A0C0`) vs default |
-| `BackColorRowGroup` | `OLE_COLOR` | **not impl** | M4 | -- | -- |
+| `BackColorRowGroup` | `OLE_COLOR` | verified | M4 | -- | `043-group-colors` (custom group row background, indent included) |
 | `BorderStyle` | `jgexBorderStyleConstants` | **not impl** | M10 | -- | -- |
 | `CardBorders` | `Boolean` | **not impl** | M6 | -- | -- |
 | `CardCaptionPrefix` | `String` | **not impl** | M6 | -- | -- |
@@ -158,7 +158,7 @@ commit, so that hash carries no information about painting.
 | `ForeColor` | `OLE_COLOR` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `022-colors-rows` (`0xFF0000`) vs default -- also drives the marquee XOR mask |
 | `ForeColorHeader` | `OLE_COLOR` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `021-colors-chrome` (`0x00FFFF`) vs default |
 | `ForeColorInfoText` | `OLE_COLOR` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `021-colors-chrome` (`0x0020FF`) vs default |
-| `ForeColorRowGroup` | `OLE_COLOR` | **not impl** | M4 | -- | -- |
+| `ForeColorRowGroup` | `OLE_COLOR` | verified | M4 | -- | `043-group-colors` (custom group caption colour) |
 | `FormatStyles` | `JSFormatStyles` | verified | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `025-formatstyles-selection` overrides the `SelectedRow` system style |
 | `FrozenColumns` | `Integer` | verified | M3d | -- | `031-frozen-columns` (2, pinned under `LeftCol` = 4) vs 0 elsewhere |
 | `GridImages` | `JSGridImages` | **not impl** | M10 | -- | -- |
@@ -168,7 +168,7 @@ commit, so that hash carries no information about painting.
 | `GroupByBoxInfoText` | `String` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `021-colors-chrome` custom text vs default |
 | `GroupByBoxVisible` | `Boolean` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `010-headers-noborder`, `011-headers-single3d`, `012-headers-singleflat` vs default |
 | `GroupFooterStyle` | `jgexGroupFooterStyleConstants` | **not impl** | M4 | -- | -- |
-| `Groups` | `JSGroups` | **not impl** | M4 | -- | -- |
+| `Groups` | `JSGroups` | verified | M4 | -- | `038-grouped-one-level`, `041-grouped-two-levels` (nested levels, indent rules, chip staircase), `039`/`044` (font scaling), `040-group-caption-width` |
 | `HeaderStyle` | `jgexHeaderStyleConstants` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | all four values: default 0 everywhere, `010-headers-noborder` (1), `012-headers-singleflat` and `003-headers-flat` (2, the latter over a 400tw header with rows), `011-headers-single3d` (3) |
 | `HideSelection` | `Boolean` | **not impl** | M10 | -- | -- |
 | `ImageHeight` | `Integer` | **not impl** | M10 | -- | -- |
@@ -452,9 +452,9 @@ prove.
 | `JSGridImages.Count` | `Integer` | consumed | -- | -- | `ModelTests` pvTestColumns |
 | `JSGridImages.hImageList` | `Long` | storage | M10 | -- | -- |
 | `JSGridImages.Item(Index)` | `JSGridImage` | consumed | -- | -- | `ModelTests` pvTestColumns |
-| `JSGroup.ColIndex` | `Integer` | storage | M4 | -- | `ModelTests` pvTestSortKeysGroups |
+| `JSGroup.ColIndex` | `Integer` | consumed | M4 | -- | `038-grouped-one-level`, `041-grouped-two-levels`, `ModelTests` pvTestSortKeysGroups |
 | `JSGroup.Index` | `Integer` | consumed | -- | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `ModelTests` pvTestColumns |
-| `JSGroup.SortOrder` | `jgexSortOrderConstants` | storage | M4 | -- | `Samples` frmUnbound1 |
+| `JSGroup.SortOrder` | `jgexSortOrderConstants` | consumed | M4 | -- | `038-grouped-one-level` (group order and the header/chip arrow), `Samples` frmUnbound1 |
 | `JSGroups.Count` | `Long` | consumed | -- | -- | `ModelTests` pvTestColumns |
 | `JSGroups.Item(Index)` | `JSGroup` | consumed | -- | -- | `ModelTests` pvTestColumns |
 | `JSPrinterProperties.BottomMargin` | `Long` | consumed | -- | -- | snapshot round-trip |

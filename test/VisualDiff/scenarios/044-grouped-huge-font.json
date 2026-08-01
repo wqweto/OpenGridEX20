@@ -1,0 +1,23 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "grouped-huge-font",
+    "width": 400,
+    "height": 300,
+    "apply": "before-show",
+    "props": {
+        "Font": { "Name": "Tahoma", "Size": 16 },
+        "ColumnHeaderFont": { "Name": "Tahoma", "Size": 16 },
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500 },
+            { "Caption": "Beta", "Width": 1500 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "north", "n1" ],
+            [ "north", "n2" ],
+            [ "south", "s1" ]
+        ]
+    },
+    "post": { "Groups": [ { "ColIndex": 1, "SortOrder": 1 } ] }
+}

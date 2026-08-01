@@ -116,7 +116,7 @@ Public Sub Main()
         sMask = "*"
     End If
     TestInit App.Path & "\VisualDiff.out.txt"
-    If sMode = "verify" Or sMode = "scrollinfo-ours" Then
+    If sMode = "verify" Or sMode = "scrollinfo-ours" Or sMode = "dump-ours" Then
         sProgId = STR_PROGID_OURS
     Else
         sProgId = STR_PROGID_ORIGINAL
@@ -184,21 +184,23 @@ Public Sub Main()
                 Case "record"
                     pvEnsureDir App.Path & "\golden" & sDpi
                     Assert "record " & sName & sDpi & "dpi", SavePng(sGolden, lWidth, lHeight, baBits)
-                Case "dump"
+                Case "dump", "dump-ours"
                     pvEnsureDir App.Path & "\output" & sDpi
-                    WriteTextFile App.Path & "\output" & sDpi & "\" & sName & ".dump.json", oForm.DumpState()
+                    WriteTextFile App.Path & "\output" & sDpi & "\" & sName & ".dump.json", oForm.DumpState(True)
                     Assert "dump " & sName & sDpi & "dpi", True
                 Case "selftest", "verify"
+                    '--- every capture is written out, not just the ones that
+                    '--- differ: output\<dpi>\ is then a full contact sheet of
+                    '--- what the control renders, which is what you want when
+                    '--- looking for something a golden cannot express
+                    pvEnsureDir App.Path & "\output" & sDpi
+                    SavePng App.Path & "\output" & sDpi & "\" & sName & ".actual.png", lWidth, lHeight, baBits
                     If Not LoadPng(sGolden, lGoldenW, lGoldenH, baGolden) Then
                         Assert sMode & " " & sName & sDpi & "dpi (no golden)", False
                     ElseIf lGoldenW <> lWidth Or lGoldenH <> lHeight Then
                         Assert sMode & " " & sName & sDpi & "dpi (golden size mismatch: golden " & lGoldenW & "x" & lGoldenH & " actual " & lWidth & "x" & lHeight & ")", False
                     Else
                         lDiff = DiffBits(baGolden, baBits, lWidth, lHeight, sReport)
-                        If lDiff > 0 Then
-                            pvEnsureDir App.Path & "\output" & sDpi
-                            SavePng App.Path & "\output" & sDpi & "\" & sName & ".actual.png", lWidth, lHeight, baBits
-                        End If
                         Assert sMode & " " & sName & sDpi & "dpi" & IIf(lDiff > 0, " diff=" & lDiff & "px " & sReport, vbNullString), lDiff = 0
                     End If
                 End Select

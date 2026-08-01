@@ -5,6 +5,10 @@ rem --- optional scenario mask, e.g. make.bat gridlines-* -- recording and
 rem --- verifying the whole corpus is the slow part of the loop
 set "MASK=%~1"
 if "%MASK%"=="" set "MASK=*"
+rem --- second argument "same" keeps the run on the interactive
+rem --- desktop, so a scenario can be watched as it renders
+set "SAMEDESK="
+if /I "%~2"=="same" set "SAMEDESK=-SameDesktop"
 pushd "%~dp0"
 
 powershell -NoProfile -Command "Get-ChildItem *.vbp,*.frm,*.bas | ForEach-Object { $t = [IO.File]::ReadAllText($_.FullName, [Text.Encoding]::Default); $f = $t -replace '(?<!\r)\n', ([string][char]13 + [char]10); if ($f -ne $t) { [IO.File]::WriteAllText($_.FullName, $f, [Text.Encoding]::Default); Write-Host ('Fixed ' + $_.Name) } }"
@@ -29,7 +33,7 @@ exit /b 0
 set "LAYER=%~1"
 if exist VisualDiff.out.txt del VisualDiff.out.txt
 rem --- watchdog: a wedged run must not hang the loop
-powershell -NoProfile -Command "$env:__COMPAT_LAYER = '%LAYER%'; $p = Start-Process '.\VisualDiff.exe' -ArgumentList 'verify','%MASK%' -PassThru; if (-not $p.WaitForExit(300000)) { $p.Kill(); Write-Host 'TIMEOUT: killed after 300s'; exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\run.ps1" -Exe VisualDiff\VisualDiff.exe -Arguments "verify %MASK%" -Layer "%LAYER%" %SAMEDESK%
 if not exist VisualDiff.out.txt (
     echo FAILED: VisualDiff.out.txt not produced ^(%~2^)
     exit /b 1

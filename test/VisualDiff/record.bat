@@ -8,6 +8,10 @@ pushd "%~dp0"
 rem --- optional scenario mask, e.g. record.bat hscrolled
 set "MASK=%~1"
 if "%MASK%"=="" set "MASK=*"
+rem --- second argument "same" keeps the run on the interactive
+rem --- desktop, so a scenario can be watched as it renders
+set "SAMEDESK="
+if /I "%~2"=="same" set "SAMEDESK=-SameDesktop"
 
 if not exist VisualDiff.exe (
     echo FAILED: build first with make.bat
@@ -27,7 +31,7 @@ set "LAYER=%~1"
 echo === recording %~2 ===
 if exist VisualDiff.out.txt del VisualDiff.out.txt
 rem --- watchdog: a wedged run must not hang the loop
-powershell -NoProfile -Command "$env:__COMPAT_LAYER = '%LAYER%'; $p = Start-Process '.\VisualDiff.exe' -ArgumentList 'record','%MASK%' -PassThru; if (-not $p.WaitForExit(300000)) { $p.Kill(); Write-Host 'TIMEOUT: killed after 300s'; exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\run.ps1" -Exe VisualDiff\VisualDiff.exe -Arguments "record %MASK%" -Layer "%LAYER%" %SAMEDESK%
 findstr /C:"RESULT: PASSED" VisualDiff.out.txt >nul || (
     type VisualDiff.out.txt
     exit /b 1
@@ -35,7 +39,7 @@ findstr /C:"RESULT: PASSED" VisualDiff.out.txt >nul || (
 type VisualDiff.out.txt
 if exist VisualDiff.out.txt del VisualDiff.out.txt
 rem --- watchdog: a wedged run must not hang the loop
-powershell -NoProfile -Command "$env:__COMPAT_LAYER = '%LAYER%'; $p = Start-Process '.\VisualDiff.exe' -ArgumentList 'selftest','%MASK%' -PassThru; if (-not $p.WaitForExit(300000)) { $p.Kill(); Write-Host 'TIMEOUT: killed after 300s'; exit 1 }"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\run.ps1" -Exe VisualDiff\VisualDiff.exe -Arguments "selftest %MASK%" -Layer "%LAYER%" %SAMEDESK%
 findstr /C:"RESULT: PASSED" VisualDiff.out.txt >nul || (
     type VisualDiff.out.txt
     exit /b 1

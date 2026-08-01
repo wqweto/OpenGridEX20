@@ -25,8 +25,8 @@ DefObj A-Z
 ' Constants and member variables
 '=========================================================================
 
-Private m_cItems                    As Collection
 Private m_pOwner                    As GridEX
+Private m_cItems                    As Collection
 
 '=========================================================================
 ' Properties
@@ -56,8 +56,7 @@ End Property
 Public Function Add(ByVal ColIndex As Integer, ByVal SortOrder As jgexSortOrderConstants, Optional ByVal Index As Integer) As JSSortKey
 Attribute Add.VB_Description = "Adds a JSSortKey object to the collection and returns a reference to the newly created object."
     Set Add = New JSSortKey
-    Add.frInit 0, ColIndex, SortOrder
-    Add.frSetOwner m_pOwner
+    Add.frInit m_pOwner, 0, ColIndex, SortOrder
     If Index > 0 And Index <= m_cItems.Count Then
         m_cItems.Add Add, Before:=Index
     Else
@@ -89,7 +88,16 @@ Friend Sub frInit(ByVal oCtl As GridEX)
     Call CopyMemory(m_pOwner, oCtl, PTR_SIZE)
 End Sub
 
-Friend Sub frTerm()
+Friend Sub frTerminate()
+    Dim lIdx            As Long
+    Dim oItem           As JSSortKey
+
+    '--- items the client app still holds must not keep a pointer to a
+    '--- control that is going away
+    For lIdx = 1 To m_cItems.Count
+        Set oItem = m_cItems.Item(lIdx)
+        oItem.frTerminate
+    Next
     Call CopyMemory(m_pOwner, NULL_PTR, PTR_SIZE)
 End Sub
 

@@ -531,6 +531,15 @@ Private m_clrRowColorEven           As OLE_COLOR
 Private m_clrRowColorOdd            As OLE_COLOR
 Private m_oSortKeys                 As JSSortKeys
 Private m_nCol                      As Integer
+Private Const CHROME_COL_W          As Long = 18
+Private Const GROUP_INDENT_W        As Long = 16
+
+Private Const GROUP_BOX_W           As Long = 12
+Private Const CHIP_LEFT             As Long = 8
+Private Const CHIP_TOP              As Long = 7
+Private Const CHIP_PAD              As Long = 40
+Private Const CHIP_GAP              As Long = 8
+
 Private m_clrBackColorRowGroup      As OLE_COLOR
 Private m_oGroups                   As JSGroups
 Private m_bRecordNavigator          As Boolean
@@ -661,6 +670,12 @@ Private Type UcsRowData
     RowData                 As JSRowData
 End Type
 
+Private Type UcsGroupRow
+    Level                   As Integer
+    Caption                 As String
+    RecordCount             As Long
+End Type
+
 Private Type UcsNavLayout
     BandTop                 As Long
     BandH                   As Long
@@ -688,6 +703,8 @@ Private m_aSortCol()                As Integer
 Private m_aSortDir()                As Long
 Private m_aSortType()               As Long
 Private m_aSortVals()               As Variant
+Private m_aGroupRow()               As UcsGroupRow
+Private m_lGroupCols                As Long
 
 '=========================================================================
 ' Properties
@@ -769,7 +786,14 @@ End Property
 
 Public Property Get RowCount() As Long
 Attribute RowCount.VB_Description = "Returns the count of rows."
+    '--- with grouping on this counts the group rows as well: the original
+    '--- reports 7 for five rows in two groups, and Row lands on 2 for the
+    '--- first record because position 1 is a group row
+    pvEnsureOrder
     RowCount = m_lItemCount
+    If m_lOrderCount > 0 Then
+        RowCount = m_lOrderCount
+    End If
 End Property
 
 Public Property Get RowSelected(ByVal RowPosition As Long) As Boolean
@@ -2160,11 +2184,6 @@ End Function
 '=========================================================================
 
 Friend Sub frSortChanged(Optional ByVal bInvalidate As Boolean)
-    '--- the sort keys are public objects, so a change can arrive from
-    '--- anywhere: their accessors call in here and the order is rebuilt the
-    '--- next time anyone asks for a row. Callers that are mid-operation --
-    '--- ItemCount, a row reset -- only mark, as a repaint from there would
-    '--- show a half-reset grid, and Rebind paints at the end anyway
     m_bSortDirty = True
     If bInvalidate And Not m_bInSet Then
         pvInvalidate
@@ -2172,14 +2191,11 @@ Friend Sub frSortChanged(Optional ByVal bInvalidate As Boolean)
 End Sub
 
 Private Function pvDataRow(ByVal lPos As Long) As Long
-    '--- display position -> the row the client app knows. They differ only
-    '--- while a sort is in effect, so the map is empty the rest of the time
-    If Not m_bInOrdering Then
-        pvEnsureOrder
-    End If
-    pvDataRow = lPos
+    pvEnsureOrder
     If m_lOrderCount > 0 And lPos >= 1 And lPos <= m_lOrderCount Then
         pvDataRow = m_aOrder(lPos)
+    Else
+        pvDataRow = lPos
     End If
 End Function
 
@@ -2199,7 +2215,7 @@ Private Function pvRowPos(ByVal lRowIndex As Long) As Long
 End Function
 
 Private Sub pvEnsureOrder()
-    If Not m_bSortDirty Then
+    If Not m_bSortDirty Or m_bInOrdering Then
         Exit Sub
     End If
     m_bSortDirty = False
@@ -2211,22 +2227,30 @@ Private Sub pvBuildOrder()
     Dim lIdx            As Long
     Dim lRow            As Long
     Dim aTemp()         As Long
+    Dim aRows()         As Long
     Dim oItem           As JSSelectedItem
 
     m_bInOrdering = True
     lRow = pvDataRow(m_lRow)
-    If m_oSortKeys.Count = 0 Or RowCount = 0 Then
+    If (m_oSortKeys.Count = 0 And m_oGroups.Count = 0) Or m_lItemCount = 0 Then
         Erase m_aOrder
+        Erase m_aGroupRow
         m_lOrderCount = 0
     Else
         pvDecorate
-        ReDim m_aOrder(1 To RowCount) As Long
-        For lIdx = 1 To RowCount
-            m_aOrder(lIdx) = lIdx
+        ReDim aRows(1 To m_lItemCount) As Long
+        For lIdx = 1 To m_lItemCount
+            aRows(lIdx) = lIdx
         Next
-        m_lOrderCount = RowCount
-        ReDim aTemp(1 To RowCount) As Long
-        pvMergeSort m_aOrder, aTemp, 1, RowCount
+        ReDim aTemp(1 To m_lItemCount) As Long
+        pvMergeSort aRows, aTemp, 1, m_lItemCount
+        If m_lGroupCols = 0 Then
+            m_aOrder = aRows
+            m_lOrderCount = m_lItemCount
+            Erase m_aGroupRow
+        Else
+            pvBuildGroupRows aRows
+        End If
         '--- the keys are only worth their memory while sorting
         Erase m_aSortVals
         m_lSortKeys = 0
@@ -2240,32 +2264,106 @@ Private Sub pvBuildOrder()
     m_bInOrdering = False
 End Sub
 
+Private Sub pvBuildGroupRows(aRows() As Long)
+    Dim lIdx            As Long
+    Dim lJdx            As Long
+    Dim lPos            As Long
+    Dim lFrom           As Long
+    Dim aStart()        As Long
+
+    '--- the sorted rows are walked once and a group row is emitted wherever
+    '--- a group key changes, so the display is group row, its records, the
+    '--- next group row and so on
+    ReDim m_aOrder(1 To m_lItemCount + m_lItemCount * m_lGroupCols) As Long
+    ReDim m_aGroupRow(1 To m_lItemCount + m_lItemCount * m_lGroupCols) As UcsGroupRow
+    ReDim aStart(1 To m_lGroupCols) As Long
+    For lIdx = 1 To m_lItemCount
+        '--- the first level whose key changed opens a new group row here and
+        '--- at every level below it, so a change high up restarts the ones
+        '--- nested inside it
+        lFrom = 0
+        For lJdx = 1 To m_lGroupCols
+            If lIdx = 1 Then
+                lFrom = 1
+                Exit For
+            End If
+            If pvCompareValues(m_aSortVals(lJdx, aRows(lIdx)), m_aSortVals(lJdx, aRows(lIdx - 1)), _
+                    m_aSortType(lJdx)) <> 0 Then
+                lFrom = lJdx
+                Exit For
+            End If
+        Next
+        If lFrom > 0 Then
+            For lJdx = lFrom To m_lGroupCols
+                lPos = lPos + 1
+                m_aOrder(lPos) = 0
+                With m_aGroupRow(lPos)
+                    .Level = lJdx
+                    .Caption = pvCellText(aRows(lIdx), m_aSortCol(lJdx))
+                    .RecordCount = 0
+                End With
+                aStart(lJdx) = lPos
+            Next
+        End If
+        For lJdx = 1 To m_lGroupCols
+            m_aGroupRow(aStart(lJdx)).RecordCount = m_aGroupRow(aStart(lJdx)).RecordCount + 1
+        Next
+        lPos = lPos + 1
+        m_aOrder(lPos) = aRows(lIdx)
+    Next
+    m_lOrderCount = lPos
+    ReDim Preserve m_aOrder(1 To lPos) As Long
+    ReDim Preserve m_aGroupRow(1 To lPos) As UcsGroupRow
+End Sub
+
+Private Function pvIsGroupRow(ByVal lPos As Long) As Boolean
+    pvIsGroupRow = (m_lOrderCount > 0 And lPos >= 1 And lPos <= m_lOrderCount)
+    If pvIsGroupRow Then
+        pvIsGroupRow = (m_aOrder(lPos) = 0)
+    End If
+End Function
+
 Private Sub pvDecorate()
     Dim lIdx            As Long
     Dim lRow            As Long
     Dim oKey            As JSSortKey
+    Dim oGroup          As JSGroup
+    Dim nCol            As Integer
+    Dim nOrder          As Integer
     Dim vValue          As Variant
 
     '--- every key of every row read once, up front. Reaching through
     '--- SortKeys/Columns and the row cache from inside the comparator costs
     '--- eight COM calls a comparison, which is what actually dominates a
     '--- sort -- the comparator below only touches plain arrays
-    m_lSortKeys = m_oSortKeys.Count
+    '--- grouping sorts too: the group columns come first, in order, and the
+    '--- sort keys refine within a group
+    m_lGroupCols = m_oGroups.Count
+    m_lSortKeys = m_lGroupCols + m_oSortKeys.Count
     ReDim m_aSortCol(1 To m_lSortKeys) As Integer
     ReDim m_aSortDir(1 To m_lSortKeys) As Long
     ReDim m_aSortType(1 To m_lSortKeys) As Long
     For lIdx = 1 To m_lSortKeys
-        Set oKey = m_oSortKeys.Item(lIdx)
-        If oKey.ColIndex >= 1 And oKey.ColIndex <= m_oColumns.Count Then
-            m_aSortCol(lIdx) = oKey.ColIndex
-            m_aSortType(lIdx) = m_oColumns.Item(oKey.ColIndex).SortType
+        If lIdx <= m_lGroupCols Then
+            Set oKey = Nothing
+            Set oGroup = m_oGroups.Item(lIdx)
+            nCol = oGroup.ColIndex
+            nOrder = oGroup.SortOrder
+        Else
+            Set oKey = m_oSortKeys.Item(lIdx - m_lGroupCols)
+            nCol = oKey.ColIndex
+            nOrder = oKey.SortOrder
+        End If
+        If nCol >= 1 And nCol <= m_oColumns.Count Then
+            m_aSortCol(lIdx) = nCol
+            m_aSortType(lIdx) = m_oColumns.Item(nCol).SortType
         End If
         '--- the enum is +1/-1 already, so the direction multiplies straight
         '--- into the comparison result
-        m_aSortDir(lIdx) = IIf(oKey.SortOrder = jgexSortDescending, -1, 1)
+        m_aSortDir(lIdx) = IIf(nOrder = jgexSortDescending, -1, 1)
     Next
-    ReDim m_aSortVals(1 To m_lSortKeys, 1 To RowCount) As Variant
-    For lRow = 1 To RowCount
+    ReDim m_aSortVals(1 To m_lSortKeys, 1 To m_lItemCount) As Variant
+    For lRow = 1 To m_lItemCount
         '--- sorting needs every row's key, so the lazy fetch is forced here
         pvFetchRow lRow
         For lIdx = 1 To m_lSortKeys
@@ -2505,21 +2603,93 @@ Private Sub pvPaintGroupByBox(ByVal hDC As Long, lY As Long)
     Dim uRect           As RECT
     Dim hPrevFont       As Long
 
+    hPrevFont = pvSelectFont(hDC, m_oFont)
     lBoxH = m_lColumnHeaderHeight + 4
     lTotalH = lBoxH + 10
+    If m_oGroups.Count > 1 Then
+        '--- the box grows to hold the staircase of chips
+        lTotalH = lTotalH + (m_oGroups.Count - 1) * pvChipStagger()
+    End If
     pvFillRect hDC, 0, lY, picGrid.ScaleWidth, lY + lTotalH, m_clrBackColorGBBox
-    hPrevFont = pvSelectFont(hDC, m_oFont)
-    '--- info box is sized by the info text extent
-    Call DrawText(hDC, StrPtr(m_sGroupByBoxInfoText), Len(m_sGroupByBoxInfoText), uRect, DT_SINGLELINE Or DT_CALCRECT)
-    pvFillRect hDC, 4, lY + 5, 12 + uRect.Right, lY + 5 + lBoxH, m_clrBackColorInfoText
-    pvDrawText hDC, m_sGroupByBoxInfoText, 7, lY + 5, 7 + uRect.Right, lY + 5 + lBoxH, m_clrForeColorInfoText, m_clrBackColorInfoText, jgexAlignLeft, 7, 7 + uRect.Right
+    If m_oGroups.Count > 0 Then
+        '--- the grouped columns take the box over, one chip each
+        pvPaintGroupChips hDC, lY
+    Else
+        '--- info box is sized by the info text extent
+        Call DrawText(hDC, StrPtr(m_sGroupByBoxInfoText), Len(m_sGroupByBoxInfoText), uRect, DT_SINGLELINE Or DT_CALCRECT)
+        pvFillRect hDC, 4, lY + 5, 12 + uRect.Right, lY + 5 + lBoxH, m_clrBackColorInfoText
+        pvDrawText hDC, m_sGroupByBoxInfoText, 7, lY + 5, 7 + uRect.Right, lY + 5 + lBoxH, m_clrForeColorInfoText, m_clrBackColorInfoText, jgexAlignLeft, 7, 7 + uRect.Right
+    End If
     Call SelectObject(hDC, hPrevFont)
     lY = lY + lTotalH
 End Sub
 
+Private Function pvChipStagger() As Long
+    '--- each chip after the first steps down half a header row -- taken from
+    '--- the stored header height rather than re-measured, which is what keeps
+    '--- it in step with the band it sits in
+    pvChipStagger = m_lColumnHeaderHeight \ 2
+End Function
+
+Private Sub pvPaintGroupChips(ByVal hDC As Long, ByVal lY As Long)
+    Dim lIdx            As Long
+    Dim oGroup          As JSGroup
+    Dim oCol            As JSColumn
+    Dim sCaption        As String
+    Dim lLeft           As Long
+    Dim lTop            As Long
+    Dim lChipH          As Long
+    Dim lElbowTop       As Long
+    Dim lChipW          As Long
+    Dim uMetrics        As TEXTMETRICW
+
+    '--- a chip per group level: a raised button carrying the column caption
+    '--- and the same sort arrow its header shows, sized off the caption with
+    '--- the room the original leaves for the drop affordance
+    uMetrics = FontTextMetrics(m_oColumnHeaderFont, hDC)
+    lChipH = uMetrics.tmHeight + 6
+    lLeft = CHIP_LEFT
+    lTop = lY + CHIP_TOP
+    For lIdx = 1 To m_oGroups.Count
+        Set oGroup = m_oGroups.Item(lIdx)
+        If oGroup.ColIndex >= 1 And oGroup.ColIndex <= m_oColumns.Count Then
+            Set oCol = m_oColumns.Item(oGroup.ColIndex)
+            sCaption = oCol.Caption
+            lChipW = pvTextWidth(hDC, sCaption) + CHIP_PAD
+            pvFillRect hDC, lLeft, lTop, lLeft + lChipW, lTop + lChipH, m_clrBackColorHeader
+            pvLine hDC, lLeft, lTop, lLeft + lChipW - 1, lTop, vb3DHighlight, PS_SOLID
+            pvLine hDC, lLeft, lTop, lLeft, lTop + lChipH - 1, vb3DHighlight, PS_SOLID
+            pvLine hDC, lLeft, lTop + lChipH - 2, lLeft + lChipW - 1, lTop + lChipH - 2, vb3DShadow, PS_SOLID
+            pvLine hDC, lLeft + lChipW - 2, lTop, lLeft + lChipW - 2, lTop + lChipH - 1, vb3DShadow, PS_SOLID
+            pvLine hDC, lLeft, lTop + lChipH - 1, lLeft + lChipW, lTop + lChipH - 1, vb3DDKShadow, PS_SOLID
+            pvLine hDC, lLeft + lChipW - 1, lTop, lLeft + lChipW - 1, lTop + lChipH, vb3DDKShadow, PS_SOLID
+            pvDrawText hDC, sCaption, lLeft + 2, lTop + 1, lLeft + lChipW - 2, lTop + lChipH, _
+                m_clrForeColorHeader, m_clrBackColorHeader, jgexAlignLeft, lLeft + 2, lLeft + lChipW - 2
+            If oGroup.SortOrder <> 0 Then
+                '--- same rule as the column header, measured from the
+                '--- chip's own text top
+                pvPaintSortGlyph hDC, lLeft + 2 + pvTextWidth(hDC, sCaption) + 4, _
+                    lTop + 3 + uMetrics.tmHeight \ 2 + 4, oGroup.SortOrder
+            End If
+            '--- consecutive levels are joined by an elbow: down out of the
+            '--- chip above, then right into the one below it, meeting it a
+            '--- line below its top edge
+            If lIdx < m_oGroups.Count Then
+                lElbowTop = lTop + pvChipStagger() + uMetrics.tmHeight
+                pvLine hDC, lLeft + lChipW - 5, lTop + lChipH, lLeft + lChipW - 5, lElbowTop + 1, vb3DDKShadow, PS_SOLID
+                pvLine hDC, lLeft + lChipW - 5, lElbowTop, lLeft + lChipW + CHIP_GAP, lElbowTop, vb3DDKShadow, PS_SOLID
+            End If
+            '--- each level's chip steps right past the one before it and
+            '--- down by half a header row, the staircase the original draws
+            lLeft = lLeft + lChipW + CHIP_GAP
+            lTop = lTop + pvChipStagger()
+        End If
+    Next
+End Sub
+
 Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
     Dim lHdrH           As Long
-    Dim uTm             As TEXTMETRICW
+    Dim uMetrics        As TEXTMETRICW
     Dim lX              As Long
     Dim nIdx            As Integer
     Dim oCol            As JSColumn
@@ -2546,9 +2716,9 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
     End Select
     '--- corner cell above the row headers column
     If m_bRowHeaders Then
-        pvPaintHeaderCell hDC, 0, lY, 18, lHdrH, vbNullString, jgexAlignLeft
-        lX = 18
+        pvPaintHeaderCell hDC, 0, lY, CHROME_COL_W, lHdrH, vbNullString, jgexAlignLeft
     End If
+    lX = pvBlockLeft()
     vOrder = pvColOrder()
     For lIdx = 0 To pvOrderMax(vOrder)
         Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
@@ -2557,12 +2727,21 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
         '--- a sorted column carries the arrow right after its caption,
         '--- sitting on its baseline
         If pvColSortOrder(oCol) <> 0 Then
-            uTm = FontTextMetrics(m_oColumnHeaderFont, hDC)
+            uMetrics = FontTextMetrics(m_oColumnHeaderFont, hDC)
+            '--- the arrow centres on the caption rather than sitting on its
+            '--- baseline: the two coincide at the default font, which is why
+            '--- 16, 19 and 25 pixel fonts were needed to tell them apart
             pvPaintSortGlyph hDC, lX + 2 + pvTextWidth(hDC, oCol.Caption) + 4, _
-                lY + (lHdrH - uTm.tmHeight + 1) \ 2 + uTm.tmAscent - 1, pvColSortOrder(oCol)
+                lY + (lHdrH - uMetrics.tmHeight + 1) \ 2 + uMetrics.tmHeight \ 2 + 4, pvColSortOrder(oCol)
         End If
         lX = lX + lW
     Next
+    If pvGroupIndent() > 0 Then
+        '--- the indent has no header cell of its own: the band shows through,
+        '--- so the first column's left highlight goes back to background --
+        '--- all but the band's own highlight down the very left edge
+        pvFillRect hDC, IIf(m_bRowHeaders, CHROME_COL_W, 1), lY + 1, pvBlockLeft() + 1, lY + lHdrH - 2, m_clrBackColorHeader
+    End If
     '--- filler cell up to the right edge (its right border is clipped off)
     If lX < picGrid.ScaleWidth Then
         pvPaintHeaderCell hDC, lX, lY, picGrid.ScaleWidth - lX + 2, lHdrH, vbNullString, jgexAlignLeft
@@ -2615,7 +2794,17 @@ End Sub
 Private Function pvColSortOrder(oCol As JSColumn) As jgexSortOrderConstants
     Dim lIdx            As Long
     Dim oKey            As JSSortKey
+    Dim oGroup          As JSGroup
 
+    '--- grouping sorts by the column too, and the original marks the header
+    '--- with the same arrow an explicit sort key gets
+    For lIdx = 1 To m_oGroups.Count
+        Set oGroup = m_oGroups.Item(lIdx)
+        If oGroup.ColIndex = oCol.Index Then
+            pvColSortOrder = oGroup.SortOrder
+            Exit Function
+        End If
+    Next
     For lIdx = 1 To m_oSortKeys.Count
         Set oKey = m_oSortKeys.Item(lIdx)
         If oKey.ColIndex = oCol.Index Then
@@ -2670,9 +2859,7 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
     Dim lIdx            As Long
 
     lRowH = m_lRowHeight
-    If m_bRowHeaders Then
-        lHdrW = 18
-    End If
+    lHdrW = pvBlockLeft()
     vOrder = pvColOrder()
     For lIdx = 0 To pvOrderMax(vOrder)
         lTotalW = lTotalW + pvColWidth(m_oColumns.ItemByPosition(vOrder(lIdx)))
@@ -2690,7 +2877,11 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
             If lRowTop >= picGrid.ScaleHeight Then
                 Exit For
             End If
-            pvPaintDataRow hDC, lRow, lRowTop, lRowH, lHdrW, lTotalW
+            If pvIsGroupRow(lRow) Then
+                pvPaintGroupRow hDC, lRow, lRowTop, lRowH, lHdrW, lHdrW + lTotalW, lY
+            Else
+                pvPaintDataRow hDC, lRow, lRowTop, lRowH, lHdrW, lTotalW
+            End If
             lPainted = lPainted + 1
         Next
         Call SelectObject(hDC, hPrevFont)
@@ -2717,6 +2908,11 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
         '--- background below the last row
         pvFillRect hDC, 0, lRowsBottom + lExtra, lHdrW, picGrid.ScaleHeight, m_clrBackColorBkg
         pvFillRect hDC, lHdrW, lRowsBottom, lHdrW + lTotalW, picGrid.ScaleHeight, m_clrBackColorBkg
+        '--- the line closing the block runs the whole width when the rows
+        '--- are grouped, indent included
+        If m_lGroupCols > 0 And lPainted > 0 Then
+            pvLine hDC, 0, lRowsBottom - 1, lHdrW, lRowsBottom - 1, m_clrGridLinesColor, pvPenStyle()
+        End If
     End If
     If lPainted > 0 Or m_bEmptyRows Then
         '--- focus marquee on the current row; the XOR runs against the DC
@@ -2729,7 +2925,16 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
         If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLVertical Then
             For lIdx = 0 To pvOrderMax(vOrder)
                 lCum = lCum + pvColWidth(m_oColumns.ItemByPosition(vOrder(lIdx)))
-                If m_eGridLineStyle = jgexGLSDashes Then
+                If m_lGroupCols > 0 Then
+                    '--- a group row spans the block, so the column rules
+                    '--- break at every one of them
+                    For lRow = lFirst To lFirst + lPainted - 1
+                        If Not pvIsGroupRow(lRow) Then
+                            pvLine hDC, lHdrW + lCum - 1, lY + (lRow - lFirst) * lRowH, _
+                                lHdrW + lCum - 1, lY + (lRow - lFirst + 1) * lRowH, m_clrGridLinesColor, pvPenStyle()
+                        End If
+                    Next
+                ElseIf m_eGridLineStyle = jgexGLSDashes Then
                     pvDashedVLine hDC, lHdrW + lCum - 1, lY, lRowsBottom + lExtra, m_clrGridLinesColor, lY, lRowH, lRowsBottom
                 Else
                     pvLine hDC, lHdrW + lCum - 1, lY, lHdrW + lCum - 1, lRowsBottom + lExtra, m_clrGridLinesColor, pvPenStyle()
@@ -2775,12 +2980,19 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         clrBack = m_clrBackColor
         clrText = m_clrForeColor
     End If
-    If lHdrW > 0 Then
+    If m_bRowHeaders Then
         '--- the header cell can be shorter than the row, and what shows below
         '--- it is the grid background rather than the row's own color
-        pvFillRect hDC, 0, lRowTop, lHdrW, lRowTop + lRowH, m_clrBackColor
+        pvFillRect hDC, 0, lRowTop, CHROME_COL_W, lRowTop + lRowH, m_clrBackColor
         '--- the record-selector arrow marks the current row only
-        pvPaintRowHeader hDC, lRowTop, lRowH, lHdrW, (lRow = m_lRow)
+        pvPaintRowHeader hDC, lRowTop, lRowH, CHROME_COL_W, (lRow = m_lRow)
+    End If
+    If pvGroupIndent() > 0 Then
+        '--- the indent is group chrome, painted like a group row rather than
+        '--- like the grid background beside the columns, with a rule at every
+        '--- level boundary the record is nested behind
+        pvFillRect hDC, pvRowHeaderWidth(), lRowTop, lHdrW, lRowTop + lRowH, m_clrBackColorRowGroup
+        pvPaintIndentRules hDC, lRowTop, lRowH, pvGroupIndent()
     End If
     pvFillRect hDC, lHdrW, lRowTop, lHdrW + lTotalW, lRowTop + lRowH, clrBack
     '--- text of the current row clips inside the marquee, so a cell running
@@ -2912,6 +3124,100 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
         Call DeleteObject(hBrush)
     Next
 End Sub
+
+Private Sub pvPaintGroupRow(ByVal hDC As Long, ByVal lPos As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lLeft As Long, ByVal lRight As Long, ByVal lBlockTop As Long)
+    Dim lIndent         As Long
+    Dim lBoxTop         As Long
+    Dim lBoxLeft        As Long
+    Dim lTextTop        As Long
+    Dim lTextLeft       As Long
+    Dim uMetrics        As TEXTMETRICW
+
+    '--- a group row spans the whole block in header colour, with the expand
+    '--- box in the chrome column at its left and the group value beside it
+    lIndent = pvRowIndent(lPos)
+    pvFillRect hDC, 0, lRowTop, lRight, lRowTop + lRowH, m_clrBackColorRowGroup
+    '--- the rules of the levels this group sits inside run through it
+    pvPaintIndentRules hDC, lRowTop, lRowH, lIndent
+    '--- the row's last line is the separator shared with whatever follows,
+    '--- so it starts where the records start
+    pvLine hDC, pvBlockLeft() - 1, lRowTop + lRowH - 1, lRight, lRowTop + lRowH - 1, m_clrGridLinesColor, pvPenStyle()
+    '--- the line above it starts at this group's own edge instead: a level
+    '--- one group opens the full width, a nested one only its own part
+    If lRowTop > lBlockTop Then
+        pvLine hDC, pvRowHeaderWidth() + lIndent - 1, lRowTop - 1, lRight, lRowTop - 1, m_clrGridLinesColor, pvPenStyle()
+    End If
+    lBoxLeft = pvRowHeaderWidth() + lIndent + (GROUP_INDENT_W - GROUP_BOX_W) \ 2
+    lBoxTop = lRowTop + (lRowH - 1 - GROUP_BOX_W) \ 2
+    pvPaintGroupBox hDC, lBoxLeft, lBoxTop, m_aGroupRow(lPos).Level > 0
+    uMetrics = FontTextMetrics(m_oFont, hDC)
+    lTextTop = lRowTop + (lRowH - 1 - uMetrics.tmHeight) \ 2
+    '--- the caption is drawn a space past the expand box, plus the two pixel
+    '--- margin text keeps everywhere else -- this tracks the font at any dpi
+    lTextLeft = lBoxLeft + GROUP_BOX_W + pvTextWidth(hDC, " ") + 2
+    pvDrawText hDC, m_aGroupRow(lPos).Caption, lTextLeft, lTextTop, lRight, lTextTop + uMetrics.tmHeight, _
+        m_clrForeColorRowGroup, m_clrBackColorRowGroup, jgexAlignLeft, lTextLeft, lRight
+End Sub
+
+Private Sub pvPaintGroupBox(ByVal hDC As Long, ByVal lX As Long, ByVal lY As Long, ByVal bExpanded As Boolean)
+    Dim lMid            As Long
+
+    '--- raised, like a small button: it keeps the button face whatever the
+    '--- group row colour is, while the sign follows ForeColorRowGroup
+    pvFillRect hDC, lX + 1, lY + 1, lX + GROUP_BOX_W - 2, lY + GROUP_BOX_W - 2, vbButtonFace
+    pvLine hDC, lX, lY, lX + GROUP_BOX_W - 1, lY, vb3DHighlight, PS_SOLID
+    pvLine hDC, lX, lY, lX, lY + GROUP_BOX_W - 1, vb3DHighlight, PS_SOLID
+    pvLine hDC, lX + GROUP_BOX_W - 2, lY, lX + GROUP_BOX_W - 2, lY + GROUP_BOX_W - 1, vb3DShadow, PS_SOLID
+    pvLine hDC, lX, lY + GROUP_BOX_W - 2, lX + GROUP_BOX_W - 1, lY + GROUP_BOX_W - 2, vb3DShadow, PS_SOLID
+    pvLine hDC, lX + GROUP_BOX_W - 1, lY, lX + GROUP_BOX_W - 1, lY + GROUP_BOX_W, vb3DDKShadow, PS_SOLID
+    pvLine hDC, lX, lY + GROUP_BOX_W - 1, lX + GROUP_BOX_W, lY + GROUP_BOX_W - 1, vb3DDKShadow, PS_SOLID
+    lMid = lY + (GROUP_BOX_W - 2) \ 2
+    pvFillRect hDC, lX + 3, lMid, lX + GROUP_BOX_W - 4, lMid + 1, m_clrForeColorRowGroup
+    If Not bExpanded Then
+        pvFillRect hDC, lX + (GROUP_BOX_W - 2) \ 2, lY + 3, lX + (GROUP_BOX_W - 2) \ 2 + 1, lY + GROUP_BOX_W - 4, m_clrForeColorRowGroup
+    End If
+End Sub
+
+Private Function pvRowIndent(ByVal lPos As Long) As Long
+    '--- a record sits inside every level; a group row sits inside the levels
+    '--- above its own
+    If pvIsGroupRow(lPos) Then
+        pvRowIndent = (m_aGroupRow(lPos).Level - 1) * GROUP_INDENT_W
+    Else
+        pvRowIndent = pvGroupIndent()
+    End If
+End Function
+
+Private Sub pvPaintIndentRules(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lIndent As Long)
+    Dim lIdx            As Long
+
+    '--- one vertical rule per level the row is nested in
+    For lIdx = GROUP_INDENT_W To lIndent Step GROUP_INDENT_W
+        pvLine hDC, pvRowHeaderWidth() + lIdx - 1, lRowTop, pvRowHeaderWidth() + lIdx - 1, lRowTop + lRowH, m_clrGridLinesColor, pvPenStyle()
+    Next
+End Sub
+
+Private Function pvRowHeaderWidth() As Long
+    If m_bRowHeaders Then
+        pvRowHeaderWidth = CHROME_COL_W
+    End If
+End Function
+
+Private Function pvBlockLeft() As Long
+    '--- headers, rows and hit-testing all start the column block here: the
+    '--- row header column if there is one, plus a chrome column per group
+    '--- level for the tree indent
+    If m_bRowHeaders Then
+        pvBlockLeft = CHROME_COL_W
+    End If
+    pvBlockLeft = pvBlockLeft + pvGroupIndent()
+End Function
+
+Private Function pvGroupIndent() As Long
+    '--- one chrome column per group level, which is what the records are
+    '--- pushed right by
+    pvGroupIndent = m_lGroupCols * GROUP_INDENT_W
+End Function
 
 Private Sub pvPaintRowHeader(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, ByVal bCurrent As Boolean)
     Dim lIdx            As Long
@@ -3899,9 +4205,7 @@ Private Function pvColAtX(ByVal lX As Long, oCol As JSColumn) As Integer
     Dim vOrder          As Variant
     Dim lIdx            As Long
 
-    If m_bRowHeaders Then
-        lCum = 18
-    End If
+    lCum = pvBlockLeft()
     vOrder = pvColOrder()
     For lIdx = 0 To pvOrderMax(vOrder)
         Set oItem = m_oColumns.ItemByPosition(vOrder(lIdx))
@@ -4150,6 +4454,7 @@ Private Sub UserControl_Initialize()
     Set m_oGroups = New JSGroups
     Set m_oSortKeys = New JSSortKeys
     m_oSortKeys.frInit Me
+    m_oGroups.frInit Me
     Set m_oSelectedItems = New JSSelectedItems
     Set m_oFormatStyles = New JSFormatStyles
     Set m_oPrinterProperties = New JSPrinterProperties
@@ -4291,7 +4596,10 @@ Private Sub UserControl_Terminate()
     '--- pointers cannot dangle past the control lifetime
     For lIdx = 1 To m_lRowsUBound
         If Not m_aRows(lIdx).RowData Is Nothing Then
-            m_aRows(lIdx).RowData.frTerm
+            m_aRows(lIdx).RowData.frTerminate
         End If
     Next
+    '--- and the collections that point back for their change notifications
+    m_oGroups.frTerminate
+    m_oSortKeys.frTerminate
 End Sub

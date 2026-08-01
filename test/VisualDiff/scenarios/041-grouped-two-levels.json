@@ -1,0 +1,24 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "grouped-two-levels",
+    "width": 400,
+    "height": 300,
+    "apply": "before-show",
+    "props": {
+        "Columns": [
+            { "Caption": "Region", "Width": 1200 },
+            { "Caption": "City", "Width": 1200 },
+            { "Caption": "Value", "Width": 900 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "north", "oslo", "1" ],
+            [ "north", "oslo", "2" ],
+            [ "north", "riga", "3" ],
+            [ "south", "rome", "4" ],
+            [ "south", "rome", "5" ]
+        ]
+    },
+    "post": { "Groups": [ { "ColIndex": 1, "SortOrder": 1 }, { "ColIndex": 2, "SortOrder": 1 } ] }
+}

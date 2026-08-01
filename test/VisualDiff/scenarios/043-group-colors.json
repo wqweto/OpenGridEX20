@@ -1,0 +1,23 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "group-colors",
+    "width": 400,
+    "height": 260,
+    "apply": "before-show",
+    "props": {
+        "BackColorRowGroup": 4194432,
+        "ForeColorRowGroup": 65535,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500 },
+            { "Caption": "Beta", "Width": 1500 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "north", "n1" ],
+            [ "north", "n2" ],
+            [ "south", "s1" ]
+        ]
+    },
+    "post": { "Groups": [ { "ColIndex": 1, "SortOrder": 1 } ] }
+}

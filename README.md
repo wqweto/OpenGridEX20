@@ -59,7 +59,7 @@ Rendering is checked separately against golden images recorded from the original
     make.bat 030*         REM one scenario, about a second
     record.bat            REM re-record the goldens from the original
 
-Both scripts take an optional scenario mask -- the harness matches with VB `Like`, so use `030*` or `*navigator`, not a bare name. Every run covers two scales from one executable: `__COMPAT_LAYER=DPIUNAWARE` forces the virtualized 96dpi path and the embedded manifest runs at the real system DPI, so goldens live in `golden\<dpi>\`. Recording needs the original OCX registered; verifying does not.
+Both scripts take an optional scenario mask -- the harness matches with VB `Like`, so use `030*` or `*navigator`, not a bare name. All three suites launch their executable on a desktop of its own through the shared `testun.ps1` (`CreateDesktopW` + `STARTUPINFO.lpDesktop`), so a run does not flicker windows across whatever else the machine is doing; the windows are still real and still paint, so the captures are unchanged. Pass `same` -- `make.bat 038* same` for the visual suite, `make.bat same` for the other two -- to keep the run on the interactive desktop and watch it. Every run covers two scales from one executable: `__COMPAT_LAYER=DPIUNAWARE` forces the virtualized 96dpi path and the embedded manifest runs at the real system DPI, so goldens live in `golden\<dpi>\`. Recording needs the original OCX registered; verifying does not.
 
 Scenarios are `NNN-name.json` in creation order, and each golden PNG is named to match. The harness also answers questions about either control directly, which beats inferring geometry from pixels:
 

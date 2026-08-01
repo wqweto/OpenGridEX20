@@ -183,7 +183,7 @@ Friend Sub frInit(ByVal oCtl As GridEX, ByVal lRowIndex As Long)
     m_lRowIndex = lRowIndex
 End Sub
 
-Friend Sub frTerm()
+Friend Sub frTerminate()
     Call CopyMemory(m_pOwner, NULL_PTR, PTR_SIZE)
 End Sub
 
@@ -193,5 +193,5 @@ End Sub
 
 Private Sub Class_Terminate()
     '--- zero the raw pointer or VB6 releases a control it never AddRef-ed
-    frTerm
+    frTerminate
 End Sub
