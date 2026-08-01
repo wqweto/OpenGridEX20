@@ -91,6 +91,13 @@ Public Function RunScenario(sProgId As String, oScenario As Object, baBits() As 
         '--- that raced the golden recording of post-bearing scenarios
         pvSettle 10
     End If
+    '--- methods and indexed properties a scenario needs after the data is
+    '--- in, e.g. CollapseAll or RowExpanded(2) = False -- neither shape can
+    '--- be expressed as a plain property in the props/post blocks
+    If Not C2Obj(JsonValue(oScenario, "calls")) Is Nothing Then
+        pvRunCalls C2Obj(JsonValue(oScenario, "calls"))
+        pvSettle 10
+    End If
     '--- row selection: select the listed 1-based row positions
     If Not C2Obj(JsonValue(oScenario, "select")) Is Nothing Then
         pvSelectRows C2Obj(JsonValue(oScenario, "select"))
@@ -293,6 +300,57 @@ Private Sub pvSelectRows(oList As Object)
     oGrid.SelectedItems.Clear
     For lIdx = 0 To lCount - 1
         oGrid.SelectedItems.Add C2Lng(JsonValue(oList, lIdx))
+    Next
+    oGrid.Refresh
+    Exit Sub
+EH:
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+End Sub
+
+Private Sub pvRunCalls(oList As Object)
+    Const FUNC_NAME     As String = "pvRunCalls"
+    Dim lCount          As Long
+    Dim lIdx            As Long
+    Dim oEntry          As Object
+    Dim sName           As String
+    Dim oArgs           As Object
+    Dim lArgs           As Long
+    Dim oGrid           As Object
+
+    '--- an entry is either a bare method name or an object carrying the
+    '--- name, its arguments and, for a property, the value to assign
+    On Error GoTo EH
+    lCount = C2Lng(JsonValue(oList, "-1"))
+    Set oGrid = m_oExt.Object
+    For lIdx = 0 To lCount - 1
+        Set oEntry = C2Obj(JsonValue(oList, lIdx))
+        If oEntry Is Nothing Then
+            CallByName oGrid, C2Str(JsonValue(oList, lIdx)), VbMethod
+        Else
+            sName = C2Str(JsonValue(oEntry, "name"))
+            Set oArgs = C2Obj(JsonValue(oEntry, "args"))
+            lArgs = 0
+            If Not oArgs Is Nothing Then
+                lArgs = C2Lng(JsonValue(oArgs, "-1"))
+            End If
+            If Not IsEmpty(JsonValue(oEntry, "value")) Then
+                Select Case lArgs
+                Case 0
+                    CallByName oGrid, sName, VbLet, JsonValue(oEntry, "value")
+                Case Else
+                    CallByName oGrid, sName, VbLet, JsonValue(oArgs, 0), JsonValue(oEntry, "value")
+                End Select
+            Else
+                Select Case lArgs
+                Case 0
+                    CallByName oGrid, sName, VbMethod
+                Case 1
+                    CallByName oGrid, sName, VbMethod, JsonValue(oArgs, 0)
+                Case Else
+                    CallByName oGrid, sName, VbMethod, JsonValue(oArgs, 0), JsonValue(oArgs, 1)
+                End Select
+            End If
+        End If
     Next
     oGrid.Refresh
     Exit Sub

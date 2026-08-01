@@ -1,4 +1,4 @@
-# GridEX property inventory
+﻿# GridEX property inventory
 
 Every public property of the control and its object model -- **288** of them
 across `GridEX`, `GEXPreview` and the 23 `JS*` classes -- read out of the
@@ -83,7 +83,7 @@ snapshot corpus, but the renderer never looks at them.
 more distinct values. Two of them cannot be proven by a picture and are pinned
 by `ModelTests` instead: `ContinuousScroll` only shows up mid-drag, and `Redraw`
 suppresses painting rather than changing it. `Col` is state with no pixels of
-its own -- it is listed to record that, not as a gap. The 73 that remain are
+its own -- it is listed to record that, not as a gap. The 68 that remain are
 unimplemented, each owned by a later milestone.
 
 Getting there took eight scenarios and turned up **eleven** real defects. Each had
@@ -96,7 +96,7 @@ Not-implemented properties by owning milestone:
 | milestone | count |
 |---|---:|
 | M10 styling extras | 38 |
-| M4 sorting/grouping | 13 |
+| M4 sorting/grouping | 8 |
 | M6 card view | 12 |
 | M5 editing | 5 |
 | **unowned** | **5** |
@@ -116,7 +116,7 @@ Five remain unowned: the drag/resize affordances (`AllowColumnDrag`,
 ### The matrix
 
 Scenario names refer to `test\VisualDiff\scenarios\NNN-*.json`, numbered in
-creation order; all 37 are verified at 96 and 120 dpi, and the first 28 at 144 as
+creation order; all 48 are verified at 96 and 120 dpi, and the first 28 at 144 as
 well. The `Commit` column records where the property started affecting pixels,
 not where it was first stored -- every member was declared in the M2 storage
 commit, so that hash carries no information about painting.
@@ -147,7 +147,7 @@ commit, so that hash carries no information about painting.
 | `Columns` | `JSColumns` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | all 30 scenarios -- see the `JSColumn.*` rows |
 | `ContinuousScroll` | `Boolean` | verified | M3d | -- | `ModelTests` at both values -- a thumb drag has no static picture to golden |
 | `DefaultColumnWidth` | `Long` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `024-default-column-width` (2100tw -> 140px columns) vs default |
-| `DefaultGroupMode` | `jgexDefaultGroupModeConstants` | **not impl** | M4 | -- | -- |
+| `DefaultGroupMode` | `jgexDefaultGroupModeConstants` | verified | M4 | -- | `048-group-default-collapsed` (`jgexDGMCollapsed`) vs the expanded default elsewhere |
 | `DetectRowDrag` | `Boolean` | **not impl** | unowned | -- | -- |
 | `EditMode` | `jgexEditModeConstants` | **not impl** | M5 | -- | -- |
 | `EmptyRows` | `Boolean` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `008-empty-rows` (True) vs default False |
@@ -230,13 +230,13 @@ commit, so that hash carries no information about painting.
 | `PreviewRowIndent` | `Long` | **not impl** | M10 | -- | -- |
 | `PreviewRowLines` | `Integer` | **not impl** | M10 | -- | -- |
 | `RecordNavigator` | `Boolean` | verified | M3d | [`f9acd79`](../../commit/f9acd792b194f87374c89c6c2af0789785ec5e8b) | `030-record-navigator` (True) vs default False |
-| `RecordNavigatorString` | `String` | verified | `pvNavLayout` | M3d | [`f9acd79`](../../commit/f9acd792b194f87374c89c6c2af0789785ec5e8b) | `033-record-navigator-string` (`Row:\|from a total of`) vs the default `Record:\|of` |
+| `RecordNavigatorString` | `String` | verified | M3d | [`f9acd79`](../../commit/f9acd792b194f87374c89c6c2af0789785ec5e8b) | `033-record-navigator-string` (`Row:\|from a total of`) vs the default `Record:\|of` |
 | `Redraw` | `Boolean` | verified | M3d | -- | `ModelTests`: changes under False paint once when it goes back True |
 | `Row` | `Long` | verified | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `026-gridlines-horizontal` sets `Row` = 3 via `post`; row 1 elsewhere |
 | `RowColorEven` | `OLE_COLOR` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `006-unbound-rows` and `027-gridlines-none` (`0xE0E0FF`) |
 | `RowColorOdd` | `OLE_COLOR` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `006-unbound-rows` and `027-gridlines-none` (`0xFFE0E0`) |
 | `RowCount` | `Long` | verified | M3a | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | read-only view of `ItemCount`; the dark last-row gridline depends on it |
-| `RowExpanded` | `Boolean` | **not impl** | M4 | -- | -- |
+| `RowExpanded` | `Boolean` | verified | M4 | -- | `045-group-collapsed` (one of two collapsed), `046-group-collapsed-one`, `047-group-collapsed-nested` (a level inside a collapsed level), `ModelTests` |
 | `RowHeaders` | `Boolean` | verified | M3c | [`54c6101`](../../commit/54c6101c20939be5df126be4f4b84e1c541926bb) | `014-rowheaders`, `017-multiselect`, `019-font-segoeui` vs `004-no-headers-no-rowheaders` |
 | `RowHeight` | `Long` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | never set explicitly -- exercised indirectly at 19/22/24/28/32px via the font scenarios x 3 dpi |
 | `RowSelected` | `Boolean` | verified | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `017-multiselect` (contiguous) and `028-gridlines-vertical` (disjoint) |

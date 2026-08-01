@@ -66,7 +66,7 @@ End Property
 
 Public Property Get RowIndex() As Long
 Attribute RowIndex.VB_Description = "Returns the row index of a row."
-    RowIndex = m_lRowIndex
+    RowIndex = m_pOwner.frRowIndex(m_lRowIndex)
 End Property
 
 Public Property Get IconIndex(ByVal ColIndex As Integer) As Integer

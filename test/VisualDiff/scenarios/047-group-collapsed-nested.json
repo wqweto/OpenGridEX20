@@ -1,0 +1,25 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "group-collapsed-nested",
+    "width": 400,
+    "height": 300,
+    "apply": "before-show",
+    "props": {
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1200 },
+            { "Caption": "Beta", "Width": 1200 },
+            { "Caption": "Gamma", "Width": 1200 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "north", "x", "n1" ],
+            [ "north", "x", "n2" ],
+            [ "north", "y", "n3" ],
+            [ "south", "x", "s1" ],
+            [ "south", "y", "s2" ]
+        ]
+    },
+    "post": { "Groups": [ { "ColIndex": 1, "SortOrder": 1 }, { "ColIndex": 2, "SortOrder": 1 } ] },
+    "calls": [ { "name": "RowExpanded", "args": [ 1 ], "value": false } ]
+}

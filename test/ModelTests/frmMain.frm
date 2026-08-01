@@ -118,6 +118,7 @@ Private Sub Form_Load()
     pvTestScroll
     pvTestScrollProps
     pvTestSorting
+    pvTestGrouping
     pvTestKeyNav
     pvTestMouse
     pvTestNavigator
@@ -392,12 +393,19 @@ Private Sub pvTestRowDataWeakRef()
     '--- have terminated the control which detached the wrapper (frTerm);
     '--- a strong reference would keep the control alive and this access
     '--- would still succeed instead of raising error 91
-    AssertEquals "WeakRef: RowIndex works after unload", 1, oRD.RowIndex
     On Error Resume Next
     vValue = oRD.Value(1)
     lErr = Err.Number
     On Error GoTo 0
     AssertEquals "WeakRef: orphaned access raises 91", 91, lErr
+    '--- every member reaching the owner answers the same way, not just the
+    '--- default one, so no orphaned access can dereference a zeroed pointer
+    On Error Resume Next
+    Err.Clear
+    lErr = oRD.RowIndex
+    lErr = Err.Number
+    On Error GoTo 0
+    AssertEquals "WeakRef: orphaned RowIndex raises 91", 91, lErr
 End Sub
 
 Private Sub pvTestUnbound()
@@ -566,7 +574,7 @@ Private Sub pvTestSorting()
         AssertEquals "Sort: SortKeys.Count", 1, .SortKeys.Count
         AssertEquals "Sort: first row is the last data row", 4, .RowIndex(1)
         AssertEquals "Sort: last row is the first data row", 1, .RowIndex(4)
-        AssertEquals "Sort: cell text follows the row", "R4C1", .GetRowData(.RowIndex(1)).Value(1)
+        AssertEquals "Sort: cell text follows the row", "R4C1", .GetRowData(1).Value(1)
         '--- the current row rides along: Rebind left it on data row 1, which
         '--- descending sends to the bottom
         AssertEquals "Sort: current row follows its data", 4, .Row
@@ -583,6 +591,59 @@ Private Sub pvTestSorting()
         .Refresh
         AssertEquals "Sort: cleared keys restore data order", 3, .RowIndex(3)
         AssertEquals "Sort: RowCount unchanged by sorting", 4, .RowCount
+    End With
+    Unload oForm
+End Sub
+
+Private Sub pvTestGrouping()
+    Dim oForm           As frmWeak
+    Dim lIdx            As Long
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add "Alpha"
+        .Columns.Add "Beta"
+        .DataMode = jgexUnbound
+        .ItemCount = 4
+        .Rebind
+        '--- the unbound feed numbers every cell, so the column to group by is
+        '--- overwritten with a value that repeats: two groups of two
+        For lIdx = 1 To 4
+            .GetRowData(lIdx).Value(1) = IIf(lIdx <= 2, "north", "south")
+        Next
+        .Groups.Add 1, jgexSortAscending
+        .Refresh
+        AssertEquals "Group: RowCount counts the group rows", 6, .RowCount
+        AssertEquals "Group: position 1 is a group row", True, .IsGroupItem(1)
+        AssertEquals "Group: position 2 is a record", False, .IsGroupItem(2)
+        AssertEquals "Group: group row level", 1, .GroupRowLevel(1)
+        AssertEquals "Group: a group row has no row index", 0, .RowIndex(1)
+        AssertEquals "Group: caption comes off the grouped column", "north", .GetRowData(1).GroupCaption
+        AssertEquals "Group: the group counts its records", 2, .GetRowData(1).RecordCount
+        AssertEquals "Group: group row type", jgexRowTypeGroupHeader, .GetRowData(1).RowType
+        AssertEquals "Group: a record keeps its own row type", jgexRowTypeRecord, .GetRowData(2).RowType
+        AssertEquals "Group: current row is the first record", 2, .Row
+        '--- collapsing takes the records under it off the display
+        .RowExpanded(1) = False
+        AssertEquals "Group: RowExpanded reports the state", False, .RowExpanded(1)
+        AssertEquals "Group: a collapsed group hides its records", 4, .RowCount
+        AssertEquals "Group: the next group moved up", True, .IsGroupItem(2)
+        AssertEquals "Group: current row moved to the group row", 1, .Row
+        .RowExpanded(1) = True
+        AssertEquals "Group: expanding brings them back", 6, .RowCount
+        .CollapseAll
+        AssertEquals "Group: CollapseAll leaves the group rows", 2, .RowCount
+        .ExpandAll
+        AssertEquals "Group: ExpandAll restores every row", 6, .RowCount
+        '--- DefaultGroupMode decides how the next rebuild starts out
+        .DefaultGroupMode = jgexDGMCollapsed
+        .RefreshGroups
+        AssertEquals "Group: DefaultGroupMode collapses a rebuild", 2, .RowCount
+        .DefaultGroupMode = jgexDGMExpanded
+        .Groups.Clear
+        .Refresh
+        AssertEquals "Group: cleared groups restore the records", 4, .RowCount
     End With
     Unload oForm
 End Sub

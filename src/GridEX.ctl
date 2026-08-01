@@ -521,6 +521,14 @@ End Enum
 ' Constants and member variables
 '=========================================================================
 
+Private Const CHROME_COL_W              As Long = 18
+Private Const GROUP_INDENT_W            As Long = 16
+Private Const GROUP_BOX_W               As Long = 12
+Private Const CHIP_LEFT                 As Long = 8
+Private Const CHIP_TOP                  As Long = 7
+Private Const CHIP_PAD                  As Long = 40
+Private Const CHIP_GAP                  As Long = 8
+
 Private m_nFrozenColumns            As Integer
 Private m_lRowHeight                As Long
 Private m_eOLEDropMode              As jgexOleDropModeConstants
@@ -531,15 +539,6 @@ Private m_clrRowColorEven           As OLE_COLOR
 Private m_clrRowColorOdd            As OLE_COLOR
 Private m_oSortKeys                 As JSSortKeys
 Private m_nCol                      As Integer
-Private Const CHROME_COL_W          As Long = 18
-Private Const GROUP_INDENT_W        As Long = 16
-
-Private Const GROUP_BOX_W           As Long = 12
-Private Const CHIP_LEFT             As Long = 8
-Private Const CHIP_TOP              As Long = 7
-Private Const CHIP_PAD              As Long = 40
-Private Const CHIP_GAP              As Long = 8
-
 Private m_clrBackColorRowGroup      As OLE_COLOR
 Private m_oGroups                   As JSGroups
 Private m_bRecordNavigator          As Boolean
@@ -644,6 +643,23 @@ Private m_bAllowRowSizing           As Boolean
 Private m_pSubclassPic              As IUnknown
 Private m_pSubclassCtl              As IUnknown
 Private m_lSelAnchor                As Long
+Private m_aRows()                   As UcsRowData
+Private m_lRowsUBound               As Long
+Private m_aOrder()                  As Long
+Private m_lOrderCount               As Long
+Private m_bSortDirty                As Boolean
+Private m_bInSet                    As Boolean
+Private m_bInOrdering               As Boolean
+Private m_lSortKeys                 As Long
+Private m_aSortCol()                As Integer
+Private m_aSortDir()                As Long
+Private m_aSortType()               As Long
+Private m_aSortVals()               As Variant
+Private m_aGroupRow()               As UcsGroupRow
+Private m_lGroupRowsUBound          As Long
+Private m_lGroupCols                As Long
+Private m_aVisible()                As Long
+Private m_lVisibleCount             As Long
 
 '--- per-row virtual storage behind JSRowData wrappers
 Private Type UcsCellData
@@ -674,6 +690,9 @@ Private Type UcsGroupRow
     Level                   As Integer
     Caption                 As String
     RecordCount             As Long
+    Collapsed               As Boolean
+    IconIndex               As Integer
+    RowData                 As JSRowData
 End Type
 
 Private Type UcsNavLayout
@@ -690,21 +709,6 @@ Private Type UcsNavLayout
     BtnLast                 As RECT
     Width                   As Long
 End Type
-
-Private m_aRows()                   As UcsRowData
-Private m_lRowsUBound               As Long
-Private m_aOrder()                  As Long
-Private m_lOrderCount               As Long
-Private m_bSortDirty                As Boolean
-Private m_bInSet                    As Boolean
-Private m_bInOrdering               As Boolean
-Private m_lSortKeys                 As Long
-Private m_aSortCol()                As Integer
-Private m_aSortDir()                As Long
-Private m_aSortType()               As Long
-Private m_aSortVals()               As Variant
-Private m_aGroupRow()               As UcsGroupRow
-Private m_lGroupCols                As Long
 
 '=========================================================================
 ' Properties
@@ -792,7 +796,7 @@ Attribute RowCount.VB_Description = "Returns the count of rows."
     pvEnsureOrder
     RowCount = m_lItemCount
     If m_lOrderCount > 0 Then
-        RowCount = m_lOrderCount
+        RowCount = m_lVisibleCount
     End If
 End Property
 
@@ -1536,9 +1540,24 @@ End Property
 
 Public Property Get RowExpanded(ByVal RowPosition As Long) As Boolean
 Attribute RowExpanded.VB_Description = "Returns/sets whether a group row is expanded or collapsed."
+    Dim lSlot           As Long
+
+    pvEnsureOrder
+    lSlot = pvGroupSlot(RowPosition)
+    If lSlot > 0 Then
+        RowExpanded = Not m_aGroupRow(lSlot).Collapsed
+    End If
 End Property
 
 Public Property Let RowExpanded(ByVal RowPosition As Long, ByVal bValue As Boolean)
+    Dim lSlot           As Long
+
+    pvEnsureOrder
+    lSlot = pvGroupSlot(RowPosition)
+    If lSlot > 0 Then
+        m_aGroupRow(lSlot).Collapsed = Not bValue
+        pvRecalcVisible
+    End If
 End Property
 
 Public Property Get CursorLocation() As jgexCursorLocationConstants
@@ -1782,121 +1801,212 @@ Friend Property Get frRowColCount() As Integer
 End Property
 
 Friend Property Get frRowValue(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As Variant
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvFetchRow lRowIndex
     frRowValue = m_aRows(lRowIndex).Cells(nColIndex).Value
 End Property
 
 Friend Property Let frRowValue(ByVal lRowIndex As Long, ByVal nColIndex As Integer, ByVal vntValue As Variant)
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvFetchRow lRowIndex
     m_aRows(lRowIndex).Cells(nColIndex).Value = vntValue
 End Property
 
 Friend Property Get frRowIconIndex(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As Integer
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvFetchRow lRowIndex
     frRowIconIndex = m_aRows(lRowIndex).Cells(nColIndex).IconIndex
 End Property
 
 Friend Property Let frRowIconIndex(ByVal lRowIndex As Long, ByVal nColIndex As Integer, ByVal nValue As Integer)
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvFetchRow lRowIndex
     m_aRows(lRowIndex).Cells(nColIndex).IconIndex = nValue
 End Property
 
 Friend Property Get frRowDisplayValue(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As String
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvFetchRow lRowIndex
     frRowDisplayValue = m_aRows(lRowIndex).Cells(nColIndex).DisplayValue
 End Property
 
 Friend Property Let frRowDisplayValue(ByVal lRowIndex As Long, ByVal nColIndex As Integer, ByVal sValue As String)
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvFetchRow lRowIndex
     m_aRows(lRowIndex).Cells(nColIndex).DisplayValue = sValue
 End Property
 
 Friend Property Get frRowCellStyle(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As String
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvFetchRow lRowIndex
     frRowCellStyle = m_aRows(lRowIndex).Cells(nColIndex).CellStyle
 End Property
 
 Friend Property Let frRowCellStyle(ByVal lRowIndex As Long, ByVal nColIndex As Integer, ByVal sValue As String)
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvFetchRow lRowIndex
     m_aRows(lRowIndex).Cells(nColIndex).CellStyle = sValue
 End Property
 
 Friend Property Get frRowCellPicture(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As Picture
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvFetchRow lRowIndex
     Set frRowCellPicture = m_aRows(lRowIndex).Cells(nColIndex).CellPicture
 End Property
 
 Friend Property Set frRowCellPicture(ByVal lRowIndex As Long, ByVal nColIndex As Integer, ByVal oValue As Picture)
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvFetchRow lRowIndex
     Set m_aRows(lRowIndex).Cells(nColIndex).CellPicture = oValue
 End Property
 
 Friend Property Get frRowBookmark(ByVal lRowIndex As Long) As Variant
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvEnsureRow lRowIndex
     frRowBookmark = m_aRows(lRowIndex).Bookmark
 End Property
 
+Friend Property Get frRowIndex(ByVal lRowIndex As Long) As Long
+    '--- a group row is not one of the client app's records, so it has no
+    '--- index to report, exactly as RowIndex answers for its position
+    If lRowIndex > 0 Then
+        frRowIndex = lRowIndex
+    End If
+End Property
+
 Friend Property Get frRowType(ByVal lRowIndex As Long) As jgexRowTypeConstants
+    If lRowIndex < 0 Then
+        frRowType = jgexRowTypeGroupHeader
+        Exit Property
+    End If
     pvEnsureRow lRowIndex
     frRowType = m_aRows(lRowIndex).RowType
 End Property
 
 Friend Property Get frRowGroupLevel(ByVal lRowIndex As Long) As Integer
+    If lRowIndex < 0 Then
+        frRowGroupLevel = m_aGroupRow(-lRowIndex).Level
+        Exit Property
+    End If
     pvEnsureRow lRowIndex
     frRowGroupLevel = m_aRows(lRowIndex).GroupLevel
 End Property
 
 Friend Property Get frRowRecordCount(ByVal lRowIndex As Long) As Long
+    If lRowIndex < 0 Then
+        frRowRecordCount = m_aGroupRow(-lRowIndex).RecordCount
+        Exit Property
+    End If
     pvEnsureRow lRowIndex
     frRowRecordCount = m_aRows(lRowIndex).RecordCount
 End Property
 
 Friend Property Get frRowHeight(ByVal lRowIndex As Long) As Long
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvEnsureRow lRowIndex
     frRowHeight = m_aRows(lRowIndex).RowHeight
 End Property
 
 Friend Property Let frRowHeight(ByVal lRowIndex As Long, ByVal lValue As Long)
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvEnsureRow lRowIndex
     m_aRows(lRowIndex).RowHeight = lValue
 End Property
 
 Friend Property Get frRowStyle(ByVal lRowIndex As Long) As String
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvEnsureRow lRowIndex
     frRowStyle = m_aRows(lRowIndex).RowStyle
 End Property
 
 Friend Property Let frRowStyle(ByVal lRowIndex As Long, ByVal sValue As String)
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvEnsureRow lRowIndex
     m_aRows(lRowIndex).RowStyle = sValue
 End Property
 
 Friend Property Get frRowGroupCaption(ByVal lRowIndex As Long) As String
+    If lRowIndex < 0 Then
+        frRowGroupCaption = m_aGroupRow(-lRowIndex).Caption
+        Exit Property
+    End If
     pvEnsureRow lRowIndex
     frRowGroupCaption = m_aRows(lRowIndex).GroupCaption
 End Property
 
 Friend Property Let frRowGroupCaption(ByVal lRowIndex As Long, ByVal sValue As String)
+    If lRowIndex < 0 Then
+        '--- the client app can retitle a group row, which is why the caption
+        '--- is stored rather than recomputed at paint time
+        m_aGroupRow(-lRowIndex).Caption = sValue
+        pvInvalidate
+        Exit Property
+    End If
     pvEnsureRow lRowIndex
     m_aRows(lRowIndex).GroupCaption = sValue
 End Property
 
 Friend Property Get frRowGroupIconIndex(ByVal lRowIndex As Long) As Integer
+    If lRowIndex < 0 Then
+        frRowGroupIconIndex = m_aGroupRow(-lRowIndex).IconIndex
+        Exit Property
+    End If
     pvEnsureRow lRowIndex
     frRowGroupIconIndex = m_aRows(lRowIndex).GroupIconIndex
 End Property
 
 Friend Property Let frRowGroupIconIndex(ByVal lRowIndex As Long, ByVal nValue As Integer)
+    If lRowIndex < 0 Then
+        m_aGroupRow(-lRowIndex).IconIndex = nValue
+        pvInvalidate
+        Exit Property
+    End If
     pvEnsureRow lRowIndex
     m_aRows(lRowIndex).GroupIconIndex = nValue
 End Property
 
 Friend Property Get frRowPreviewRowVisible(ByVal lRowIndex As Long) As Boolean
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvEnsureRow lRowIndex
     frRowPreviewRowVisible = m_aRows(lRowIndex).PreviewRowVisible
 End Property
 
 Friend Property Let frRowPreviewRowVisible(ByVal lRowIndex As Long, ByVal bValue As Boolean)
+    If lRowIndex < 0 Then
+        Exit Property
+    End If
     pvEnsureRow lRowIndex
     m_aRows(lRowIndex).PreviewRowVisible = bValue
 End Property
@@ -1938,6 +2048,7 @@ End Sub
 
 Public Sub CollapseAll()
 Attribute CollapseAll.VB_Description = "Collapses all group rows."
+    pvSetAllCollapsed True
 End Sub
 
 Public Sub RefreshSort()
@@ -1957,6 +2068,15 @@ End Function
 
 Public Sub RefreshGroups(Optional ByVal AllCollapsed As Boolean)
 Attribute RefreshGroups.VB_Description = "Forces recalculation of groups."
+    '--- the groups are rebuilt from scratch, which resets every expand box
+    '--- to DefaultGroupMode unless this call overrides it
+    frSortChanged
+    pvEnsureOrder
+    If AllCollapsed Then
+        pvSetAllCollapsed True
+    Else
+        pvInvalidate
+    End If
 End Sub
 
 Public Sub EnsureVisible(Optional ByVal Row As Long, Optional ByVal Col As Integer)
@@ -2007,9 +2127,8 @@ End Sub
 
 Public Function IsGroupItem(ByVal Row As Long) As Boolean
 Attribute IsGroupItem.VB_Description = "Returns True if the specified row is a group row."
-    If Row >= 1 And Row <= m_lRowsUBound Then
-        IsGroupItem = (m_aRows(Row).RowType <> jgexRowTypeRecord)
-    End If
+    pvEnsureOrder
+    IsGroupItem = pvIsGroupRow(Row)
 End Function
 
 Public Sub Refresh()
@@ -2036,6 +2155,7 @@ End Sub
 
 Public Sub ExpandAll()
 Attribute ExpandAll.VB_Description = "Expands all group rows."
+    pvSetAllCollapsed False
 End Sub
 
 Public Function HitTest(ByVal X As Long, ByVal Y As Long) As jgexHitTestConstants
@@ -2113,6 +2233,13 @@ End Sub
 
 Public Function GroupRowLevel(ByVal RowPosition As Long) As Integer
 Attribute GroupRowLevel.VB_Description = "Returns the level of a group row."
+    Dim lSlot           As Long
+
+    pvEnsureOrder
+    lSlot = pvGroupSlot(RowPosition)
+    If lSlot > 0 Then
+        GroupRowLevel = m_aGroupRow(lSlot).Level
+    End If
 End Function
 
 Public Sub ExpandSelection()
@@ -2169,6 +2296,26 @@ End Sub
 
 Public Function GetRowData(ByVal RowPosition As Long) As JSRowData
 Attribute GetRowData.VB_Description = "Returns a JSRowData object representing a row."
+    Dim lSlot           As Long
+
+    '--- a group row keeps its wrapper on the group itself and is addressed
+    '--- by the negative of its slot, so every frRow accessor can tell the
+    '--- two apart; a record answers on the data row its position holds
+    pvEnsureOrder
+    lSlot = pvGroupSlot(RowPosition)
+    If lSlot > 0 Then
+        With m_aGroupRow(lSlot)
+            If .RowData Is Nothing Then
+                Set .RowData = New JSRowData
+                .RowData.frInit Me, -lSlot
+            End If
+            Set GetRowData = .RowData
+        End With
+        Exit Function
+    End If
+    If m_lOrderCount > 0 Then
+        RowPosition = pvDataRow(RowPosition)
+    End If
     pvEnsureRow RowPosition
     With m_aRows(RowPosition)
         If .RowData Is Nothing Then
@@ -2190,24 +2337,49 @@ Friend Sub frSortChanged(Optional ByVal bInvalidate As Boolean)
     End If
 End Sub
 
+Private Function pvSlot(ByVal lPos As Long) As Long
+    '--- a display position addresses one of the rows currently on show,
+    '--- which is a slot in the full order the sort built
+    If m_lVisibleCount > 0 And lPos >= 1 And lPos <= m_lVisibleCount Then
+        pvSlot = m_aVisible(lPos)
+    End If
+End Function
+
+Private Function pvSlotPos(ByVal lSlot As Long) As Long
+    Dim lIdx            As Long
+
+    '--- and back: a slot inside a collapsed group has no display position
+    '--- of its own, so it answers with the group row that hides it
+    For lIdx = m_lVisibleCount To 1 Step -1
+        If m_aVisible(lIdx) <= lSlot Then
+            pvSlotPos = lIdx
+            Exit Function
+        End If
+    Next
+End Function
+
 Private Function pvDataRow(ByVal lPos As Long) As Long
+    Dim lSlot           As Long
+
     pvEnsureOrder
-    If m_lOrderCount > 0 And lPos >= 1 And lPos <= m_lOrderCount Then
-        pvDataRow = m_aOrder(lPos)
-    Else
+    lSlot = pvSlot(lPos)
+    If lSlot > 0 Then
+        pvDataRow = m_aOrder(lSlot)
+    ElseIf m_lOrderCount = 0 Then
         pvDataRow = lPos
     End If
 End Function
 
-Private Function pvRowPos(ByVal lRowIndex As Long) As Long
+Private Function pvDataRowPos(ByVal lRowIndex As Long) As Long
     Dim lIdx            As Long
 
-    '--- and back: the current row follows its data across a re-sort
-    pvRowPos = lRowIndex
+    '--- and back: the current row follows its data across a re-sort, and
+    '--- lands on the group row when the data it was on is collapsed away
+    pvDataRowPos = lRowIndex
     If m_lOrderCount > 0 Then
         For lIdx = 1 To m_lOrderCount
             If m_aOrder(lIdx) = lRowIndex Then
-                pvRowPos = lIdx
+                pvDataRowPos = pvSlotPos(lIdx)
                 Exit Function
             End If
         Next
@@ -2223,7 +2395,6 @@ Private Sub pvEnsureOrder()
 End Sub
 
 Private Sub pvBuildOrder()
-    '--- guards the pvDataRow calls below from re-entering the rebuild
     Dim lIdx            As Long
     Dim lRow            As Long
     Dim aTemp()         As Long
@@ -2234,7 +2405,7 @@ Private Sub pvBuildOrder()
     lRow = pvDataRow(m_lRow)
     If (m_oSortKeys.Count = 0 And m_oGroups.Count = 0) Or m_lItemCount = 0 Then
         Erase m_aOrder
-        Erase m_aGroupRow
+        pvEraseGroupRows
         m_lOrderCount = 0
     Else
         pvDecorate
@@ -2247,7 +2418,7 @@ Private Sub pvBuildOrder()
         If m_lGroupCols = 0 Then
             m_aOrder = aRows
             m_lOrderCount = m_lItemCount
-            Erase m_aGroupRow
+            pvEraseGroupRows
         Else
             pvBuildGroupRows aRows
         End If
@@ -2255,11 +2426,12 @@ Private Sub pvBuildOrder()
         Erase m_aSortVals
         m_lSortKeys = 0
     End If
+    pvBuildVisible
     '--- the marquee and the selection stay on the rows they were on,
     '--- wherever those land
-    m_lRow = pvRowPos(lRow)
+    m_lRow = pvDataRowPos(lRow)
     For Each oItem In m_oSelectedItems
-        oItem.frSetPosition pvRowPos(oItem.RowIndex)
+        oItem.frSetPosition pvDataRowPos(oItem.RowIndex)
     Next
     m_bInOrdering = False
 End Sub
@@ -2275,7 +2447,11 @@ Private Sub pvBuildGroupRows(aRows() As Long)
     '--- a group key changes, so the display is group row, its records, the
     '--- next group row and so on
     ReDim m_aOrder(1 To m_lItemCount + m_lItemCount * m_lGroupCols) As Long
+    '--- a plain ReDim drops the wrappers the previous order handed out, so
+    '--- they get detached first, exactly as an Erase has to
+    pvEraseGroupRows
     ReDim m_aGroupRow(1 To m_lItemCount + m_lItemCount * m_lGroupCols) As UcsGroupRow
+    m_lGroupRowsUBound = m_lItemCount + m_lItemCount * m_lGroupCols
     ReDim aStart(1 To m_lGroupCols) As Long
     For lIdx = 1 To m_lItemCount
         '--- the first level whose key changed opens a new group row here and
@@ -2301,6 +2477,7 @@ Private Sub pvBuildGroupRows(aRows() As Long)
                     .Level = lJdx
                     .Caption = pvCellText(aRows(lIdx), m_aSortCol(lJdx))
                     .RecordCount = 0
+                    .Collapsed = (m_eDefaultGroupMode = jgexDGMCollapsed)
                 End With
                 aStart(lJdx) = lPos
             Next
@@ -2314,12 +2491,113 @@ Private Sub pvBuildGroupRows(aRows() As Long)
     m_lOrderCount = lPos
     ReDim Preserve m_aOrder(1 To lPos) As Long
     ReDim Preserve m_aGroupRow(1 To lPos) As UcsGroupRow
+    m_lGroupRowsUBound = lPos
+End Sub
+
+Private Sub pvEraseDataRows()
+    Dim lIdx            As Long
+
+    For lIdx = 1 To m_lRowsUBound
+        If Not m_aRows(lIdx).RowData Is Nothing Then
+            m_aRows(lIdx).RowData.frTerminate
+        End If
+    Next
+    Erase m_aRows
+    m_lRowsUBound = 0
+End Sub
+
+Private Sub pvEraseGroupRows()
+    Dim lIdx            As Long
+
+    For lIdx = 1 To m_lGroupRowsUBound
+        If Not m_aGroupRow(lIdx).RowData Is Nothing Then
+            m_aGroupRow(lIdx).RowData.frTerminate
+        End If
+    Next
+    Erase m_aGroupRow
+    m_lGroupRowsUBound = 0
+End Sub
+
+Private Sub pvBuildVisible()
+    Dim lIdx            As Long
+    Dim lPos            As Long
+    Dim lHidden         As Long
+
+    '--- everything under a collapsed group row drops out of the display
+    '--- until a group row at that level or above shows up again
+    m_lVisibleCount = 0
+    Erase m_aVisible
+    If m_lOrderCount = 0 Then
+        Exit Sub
+    End If
+    ReDim m_aVisible(1 To m_lOrderCount) As Long
+    For lIdx = 1 To m_lOrderCount
+        If lHidden > 0 And m_aOrder(lIdx) = 0 Then
+            If m_aGroupRow(lIdx).Level <= lHidden Then
+                lHidden = 0
+            End If
+        End If
+        If lHidden = 0 Then
+            lPos = lPos + 1
+            m_aVisible(lPos) = lIdx
+            If m_aOrder(lIdx) = 0 Then
+                If m_aGroupRow(lIdx).Collapsed Then
+                    lHidden = m_aGroupRow(lIdx).Level
+                End If
+            End If
+        End If
+    Next
+    m_lVisibleCount = lPos
+    ReDim Preserve m_aVisible(1 To lPos) As Long
+End Sub
+
+Private Sub pvRecalcVisible()
+    Dim lSlot           As Long
+    Dim oItem           As JSSelectedItem
+
+    '--- an expand or a collapse only reprojects: the sort order underneath
+    '--- stays exactly as it was
+    lSlot = pvSlot(m_lRow)
+    pvBuildVisible
+    If lSlot > 0 Then
+        m_lRow = pvSlotPos(lSlot)
+    End If
+    For Each oItem In m_oSelectedItems
+        oItem.frSetPosition pvDataRowPos(oItem.RowIndex)
+    Next
+    pvInvalidate
+End Sub
+
+Private Sub pvSetAllCollapsed(ByVal bValue As Boolean)
+    Dim lIdx            As Long
+
+    pvEnsureOrder
+    For lIdx = 1 To m_lOrderCount
+        If m_aOrder(lIdx) = 0 Then
+            m_aGroupRow(lIdx).Collapsed = bValue
+        End If
+    Next
+    pvRecalcVisible
 End Sub
 
 Private Function pvIsGroupRow(ByVal lPos As Long) As Boolean
-    pvIsGroupRow = (m_lOrderCount > 0 And lPos >= 1 And lPos <= m_lOrderCount)
-    If pvIsGroupRow Then
-        pvIsGroupRow = (m_aOrder(lPos) = 0)
+    Dim lSlot           As Long
+
+    lSlot = pvSlot(lPos)
+    If lSlot > 0 Then
+        pvIsGroupRow = (m_aOrder(lSlot) = 0)
+    End If
+End Function
+
+Private Function pvGroupSlot(ByVal lPos As Long) As Long
+    Dim lSlot           As Long
+
+    '--- non-zero only for a display position that holds a group row
+    lSlot = pvSlot(lPos)
+    If lSlot > 0 Then
+        If m_aOrder(lSlot) = 0 Then
+            pvGroupSlot = lSlot
+        End If
     End If
 End Function
 
@@ -3053,6 +3331,8 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
     Dim lPass           As Long
     Dim vOrder          As Variant
     Dim lIdx            As Long
+    Dim lLeft           As Long
+    Dim bGroupRow       As Boolean
 
     '--- XOR checkerboard anchored per column: a border pixel is inverted
     '--- when (x - column left) + (y - row top) is odd, which a single
@@ -3064,9 +3344,19 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
     '--- the vertical gridline claims the last pixel column of the block, so
     '--- the marquee stops one short of it -- with vertical lines off it runs
     '--- all the way out, mirroring pvRowContentH on the other axis
+    '--- a group row spans the block as a single run: it starts at the very
+    '--- left edge, tree indent included, no column rule breaks the pattern
+    '--- and with no vertical gridline to yield to it runs the full width out
+    bGroupRow = pvIsGroupRow(m_lRow)
+    lLeft = lHdrW
+    If bGroupRow Then
+        lLeft = 0
+    End If
     lRight = lHdrW + lTotalW - 1
-    If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLVertical Then
-        lRight = lRight - 1
+    If Not bGroupRow Then
+        If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLVertical Then
+            lRight = lRight - 1
+        End If
     End If
     If lRight > picGrid.ScaleWidth - 1 Then
         lRight = picGrid.ScaleWidth - 1
@@ -3084,12 +3374,22 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
             hBrush = CreateSolidBrush(pvColor(m_clrForeColor))
         End If
         hPrevBrush = SelectObject(hDC, hBrush)
-        lCum = lHdrW
+        lCum = lLeft
         vOrder = pvColOrder()
         For lIdx = 0 To pvOrderMax(vOrder)
-            Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
-            If oCol.Visible Then
-                lW = pvColWidth(oCol)
+            lW = 0
+            If bGroupRow Then
+                '--- the whole block in one go, on the first pass round only
+                If lIdx = 0 Then
+                    lW = lRight - lLeft + 1
+                End If
+            Else
+                Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
+                If oCol.Visible Then
+                    lW = pvColWidth(oCol)
+                End If
+            End If
+            If lW > 0 Then
                 For lX = lCum + 1 - lPass To lCum + lW - 1 Step 2
                     If lX <= lRight Then
                         Call PatBlt(hDC, lX, lRowTop, 1, 1, PATINVERT)
@@ -3108,7 +3408,7 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
         Next
         '--- outer vertical edges, phased by their own column-relative x
         For lY = lRowTop + 1 + lPass To lBottom - 1 Step 2
-            Call PatBlt(hDC, lHdrW, lY, 1, 1, PATINVERT)
+            Call PatBlt(hDC, lLeft, lY, 1, 1, PATINVERT)
         Next
         If lDxRight >= 0 Then
             lY = lRowTop + 1 + lPass
@@ -3126,6 +3426,9 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
 End Sub
 
 Private Sub pvPaintGroupRow(ByVal hDC As Long, ByVal lPos As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lLeft As Long, ByVal lRight As Long, ByVal lBlockTop As Long)
+    Dim lSlot           As Long
+    Dim clrBack         As OLE_COLOR
+    Dim clrText         As OLE_COLOR
     Dim lIndent         As Long
     Dim lBoxTop         As Long
     Dim lBoxLeft        As Long
@@ -3134,9 +3437,17 @@ Private Sub pvPaintGroupRow(ByVal hDC As Long, ByVal lPos As Long, ByVal lRowTop
     Dim uMetrics        As TEXTMETRICW
 
     '--- a group row spans the whole block in header colour, with the expand
-    '--- box in the chrome column at its left and the group value beside it
+    '--- box in the chrome column at its left and the group value beside it,
+    '--- and takes the selection colours whenever the marquee is on it
+    lSlot = pvSlot(lPos)
     lIndent = pvRowIndent(lPos)
-    pvFillRect hDC, 0, lRowTop, lRight, lRowTop + lRowH, m_clrBackColorRowGroup
+    If pvIsRowSelected(lPos) Or (m_lRow >= 1 And lPos = m_lRow) Then
+        pvSelColors clrBack, clrText
+    Else
+        clrBack = m_clrBackColorRowGroup
+        clrText = m_clrForeColorRowGroup
+    End If
+    pvFillRect hDC, 0, lRowTop, lRight, lRowTop + lRowH, clrBack
     '--- the rules of the levels this group sits inside run through it
     pvPaintIndentRules hDC, lRowTop, lRowH, lIndent
     '--- the row's last line is the separator shared with whatever follows,
@@ -3149,14 +3460,14 @@ Private Sub pvPaintGroupRow(ByVal hDC As Long, ByVal lPos As Long, ByVal lRowTop
     End If
     lBoxLeft = pvRowHeaderWidth() + lIndent + (GROUP_INDENT_W - GROUP_BOX_W) \ 2
     lBoxTop = lRowTop + (lRowH - 1 - GROUP_BOX_W) \ 2
-    pvPaintGroupBox hDC, lBoxLeft, lBoxTop, m_aGroupRow(lPos).Level > 0
+    pvPaintGroupBox hDC, lBoxLeft, lBoxTop, Not m_aGroupRow(lSlot).Collapsed
     uMetrics = FontTextMetrics(m_oFont, hDC)
     lTextTop = lRowTop + (lRowH - 1 - uMetrics.tmHeight) \ 2
     '--- the caption is drawn a space past the expand box, plus the two pixel
     '--- margin text keeps everywhere else -- this tracks the font at any dpi
     lTextLeft = lBoxLeft + GROUP_BOX_W + pvTextWidth(hDC, " ") + 2
-    pvDrawText hDC, m_aGroupRow(lPos).Caption, lTextLeft, lTextTop, lRight, lTextTop + uMetrics.tmHeight, _
-        m_clrForeColorRowGroup, m_clrBackColorRowGroup, jgexAlignLeft, lTextLeft, lRight
+    pvDrawText hDC, m_aGroupRow(lSlot).Caption, lTextLeft, lTextTop, lRight, lTextTop + uMetrics.tmHeight, _
+        clrText, clrBack, jgexAlignLeft, lTextLeft, lRight
 End Sub
 
 Private Sub pvPaintGroupBox(ByVal hDC As Long, ByVal lX As Long, ByVal lY As Long, ByVal bExpanded As Boolean)
@@ -3182,7 +3493,7 @@ Private Function pvRowIndent(ByVal lPos As Long) As Long
     '--- a record sits inside every level; a group row sits inside the levels
     '--- above its own
     If pvIsGroupRow(lPos) Then
-        pvRowIndent = (m_aGroupRow(lPos).Level - 1) * GROUP_INDENT_W
+        pvRowIndent = (m_aGroupRow(pvSlot(lPos)).Level - 1) * GROUP_INDENT_W
     Else
         pvRowIndent = pvGroupIndent()
     End If
@@ -4589,16 +4900,11 @@ Private Sub UserControl_Resize()
 End Sub
 
 Private Sub UserControl_Terminate()
-    Dim lIdx            As Long
-
     pvUnsubclass
-    '--- detach outstanding JSRowData wrappers so their weak owner
-    '--- pointers cannot dangle past the control lifetime
-    For lIdx = 1 To m_lRowsUBound
-        If Not m_aRows(lIdx).RowData Is Nothing Then
-            m_aRows(lIdx).RowData.frTerminate
-        End If
-    Next
+    '--- detach outstanding JSRowData wrappers, of both kinds, so their weak
+    '--- owner pointers cannot dangle past the control lifetime
+    pvEraseDataRows
+    pvEraseGroupRows
     '--- and the collections that point back for their change notifications
     m_oGroups.frTerminate
     m_oSortKeys.frTerminate

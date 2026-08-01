@@ -211,8 +211,42 @@ All notable changes to this project will be documented in this file.
   supplied order; the goldens are recorded from contiguous input where both
   agree
 
+### Added (M4 -- expand/collapse)
+
+- `RowExpanded` collapses and expands a group row, with `CollapseAll`/`ExpandAll`
+  and `DefaultGroupMode` (`jgexDGMCollapsed`) driving the same state. Collapsing
+  reprojects rather than re-sorts: the sort order underneath is built once into
+  `m_aOrder`, and a second `m_aVisible` map holds just the rows on show, so
+  everything under a collapsed row drops out until a group row at that level or
+  above shows up again. A display position now resolves through the map, and a
+  row hidden inside a collapsed group answers with the group row that hides it,
+  which is where the current row and the selection land when their data
+  collapses away
+- `JSRowData.RowIndex` reports the index the owner maps a stored row to, so a
+  wrapper held across a collapse keeps answering for the record it wraps; an
+  orphaned wrapper raises error 91 for it as it already did for `Value`, since
+  dereferencing the zeroed weak pointer raises that by itself
+- The current-row marquee on a group row spans the block as a single run: it
+  starts at the very left edge, tree indent included, no column rule breaks its
+  XOR checkerboard, and with no vertical gridline to yield to it runs the full
+  width out -- one pixel further right than a data row's
+- Scenarios `045-group-collapsed`, `046-group-collapsed-one`,
+  `047-group-collapsed-nested` and `048-group-default-collapsed`, all passing at
+  both DPIs; the harness gained a `calls` block for the methods and indexed
+  properties a scenario needs after its data is in (`CollapseAll`,
+  `RowExpanded(2) = False`), neither of which fits the plain `props`/`post`
+  shape. `RowExpanded` and `DefaultGroupMode` move from not implemented to
+  verified
+
 ### Fixed
 
+- A group row's `JSRowData` wrappers are detached before the array holding them
+  is discarded, by `Erase`, by `ReDim`, or at control teardown. The order array
+  and the group row array are discarded on different paths -- a sort with no
+  grouping keeps the first and erases the second -- so `UserControl_Terminate`
+  walking group rows up to `m_lOrderCount` indexed an unallocated array and took
+  the process down with it, which is what made every `SortKeys` scenario hang
+  behind an invisible error dialog on the isolated test desktop
 - `003-headers-flat` set `HeaderStyle` to 0, the default, so despite its name it
   had been painting `jgexHSDouble3D` since M3c and the flat style was covered
   only at the default header height. It now sets 2 and carries rows; a sweep of
