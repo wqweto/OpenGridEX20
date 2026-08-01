@@ -47,6 +47,7 @@ Public Const GWL_STYLE                  As Long = -16
 Public Const WS_VSCROLL                 As Long = &H200000
 Public Const WS_HSCROLL                 As Long = &H100000
 Public Const SB_VERT                    As Long = 1
+Public Const SB_CTL                     As Long = 2
 Public Const SIF_RANGE                  As Long = 1
 Public Const SIF_PAGE                   As Long = 2
 Public Const SIF_POS                    As Long = 4

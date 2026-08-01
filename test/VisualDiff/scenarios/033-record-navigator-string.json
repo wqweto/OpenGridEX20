@@ -1,0 +1,23 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "record-navigator-string",
+    "width": 400,
+    "height": 200,
+    "apply": "before-show",
+    "props": {
+        "RecordNavigator": true,
+        "RecordNavigatorString": "Row:|from a total of",
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500 },
+            { "Caption": "Beta", "Width": 1500 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "a1", "b1" ],
+            [ "a2", "b2" ],
+            [ "a3", "b3" ]
+        ]
+    },
+    "post": { "Row": 2 }
+}

@@ -20,6 +20,9 @@ Private Const GWL_STYLE                     As Long = -16
 Private Const WS_HSCROLL                    As Long = &H100000
 Private Const WS_VSCROLL                    As Long = &H200000
 Private Const WS_TABSTOP                    As Long = &H10000
+Private Const SB_CTL                         As Long = 2
+Private Const SIF_ALL                        As Long = &H17
+Private Const OBJID_CLIENT                   As Long = &HFFFFFFFC
 
 Private Type RECT
     Left                    As Long
@@ -28,11 +31,38 @@ Private Type RECT
     Bottom                  As Long
 End Type
 
+Private Type SCROLLINFO
+    cbSize                  As Long
+    fMask                   As Long
+    nMin                    As Long
+    nMax                    As Long
+    nPage                   As Long
+    nPos                    As Long
+    nTrackPos               As Long
+End Type
+
+Private Type SCROLLBARINFO
+    cbSize                  As Long
+    rcScrollBar             As RECT
+    dxyLineButton           As Long
+    xyThumbTop              As Long
+    xyThumbBottom           As Long
+    reserved                As Long
+    rgstate0                As Long
+    rgstate1                As Long
+    rgstate2                As Long
+    rgstate3                As Long
+    rgstate4                As Long
+    rgstate5                As Long
+End Type
+
 Private Declare Function GetWindow Lib "user32" (ByVal hWnd As Long, ByVal wCmd As Long) As Long
 Private Declare Function GetClassName Lib "user32" Alias "GetClassNameW" (ByVal hWnd As Long, ByVal lpClassName As Long, ByVal nMaxCount As Long) As Long
 Private Declare Function GetWindowRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
 Private Declare Function GetClientRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
 Private Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long) As Long
+Private Declare Function GetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal nBar As Long, lpsi As SCROLLINFO) As Long
+Private Declare Function GetScrollBarInfo Lib "user32" (ByVal hWnd As Long, ByVal idObject As Long, psbi As SCROLLBARINFO) As Long
 
 '=========================================================================
 ' Constants and member variables
@@ -86,10 +116,28 @@ Public Sub Main()
         sMask = "*"
     End If
     TestInit App.Path & "\VisualDiff.out.txt"
-    If sMode = "verify" Then
+    If sMode = "verify" Or sMode = "scrollinfo-ours" Then
         sProgId = STR_PROGID_OURS
     Else
         sProgId = STR_PROGID_ORIGINAL
+    End If
+    If sMode = "scrollinfo" Or sMode = "scrollinfo-ours" Then
+        For Each vFile In EnumFiles(App.Path & "\scenarios", "*.json")
+            sName = Mid$(vFile, InStrRev(vFile, "\") + 1)
+            sName = Left$(sName, Len(sName) - Len(".json"))
+            If sName Like sMask Then
+                JsonParse ReadTextFile(CStr(vFile)), vDoc
+                Set oForm = New frmHost
+                If oForm.RunScenario(sProgId, C2Obj(vDoc), baBits, lWidth, lHeight) Then
+                    Assert "--- " & sProgId & " / " & sName & " ---", True
+                    pvDumpScrollInfo oForm.hWnd, oForm.hWnd
+                End If
+                Unload oForm
+                Set oForm = Nothing
+            End If
+        Next
+        TestsDone
+        Exit Sub
     End If
     If sMode = "windows" Then
         For Each vFile In EnumFiles(App.Path & "\scenarios", "*.json")
@@ -165,6 +213,38 @@ EH:
     LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
     Assert "Unhandled error &H" & Hex$(Err.Number) & " " & Err.Description & " in " & sName, False
     TestsDone
+End Sub
+
+Private Sub pvDumpScrollInfo(ByVal hWndRoot As Long, ByVal hWnd As Long)
+    Dim hChild          As Long
+    Dim sClass          As String
+    Dim uSi             As SCROLLINFO
+    Dim uSbi            As SCROLLBARINFO
+    Dim uWin            As RECT
+    Dim uRoot           As RECT
+
+    '--- the original's horizontal bar is a child window, so its range and
+    '--- its thumb rect can be read back rather than guessed from pixels
+    hChild = GetWindow(hWnd, GW_CHILD)
+    Do While hChild <> 0
+        sClass = String$(256, 0)
+        sClass = Left$(sClass, GetClassName(hChild, StrPtr(sClass), 256))
+        If InStr(1, sClass, "ScrollBar", vbTextCompare) > 0 Then
+            GetWindowRect hWndRoot, uRoot
+            GetWindowRect hChild, uWin
+            uSi.cbSize = Len(uSi)
+            uSi.fMask = SIF_ALL
+            GetScrollInfo hChild, SB_CTL, uSi
+            uSbi.cbSize = Len(uSbi)
+            GetScrollBarInfo hChild, OBJID_CLIENT, uSbi
+            Assert sClass & " at (" & uWin.Left - uRoot.Left & "," & uWin.Top - uRoot.Top & ") " & _
+                uWin.Right - uWin.Left & "x" & uWin.Bottom - uWin.Top & _
+                " | min=" & uSi.nMin & " max=" & uSi.nMax & " page=" & uSi.nPage & " pos=" & uSi.nPos & _
+                " | thumb=" & uSbi.xyThumbTop & ".." & uSbi.xyThumbBottom & " linebtn=" & uSbi.dxyLineButton, True
+        End If
+        pvDumpScrollInfo hWndRoot, hChild
+        hChild = GetWindow(hChild, GW_HWNDNEXT)
+    Loop
 End Sub
 
 Private Sub pvDumpWindows(ByVal hWndRoot As Long, ByVal hWnd As Long, ByVal lLevel As Long)

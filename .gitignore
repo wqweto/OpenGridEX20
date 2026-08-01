@@ -8,6 +8,7 @@
 *.exe
 **/_del/*
 **/.claude/*
+**/output/*
 *.dll
 *.exp
 *.lib
@@ -15,6 +16,4 @@
 *.ocx
 *.oca
 test/Snapshot/*.json
-test/ModelTests/output/*
 test/VisualDiff/*.out.txt
-test/VisualDiff/output/*

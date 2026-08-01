@@ -1,0 +1,25 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "hscroll-middle",
+    "width": 400,
+    "height": 200,
+    "apply": "before-show",
+    "props": {
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500 },
+            { "Caption": "Beta", "Width": 1500 },
+            { "Caption": "Gamma", "Width": 1500 },
+            { "Caption": "Delta", "Width": 1500 },
+            { "Caption": "Epsilon", "Width": 1500 },
+            { "Caption": "Zeta", "Width": 1500 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "a1", "b1", "c1", "d1", "e1", "f1" ],
+            [ "a2", "b2", "c2", "d2", "e2", "f2" ],
+            [ "a3", "b3", "c3", "d3", "e3", "f3" ]
+        ]
+    },
+    "post": { "LeftCol": 2 }
+}

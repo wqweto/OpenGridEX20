@@ -1,0 +1,203 @@
+VERSION 5.00
+Object = "{24F4AB9F-37F4-43D4-B383-FB6CD721B629}#1.0#0"; "OpenGridEX20.ocx"
+Begin VB.Form frmUnboundArray 
+   Caption         =   "Unbound sample using an array of variants"
+   ClientHeight    =   5715
+   ClientLeft      =   3555
+   ClientTop       =   2160
+   ClientWidth     =   6570
+   LinkTopic       =   "Form1"
+   ScaleHeight     =   5715
+   ScaleWidth      =   6570
+   Begin VB.CommandButton cmdAdd 
+      Caption         =   "Add a row in code"
+      Height          =   495
+      Left            =   120
+      TabIndex        =   1
+      Top             =   120
+      Width           =   1695
+   End
+   Begin OpenGridEX20.GridEX GridEX1 
+      Height          =   4935
+      Left            =   120
+      TabIndex        =   0
+      Top             =   720
+      Width           =   6375
+      _ExtentX        =   11245
+      _ExtentY        =   8705
+   End
+End
+Attribute VB_Name = "frmUnboundArray"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = False
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Explicit
+
+Dim mavarData() As Variant
+Dim mRowCount As Long
+
+Private Sub cmdAdd_Click()
+
+    'first we add the row to the dataset
+    mRowCount = mRowCount + 1
+    ReDim Preserve mavarData(1 To 3, 1 To mRowCount)
+    
+    'set values in the last row in the array
+    mavarData(1, mRowCount) = "Jordan"
+    mavarData(2, mRowCount) = "Michael"
+    mavarData(3, mRowCount) = 27
+    
+    'Now adjust the ItemCount
+    GridEX1.ItemCount = mRowCount
+    
+End Sub
+
+Private Sub Form_Load()
+Dim colTemp As JSColumn
+    '--- design-time state from the sample's own .frm: these two ship
+    '--- without the .frx, so the recorded snapshot is raw-only and there
+    '--- is no generated setup to call
+    GridEX1.DataMode = jgexUnbound
+    GridEX1.AllowAddNew = True
+    GridEX1.AllowDelete = True
+
+    'Set the Column layout (This can be done at design time
+    
+    GridEX1.Columns.Clear
+    Set colTemp = GridEX1.Columns.Add("Last Name", jgexText, jgexEditTextBox, "LastName")
+    colTemp.Width = 3000
+    Set colTemp = GridEX1.Columns.Add("First Name", , , "FirstName")
+    colTemp.Width = 3000
+    Set colTemp = GridEX1.Columns.Add("Age", , , "Age")
+    colTemp.Width = 600
+    colTemp.SortType = jgexSortTypeNumeric
+    
+    'Redim our dataset
+    'first dimension is used for columns
+    'second dimension is used for rows
+    mRowCount = 3
+    ReDim mavarData(1 To 3, 1 To mRowCount)
+    'Filling the dataset
+    mavarData(1, 1) = "Smith"
+    mavarData(2, 1) = "John"
+    mavarData(3, 1) = 22
+    
+    mavarData(1, 2) = "Wright"
+    mavarData(2, 2) = "Steven"
+    mavarData(3, 2) = 35
+    
+    mavarData(1, 3) = "Connors"
+    mavarData(2, 3) = "Henry"
+    mavarData(3, 3) = 47
+    
+    'Tell GridEX how many rows you have in your dataset
+    GridEX1.ItemCount = mRowCount
+    
+    'See Unbound events
+    
+    
+End Sub
+
+
+Private Sub GridEX1_AfterUpdate()
+
+    If GridEX1.Row = -1 Then
+        GridEX1.Rebind
+    End If
+End Sub
+
+Private Sub GridEX1_ColumnHeaderClick(ByVal Column As OpenGridEX20.JSColumn)
+Dim grTemp As JSGroup
+Dim SortOrder As jgexSortOrderConstants
+    'When clicking in a column header
+    
+    'If column is grouped
+    If Column.IsGrouped Then
+        'Find the group for this column
+        For Each grTemp In GridEX1.Groups
+            If grTemp.ColIndex = Column.Index Then
+                'do the same as clicking in the Group by box header
+                GridEX1_GroupByBoxHeaderClick grTemp
+                Exit For
+            End If
+        Next
+    Else
+        SortOrder = Column.SortOrder
+        'Clear SortKeys
+        GridEX1.SortKeys.Clear
+        'Add this new sortkey
+        If SortOrder = jgexSortAscending Then
+            'if the column was sorted in ascending order, sort the column in descending order
+            GridEX1.SortKeys.Add Column.Index, jgexSortDescending
+        Else
+            'if was sorted in descending order or not sorted, sort the column in ascending order
+            GridEX1.SortKeys.Add Column.Index, jgexSortAscending
+        End If
+    End If
+    
+End Sub
+
+Private Sub GridEX1_GroupByBoxHeaderClick(ByVal Group As OpenGridEX20.JSGroup)
+
+    'When clicking in a group by box header we change SortOrder for that group
+    
+    Group.SortOrder = -Group.SortOrder
+    
+    
+End Sub
+
+
+Private Sub GridEX1_UnboundAddNew(ByVal NewRowBookmark As OpenGridEX20.JSRetVariant, ByVal Values As OpenGridEX20.JSRowData)
+
+    'Increment rowcount and redim the array
+    mRowCount = mRowCount + 1
+    ReDim Preserve mavarData(1 To 3, 1 To mRowCount)
+    
+    'set values in the last row in the array
+    mavarData(1, mRowCount) = Values(1)
+    mavarData(2, mRowCount) = Values(2)
+    mavarData(3, mRowCount) = Values(3)
+    
+    
+End Sub
+
+Private Sub GridEX1_UnboundDelete(ByVal RowIndex As Long, ByVal Bookmark As Variant)
+Dim i As Long
+Dim j As Long
+
+    'If you want to prevent deletion of a row use the BeforeDelete event
+    
+    'First shift the rows
+    For i = RowIndex To mRowCount - 1
+        For j = 1 To 3
+            mavarData(j, i) = mavarData(j, i + 1)
+        Next
+    Next
+    
+    'decrement rowcount and redim array
+    mRowCount = mRowCount - 1
+    If mRowCount > 0 Then ReDim Preserve mavarData(1 To 3, 1 To mRowCount)
+    
+End Sub
+
+
+Private Sub GridEX1_UnboundReadData(ByVal RowIndex As Long, ByVal Bookmark As Variant, ByVal Values As OpenGridEX20.JSRowData)
+
+    'don't worry if the grid is sorted or if the column positions are changed by the user
+    Values(1) = mavarData(1, RowIndex)
+    Values(2) = mavarData(2, RowIndex)
+    Values(3) = mavarData(3, RowIndex)
+    
+End Sub
+
+
+Private Sub GridEX1_UnboundUpdate(ByVal RowIndex As Long, ByVal Bookmark As Variant, ByVal Values As OpenGridEX20.JSRowData)
+
+    mavarData(1, RowIndex) = Values(1)
+    mavarData(2, RowIndex) = Values(2)
+    mavarData(3, RowIndex) = Values(3)
+    
+End Sub
+
+

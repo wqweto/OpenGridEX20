@@ -1007,6 +1007,21 @@ Attribute LeftCol.VB_Description = "Returns/sets the left-most visible column."
 End Property
 
 Public Property Let LeftCol(ByVal nValue As Integer)
+    Dim nMax            As Integer
+
+    '--- scrolling stops once the last column reaches the right edge, so a
+    '--- value past that clamps -- the frozen block is not scrolled over and
+    '--- takes its width out of the strip the rest has to fill
+    nMax = pvVisibleColCount() - pvVisibleColsInWidth(pvScrollableWidth(), pvFrozenCount() + 1) + 1
+    If nMax < 1 Then
+        nMax = 1
+    End If
+    If nValue > nMax Then
+        nValue = nMax
+    End If
+    If nValue < 1 Then
+        nValue = 1
+    End If
     If m_nLeftCol <> nValue Then
         m_nLeftCol = nValue
         '--- painting starts at the left-most column, so scrolling repaints
@@ -1633,7 +1648,14 @@ Attribute Redraw.VB_Description = "Determines whether drawing is enabled or not.
 End Property
 
 Public Property Let Redraw(ByVal bValue As Boolean)
+    If m_bRedraw = bValue Then
+        Exit Property
+    End If
     m_bRedraw = bValue
+    '--- everything suppressed while it was off lands in a single repaint
+    If bValue Then
+        pvInvalidate
+    End If
 End Property
 
 Public Property Get DefaultGroupMode() As jgexDefaultGroupModeConstants
@@ -2250,6 +2272,8 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
     Dim oCol            As JSColumn
     Dim lW              As Long
     Dim hPrevFont       As Long
+    Dim vOrder          As Variant
+    Dim lIdx            As Long
 
     lHdrH = m_lColumnHeaderHeight
     hPrevFont = pvSelectFont(hDC, m_oColumnHeaderFont)
@@ -2272,13 +2296,12 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
         pvPaintHeaderCell hDC, 0, lY, 18, lHdrH, vbNullString, jgexAlignLeft
         lX = 18
     End If
-    For nIdx = pvFirstCol() To m_oColumns.Count
-        Set oCol = m_oColumns.ItemByPosition(nIdx)
-        If oCol.Visible Then
-            lW = ToPixels(oCol.Width)
-            pvPaintHeaderCell hDC, lX, lY, lW, lHdrH, oCol.Caption, oCol.HeaderAlignment
-            lX = lX + lW
-        End If
+    vOrder = pvColOrder()
+    For lIdx = 0 To pvOrderMax(vOrder)
+        Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
+        lW = pvColWidth(oCol)
+        pvPaintHeaderCell hDC, lX, lY, lW, lHdrH, oCol.Caption, oCol.HeaderAlignment
+        lX = lX + lW
     Next
     '--- filler cell up to the right edge (its right border is clipped off)
     If lX < picGrid.ScaleWidth Then
@@ -2329,16 +2352,16 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
     Dim uRect           As RECT
     Dim lPainted        As Long
     Dim lExtra          As Long
+    Dim vOrder          As Variant
+    Dim lIdx            As Long
 
     lRowH = m_lRowHeight
     If m_bRowHeaders Then
         lHdrW = 18
     End If
-    For nIdx = pvFirstCol() To m_oColumns.Count
-        Set oCol = m_oColumns.ItemByPosition(nIdx)
-        If oCol.Visible Then
-            lTotalW = lTotalW + ToPixels(oCol.Width)
-        End If
+    vOrder = pvColOrder()
+    For lIdx = 0 To pvOrderMax(vOrder)
+        lTotalW = lTotalW + pvColWidth(m_oColumns.ItemByPosition(vOrder(lIdx)))
     Next
     '--- background right of the columns down to the bottom
     pvFillRect hDC, lHdrW + lTotalW, lY, picGrid.ScaleWidth, picGrid.ScaleHeight, m_clrBackColorBkg
@@ -2390,24 +2413,20 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
         End If
         '--- vertical gridlines over the rows block
         If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLVertical Then
-            For nIdx = pvFirstCol() To m_oColumns.Count
-                Set oCol = m_oColumns.ItemByPosition(nIdx)
-                If oCol.Visible Then
-                    lCum = lCum + ToPixels(oCol.Width)
-                    If m_eGridLineStyle = jgexGLSDashes Then
-                        pvDashedVLine hDC, lHdrW + lCum - 1, lY, lRowsBottom + lExtra, m_clrGridLinesColor, lY, lRowH, lRowsBottom
-                    Else
-                        pvLine hDC, lHdrW + lCum - 1, lY, lHdrW + lCum - 1, lRowsBottom + lExtra, m_clrGridLinesColor, pvPenStyle()
-                    End If
+            For lIdx = 0 To pvOrderMax(vOrder)
+                lCum = lCum + pvColWidth(m_oColumns.ItemByPosition(vOrder(lIdx)))
+                If m_eGridLineStyle = jgexGLSDashes Then
+                    pvDashedVLine hDC, lHdrW + lCum - 1, lY, lRowsBottom + lExtra, m_clrGridLinesColor, lY, lRowH, lRowsBottom
+                Else
+                    pvLine hDC, lHdrW + lCum - 1, lY, lHdrW + lCum - 1, lRowsBottom + lExtra, m_clrGridLinesColor, pvPenStyle()
                 End If
             Next
         End If
     End If
     '--- separator strip the original draws along the bottom edge when the
-    '--- horizontal scrollbar takes over the last client row
-    '--- gauged on every column, not just those visible from LeftCol: the
-    '--- scrollbar is what puts the strip there and it depends on the total
-    If lHdrW + pvTotalColWidth() > picGrid.ScaleWidth Then
+    '--- band takes over the last client row -- the horizontal scrollbar puts
+    '--- it there, and so does a record navigator with no scrollbar beside it
+    If m_bBand Then
         pvLine hDC, 0, picGrid.ScaleHeight - 1, picGrid.ScaleWidth, picGrid.ScaleHeight - 1, m_clrBackColorHeader, PS_SOLID
     End If
 End Sub
@@ -2424,6 +2443,8 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
     Dim lClipR          As Long
     Dim lMarqueeR       As Long
     Dim lLineR          As Long
+    Dim vOrder          As Variant
+    Dim lIdx            As Long
 
     '--- the current row is always shown selected, as in the original
     bSelected = pvIsRowSelected(lRow) Or (m_lRow >= 1 And lRow = m_lRow)
@@ -2458,10 +2479,11 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         End If
     End If
     lX = lHdrW
-    For nIdx = pvFirstCol() To m_oColumns.Count
-        Set oCol = m_oColumns.ItemByPosition(nIdx)
+    vOrder = pvColOrder()
+    For lIdx = 0 To pvOrderMax(vOrder)
+        Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
         If oCol.Visible Then
-            lW = ToPixels(oCol.Width)
+            lW = pvColWidth(oCol)
             sText = pvCellText(lRow, oCol.Index)
             If LenB(sText) <> 0 Then
                 lClipR = lX + lW
@@ -2503,6 +2525,8 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
     Dim lStartB         As Long
     Dim lDxRight        As Long
     Dim lPass           As Long
+    Dim vOrder          As Variant
+    Dim lIdx            As Long
 
     '--- XOR checkerboard anchored per column: a border pixel is inverted
     '--- when (x - column left) + (y - row top) is odd, which a single
@@ -2535,10 +2559,11 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
         End If
         hPrevBrush = SelectObject(hDC, hBrush)
         lCum = lHdrW
-        For nIdx = pvFirstCol() To m_oColumns.Count
-            Set oCol = m_oColumns.ItemByPosition(nIdx)
+        vOrder = pvColOrder()
+        For lIdx = 0 To pvOrderMax(vOrder)
+            Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
             If oCol.Visible Then
-                lW = ToPixels(oCol.Width)
+                lW = pvColWidth(oCol)
                 For lX = lCum + 1 - lPass To lCum + lW - 1 Step 2
                     If lX <= lRight Then
                         Call PatBlt(hDC, lX, lRowTop, 1, 1, PATINVERT)
@@ -2647,6 +2672,11 @@ Private Sub pvInvalidate()
 
     '--- tolerate refresh before the control window exists
     On Error GoTo EH
+    '--- a batch of changes under Redraw = False paints once, when it is
+    '--- turned back on
+    If Not m_bRedraw Then
+        Exit Sub
+    End If
     pvUpdateScrollBars
     picGrid.Refresh
     If m_bRecordNavigator Then
@@ -2685,6 +2715,26 @@ Private Function pvFirstCol() As Integer
     If pvFirstCol > m_oColumns.Count Then
         pvFirstCol = m_oColumns.Count
     End If
+End Function
+
+Private Function pvScrollableWidth() As Long
+    Dim nIdx            As Integer
+    Dim oCol            As JSColumn
+    Dim nFrozen         As Integer
+
+    '--- the client strip the scrollable columns share, i.e. what is left of
+    '--- it once the row header and the frozen block have taken their part
+    pvScrollableWidth = picGrid.ScaleWidth
+    If m_bRowHeaders Then
+        pvScrollableWidth = pvScrollableWidth - 18
+    End If
+    nFrozen = pvFrozenCount()
+    For nIdx = 1 To nFrozen
+        Set oCol = m_oColumns.ItemByPosition(nIdx)
+        If oCol.Visible Then
+            pvScrollableWidth = pvScrollableWidth - pvColWidth(oCol)
+        End If
+    Next
 End Function
 
 Private Function pvVisibleColCount() As Integer
@@ -3044,21 +3094,45 @@ Private Sub pvUpdateScrollBars()
     pvLayoutGrid
     pvLayoutHScroll bNeedH, bNeedV
     If bNeedH Then
-        lPage = pvVisibleColsInWidth(lAvailW - lHdrW)
+        '--- the bar scrolls the columns after the frozen block, so both its
+        '--- range and its position count from there
+        lPage = pvVisibleColsInWidth(pvScrollableWidth(), pvFrozenCount() + 1)
         If lPage < 1 Then
             lPage = 1
         End If
         hsbGrid.LargeChange = 1
         hsbGrid.Min = 0
-        hsbGrid.Max = pvVisibleColCount() - lPage
+        hsbGrid.Max = pvVisibleColCount() - pvFrozenCount() - lPage
         If hsbGrid.Max < 1 Then
             hsbGrid.Max = 1
         End If
-        If m_nLeftCol - 1 >= 0 And m_nLeftCol - 1 <= hsbGrid.Max Then
-            hsbGrid.Value = m_nLeftCol - 1
+        If m_nLeftCol - pvFrozenCount() - 1 >= 0 And m_nLeftCol - pvFrozenCount() - 1 <= hsbGrid.Max Then
+            hsbGrid.Value = m_nLeftCol - pvFrozenCount() - 1
         End If
+        pvSetHScrollInfo
     End If
     m_bScrollUpdating = False
+End Sub
+
+Private Sub pvSetHScrollInfo()
+    Dim uSi             As SCROLLINFO
+
+    '--- VB6 maps a scrollbar's Min..Max onto 0..32767 before handing it to
+    '--- Windows, and the thumb it computes from that lands a pixel off the
+    '--- original's. The original keeps the column numbers themselves in the
+    '--- scroll info (min=first scrollable, max=last valid LeftCol, page=1),
+    '--- read back with GetScrollInfo, so set those over VB6's mapping
+    uSi.cbSize = Len(uSi)
+    uSi.fMask = SIF_RANGE Or SIF_PAGE Or SIF_POS
+    uSi.nMin = pvFrozenCount() + 1
+    uSi.nMax = pvVisibleColCount() - pvVisibleColsInWidth(pvScrollableWidth(), pvFrozenCount() + 1) + 1
+    If uSi.nMax < uSi.nMin Then
+        uSi.nMax = uSi.nMin
+    End If
+    uSi.nPage = 1
+    uSi.nPos = m_nLeftCol
+    Call SetScrollInfo(hsbGrid.hWnd, SB_CTL, uSi, 0)
+    hsbGrid.Refresh
 End Sub
 
 Private Function pvTotalColWidth() As Long
@@ -3068,21 +3142,119 @@ Private Function pvTotalColWidth() As Long
     For nIdx = 1 To m_oColumns.Count
         Set oCol = m_oColumns.ItemByPosition(nIdx)
         If oCol.Visible Then
-            pvTotalColWidth = pvTotalColWidth + ToPixels(oCol.Width)
+            pvTotalColWidth = pvTotalColWidth + pvColWidth(oCol)
         End If
     Next
 End Function
 
-Private Function pvVisibleColsInWidth(ByVal lWidth As Long) As Long
+Private Function pvColWidth(oCol As JSColumn) As Long
+    Dim nIdx            As Integer
+    Dim oItem           As JSColumn
+    Dim lTotal          As Long
+    Dim lAvail          As Long
+    Dim lCum            As Long
+    Dim lPrev           As Long
+
+    '--- ColumnAutoResize stretches the visible columns to fill the client
+    '--- width, keeping their proportions: the boundaries land on the rounded
+    '--- running total, so the last column absorbs the rounding
+    If Not m_bColumnAutoResize Then
+        pvColWidth = ToPixels(oCol.Width)
+        Exit Function
+    End If
+    lAvail = picGrid.ScaleWidth
+    If m_bRowHeaders Then
+        lAvail = lAvail - 18
+    End If
+    For nIdx = 1 To m_oColumns.Count
+        Set oItem = m_oColumns.ItemByPosition(nIdx)
+        If oItem.Visible Then
+            lTotal = lTotal + ToPixels(oItem.Width)
+        End If
+    Next
+    If lTotal <= 0 Or lAvail <= 0 Then
+        pvColWidth = ToPixels(oCol.Width)
+        Exit Function
+    End If
+    For nIdx = 1 To m_oColumns.Count
+        Set oItem = m_oColumns.ItemByPosition(nIdx)
+        If oItem.Visible Then
+            lPrev = (lCum * lAvail + lTotal \ 2) \ lTotal
+            lCum = lCum + ToPixels(oItem.Width)
+            If oItem Is oCol Then
+                pvColWidth = (lCum * lAvail + lTotal \ 2) \ lTotal - lPrev
+                Exit Function
+            End If
+        End If
+    Next
+    pvColWidth = ToPixels(oCol.Width)
+End Function
+
+Private Function pvColOrder() As Variant
+    Dim nIdx            As Integer
+    Dim oCol            As JSColumn
+    Dim aOrder()        As Integer
+    Dim lCount          As Long
+    Dim nFrozen         As Integer
+
+    '--- painting and hit-testing walk the columns in this order: the frozen
+    '--- ones pinned at the left, then the scrollable rest from LeftCol. Both
+    '--- blocks skip hidden columns, so callers never test Visible again
+    ReDim aOrder(0 To m_oColumns.Count) As Integer
+    nFrozen = pvFrozenCount()
+    For nIdx = 1 To nFrozen
+        Set oCol = m_oColumns.ItemByPosition(nIdx)
+        If oCol.Visible Then
+            aOrder(lCount) = nIdx
+            lCount = lCount + 1
+        End If
+    Next
+    For nIdx = pvFirstCol() To m_oColumns.Count
+        If nIdx > nFrozen Then
+            Set oCol = m_oColumns.ItemByPosition(nIdx)
+            If oCol.Visible Then
+                aOrder(lCount) = nIdx
+                lCount = lCount + 1
+            End If
+        End If
+    Next
+    If lCount = 0 Then
+        pvColOrder = Array()
+        Exit Function
+    End If
+    ReDim Preserve aOrder(0 To lCount - 1) As Integer
+    pvColOrder = aOrder
+End Function
+
+Private Function pvOrderMax(vOrder As Variant) As Long
+    '--- -1 for an empty order, so the paint loops simply do not run
+    pvOrderMax = -1
+    If IsArray(vOrder) Then
+        pvOrderMax = UBound(vOrder)
+    End If
+End Function
+
+Private Function pvFrozenCount() As Integer
+    '--- more frozen columns than there are leaves nothing to scroll
+    pvFrozenCount = m_nFrozenColumns
+    If pvFrozenCount < 0 Then
+        pvFrozenCount = 0
+    End If
+    If pvFrozenCount > m_oColumns.Count Then
+        pvFrozenCount = m_oColumns.Count
+    End If
+End Function
+
+Private Function pvVisibleColsInWidth(ByVal lWidth As Long, Optional ByVal nStart As Integer = 1) As Long
     Dim nIdx            As Integer
     Dim oCol            As JSColumn
     Dim lCum            As Long
 
-    '--- how many whole columns fit in lWidth starting at LeftCol
-    For nIdx = 1 To m_oColumns.Count
+    '--- how many whole columns fit in lWidth starting at nStart
+    For nIdx = nStart To m_oColumns.Count
         Set oCol = m_oColumns.ItemByPosition(nIdx)
         If oCol.Visible Then
-            lCum = lCum + ToPixels(oCol.Width)
+            lCum = lCum + pvColWidth(oCol)
             '--- strictly less: a column ending exactly on the edge does not
             '--- count as visible, which is what decides the thumb size when
             '--- the columns happen to fill the client precisely
@@ -3305,7 +3477,7 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
     End If
     Select Case wMsg
     Case WM_VSCROLL
-        pvOnVScroll wParam And &HFFFF&
+        pvOnVScroll wParam And &HFFFF&, (wParam And &HFFFF0000) \ &H10000
         Handled = True
     Case WM_KEYDOWN
         nKeyCode = CInt(wParam And &HFFFF&)
@@ -3410,20 +3582,21 @@ Private Function pvColAtX(ByVal lX As Long, oCol As JSColumn) As Integer
     Dim nIdx            As Integer
     Dim nPos            As Integer
     Dim oItem           As JSColumn
+    Dim vOrder          As Variant
+    Dim lIdx            As Long
 
     If m_bRowHeaders Then
         lCum = 18
     End If
-    For nIdx = pvFirstCol() To m_oColumns.Count
-        Set oItem = m_oColumns.ItemByPosition(nIdx)
-        If oItem.Visible Then
-            nPos = nPos + 1
-            lCum = lCum + ToPixels(oItem.Width)
-            If lX < lCum Then
-                Set oCol = oItem
-                pvColAtX = nPos
-                Exit Function
-            End If
+    vOrder = pvColOrder()
+    For lIdx = 0 To pvOrderMax(vOrder)
+        Set oItem = m_oColumns.ItemByPosition(vOrder(lIdx))
+        nPos = nPos + 1
+        lCum = lCum + pvColWidth(oItem)
+        If lX < lCum Then
+            Set oCol = oItem
+            pvColAtX = nPos
+            Exit Function
         End If
     Next
 End Function
@@ -3595,7 +3768,7 @@ Private Function pvClampCol(ByVal nValue As Integer) As Integer
     End If
 End Function
 
-Private Sub pvOnVScroll(ByVal lCode As Long)
+Private Sub pvOnVScroll(ByVal lCode As Long, ByVal lPos As Long)
     Dim uSi             As SCROLLINFO
     Dim lPage           As Long
 
@@ -3618,10 +3791,20 @@ Private Sub pvOnVScroll(ByVal lCode As Long)
             FirstItem = m_lFirstItem + lPage
         End If
     Case SB_THUMBPOSITION, SB_THUMBTRACK
-        uSi.cbSize = Len(uSi)
-        uSi.fMask = SIF_TRACKPOS
-        Call GetScrollInfo(picGrid.hWnd, SB_VERT, uSi)
-        FirstItem = uSi.nTrackPos + 1
+        '--- while the thumb is being dragged the contents follow only with
+        '--- ContinuousScroll, otherwise they wait for the button release
+        If lCode = SB_THUMBTRACK And Not m_bContinuousScroll Then
+            Exit Sub
+        End If
+        '--- the position rides in the message, as it does for any range that
+        '--- fits 16 bits -- reading it back is only needed past that
+        If lPos = 0 Then
+            uSi.cbSize = Len(uSi)
+            uSi.fMask = SIF_TRACKPOS
+            Call GetScrollInfo(picGrid.hWnd, SB_VERT, uSi)
+            lPos = uSi.nTrackPos
+        End If
+        FirstItem = lPos + 1
     End Select
 End Sub
 
@@ -3731,7 +3914,7 @@ Private Sub pvOnHScroll()
     If m_bScrollUpdating Then
         Exit Sub
     End If
-    LeftCol = pvClampCol(hsbGrid.Value + 1)
+    LeftCol = pvClampCol(hsbGrid.Value + pvFrozenCount() + 1)
 End Sub
 
 Private Sub m_oFont_FontChanged(ByVal PropertyName As String)

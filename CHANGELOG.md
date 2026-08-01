@@ -164,6 +164,76 @@ All notable changes to this project will be documented in this file.
 - `tools\GenSample.ps1` turns a snapshot recorded from the original into plain VB6 that configures our control, so a Janus sample ports by re-pointing the reference and calling the generated `Sub`. It mirrors `mdImport.bas` assignment for assignment: scalars, enums as constant names, fonts, `Add` arguments per collection, and -- recursively -- read-only sub-objects such as `PrinterProperties` or a condition's `FormatStyle`, including parameterized `HeaderString(1..3)`. Collections carrying persistable properties of their own snapshot as an object with an `items` array rather than a bare array, which is what `FmtConditions` is; the generator handles both shapes
 - `pvTestGeneratedSetup` round-trips the three generated modules (`Unbound-1`, `Unbound-2`, `Unbound-Collection`) against the snapshots they came from: 159 model tests pass. `GridImages` is out of scope on both sides -- pictures cannot be written as code literals, a ported sample keeps them in its own `.frx`
 
+### Changed
+
+- `PAINT-PROPERTIES.md` renamed `PROPERTIES.md` and widened from the paint matrix
+  to the full property inventory: all **288** public properties of `GridEX`,
+  `GEXPreview` and the 23 `JS*` classes, read out of `doc\GridEX20.idl` so the
+  list is the surface itself rather than whatever happens to be implemented.
+  Part 1 is the paint matrix unchanged; part 2 adds the 33 `GridEX` data,
+  binding and editor members that never reach the renderer; part 3 gives every
+  class its own table, `JSColumn`'s 46 and `JSFmtCondition`'s 7 included, with
+  properties already in the matrix marked `paint` so each class reads as a
+  complete list. Status is evidence-based like the matrix: `consumed` when
+  something in `src` reads the member behind the accessor, `storage` when it is
+  only stored and round-tripped, `derived` when there is no member at all --
+  which is also how the parameterized properties (`RowSelected(RowPosition)`,
+  `HeaderString(Index)`, `Value(ColIndex)`) finally got written down; the
+  snapshot engine skips them, so they had been missing from every inventory
+- Part 2 is a second matrix in the same shape as the paint one -- `Property`,
+  `Type`, `Status`, `Milestone`, `Commit`, `Test` -- over all 162 properties that
+  never reach the renderer. `Milestone` is filled only for the 85 `storage` rows,
+  the ones still owed behaviour (M11 printing 33, M8 binding 17, M5 editing 15,
+  M10 styling 14, M4 sorting 5, M12 1), `Commit` points at the commit that
+  introduced the consuming routine, and `Test` at what covers the property today.
+  Both matrices dropped the `Paint routine` column
+
+### Added (M3d complete -- the last five properties and the ported samples)
+
+- `test\Samples`: the five original unbound samples (Unbound 1, 2, Array, Array
+  UDTs, Collection) ported and running under a smoke runner that loads each form,
+  lets it paint and asserts the grid took the sample's data. The port is the
+  recipe the tooling was built for: re-point the reference, drop the grid's
+  design-time property bag from the `.frm`, call the `Sub` generated from its
+  snapshot by `tools\GenSample.ps1`. Unbound 1 and 2 read Products from
+  `doc\Samples\JSNWind.mdb` through DAO exactly as the originals do; the other
+  three build their data in code. Array and Array UDTs ship without their `.frx`,
+  so their snapshot is raw-only and their design-time `DataMode` had to come
+  across as code -- the one thing the generator could not supply
+- `FrozenColumns`, `ColumnAutoResize`, `Col`, `ContinuousScroll` and `Redraw`, the
+  five properties M3d still owed. Column layout now runs through one order array
+  (`pvColOrder`: frozen block, then the scrollable rest from `LeftCol`) and one
+  width function (`pvColWidth`), instead of six loops each walking the columns
+  their own way
+- Scenarios `031-frozen-columns`, `032-column-autoresize`,
+  `033-record-navigator-string` and `034-hscroll-middle`; `ModelTests` gained
+  `pvTestScrollProps` for the two properties no static picture can pin down.
+  `RecordNavigatorString` moves from weak to verified, so every property the
+  renderer reads is now proven at two or more values -- 49 of 126, and M3d has no
+  unimplemented paint properties left
+
+### Fixed
+
+- The horizontal thumb sat one pixel left of the original's at any middle scroll
+  position, ends matching, which is why nothing caught it until a scenario
+  scrolled to the middle. VB6 maps a scrollbar's `Min`..`Max` onto 0..32767
+  before handing it to Windows; `GetScrollInfo` on the original's bar shows it
+  keeps the column numbers themselves (`min=3 max=5 page=1 pos=4`), so the fix is
+  a `SetScrollInfo` over VB6's mapping. The harness grew a `scrollinfo` mode that
+  reads range and thumb rect off either control -- reading the original's window
+  back beats inferring its geometry from pixels
+- `LeftCol` never clamped: it now stops at the last full page, `colCount - fit +
+  1` counted over the scrollable strip, which is what the original does -- with
+  two frozen columns taking 200 of 378px `LeftCol` = 4 stands, without them it
+  clamps to 3
+- The grid's bottom separator strip appeared only when the horizontal scrollbar
+  did; the original puts it there whenever the band takes the last client row,
+  including a record navigator with no scrollbar beside it
+- `record.bat`/`make.bat` ran both DPI passes at system DPI: `Start-Process` does
+  not pick up a `__COMPAT_LAYER` inherited from cmd, so the watchdog added in
+  `37d573b` had silently turned "PASSED at both DPIs" into the same pass twice.
+  Set inside the launching PowerShell it works, and the 96dpi goldens verify again
+
 ### Changed (test harness layout)
 
 - Everything a ModelTests run produces now lands in `test\ModelTests\output\`:

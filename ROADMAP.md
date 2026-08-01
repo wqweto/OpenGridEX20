@@ -85,14 +85,21 @@ Exit: goldens recorded for the initial scenario set; harness self-validates
 
 Exit: static paint scenarios pass pixel diff against the golden corpus.
 
-### M3d -- Scrolling + input
+### M3d -- Scrolling + input (done)
 
 - Scrollbars, `ContinuousScroll`, keyboard/mouse navigation, live selection,
   core events (`Click`, `DblClick`, `RowColChange`, `SelectionChange`, key
   events), `LeftCol`/`FirstItem` tracking
+- Closed with `Col`, `ColumnAutoResize`, `ContinuousScroll`, `FrozenColumns` and
+  `Redraw`; scenarios `031`-`034` cover the three that paint, `ModelTests` the
+  two that only change behaviour
 
-Exit: Unbound 1/2/Array/UDTs/Collection samples run; paint-map scenario passes.
-(Table view only -- card view intentionally out of M3 scope.)
+Exit (met): all five unbound samples are ported under `test\Samples` and run in
+the smoke runner -- Unbound 1 and 2 read Products through DAO as the originals
+do, the other three build their data in code -- and the golden corpus passes at
+96 and 120 dpi. (Table view only -- card view intentionally out of M3 scope, and
+sorting, grouping and editing stay with M4/M5, so the samples' header-click and
+edit paths are inert for now.)
 
 ## M4 -- Sorting and grouping
 
@@ -130,7 +137,7 @@ properties, so gating on "nothing unverified" only means something once they
 exist.
 
 Exit: card scenarios pass pixel diff at all recorded scales; no `unowned` card
-entries left in `PAINT-PROPERTIES.md`.
+entries left in `PROPERTIES.md`.
 
 ## M7 -- Paint property matrix
 
@@ -138,10 +145,13 @@ Gate before any data-binding work: every property that affects painting is prove
 against the original at two or more distinct values, so that binding is built on
 a verified renderer rather than on properties that merely compile.
 
-- `PAINT-PROPERTIES.md` is the tracking document -- type, status, paint routine,
+- `PROPERTIES.md` is the tracking document -- type, status, paint routine,
   owning milestone, implementing commit and covering test for each of the 126
   paint-affecting properties (`GridEX` plus the `JSColumn`/`JSFormatStyle`
-  sub-properties); kept current in the same commit that changes a status
+  sub-properties); kept current in the same commit that changes a status. It
+  inventories the whole public property surface around that matrix -- all 288
+  properties read out of `doc\GridEX20.idl`, class by class -- so a member that
+  no milestone owns cannot hide by simply not being written down
 - Baseline at the time of writing: 43 of 126 are read by the paint path, only 19
   are proven at more than one value, 15 have no covering test at all
 - Close the unverified block by authoring scenarios, not control code (rows for
@@ -156,7 +166,7 @@ a verified renderer rather than on properties that merely compile.
   the `JSFormatStyle` font and picture families, which is far more than its
   one-line entry implies
 
-Exit: no `unverified` rows left in `PAINT-PROPERTIES.md` for properties whose
+Exit: no `unverified` rows left in `PROPERTIES.md` for properties whose
 milestone has shipped; card view has an owning milestone.
 
 ## M8 -- ADO binding

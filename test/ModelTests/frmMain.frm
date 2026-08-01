@@ -75,6 +75,8 @@ Private Const MK_LBUTTON            As Long = &H1
 Private Const SB_LINEUP             As Long = 0
 Private Const SB_LINEDOWN           As Long = 1
 Private Const SB_PAGEDOWN           As Long = 3
+Private Const SB_THUMBPOSITION      As Long = 4
+Private Const SB_THUMBTRACK         As Long = 5
 
 Private Declare Function SendMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long
 Private Declare Function GetParent Lib "user32" (ByVal hWnd As Long) As Long
@@ -114,6 +116,7 @@ Private Sub Form_Load()
     pvTestRowDataWeakRef
     pvTestUnbound
     pvTestScroll
+    pvTestScrollProps
     pvTestKeyNav
     pvTestMouse
     pvTestNavigator
@@ -481,6 +484,65 @@ Private Sub pvTestScroll()
         SendMessage .hWnd, WM_VSCROLL, SB_PAGEDOWN, 0
         Assert "Scroll: page down advances", .FirstItem > 2
         AssertEquals "Scroll: FirstItemChange event count", "First;First;First;First;", oForm.EventLog
+    End With
+    Unload oForm
+End Sub
+
+Private Sub pvTestScrollProps()
+    Dim oForm           As frmWeak
+
+    '--- the M3d properties that change behaviour rather than a static
+    '--- picture, so no golden can pin them down
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("Alpha").Width = 1500
+        .Columns.Add("Beta").Width = 1500
+        .Columns.Add("Gamma").Width = 1500
+        .Columns.Add("Delta").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 50
+        .Rebind
+        '--- two of the four columns fit, so the scroll range is known
+        oForm.GridEX1.Width = 4500
+        '--- ContinuousScroll: with it off the contents wait for the thumb to
+        '--- be released, with it on they follow the drag
+        AssertEquals "ContinuousScroll: default", False, .ContinuousScroll
+        SendMessage .hWnd, WM_VSCROLL, pvMakeLong(SB_THUMBTRACK, 20), 0
+        AssertEquals "ContinuousScroll off: track does not scroll", 1, .FirstItem
+        SendMessage .hWnd, WM_VSCROLL, pvMakeLong(SB_THUMBPOSITION, 20), 0
+        Assert "ContinuousScroll off: release scrolls", .FirstItem > 1
+        .FirstItem = 1
+        .ContinuousScroll = True
+        SendMessage .hWnd, WM_VSCROLL, pvMakeLong(SB_THUMBTRACK, 20), 0
+        Assert "ContinuousScroll on: track scrolls", .FirstItem > 1
+        '--- FrozenColumns pins the leftmost columns, so LeftCol may go
+        '--- further right than it could without them
+        .LeftCol = 4
+        AssertEquals "LeftCol clamps at the last full page", 3, .LeftCol
+        .FrozenColumns = 2
+        AssertEquals "FrozenColumns stored", 2, .FrozenColumns
+        .LeftCol = 4
+        AssertEquals "LeftCol reaches further with frozen columns", 4, .LeftCol
+        .FrozenColumns = 0
+        '--- Col follows the same clamping as Row
+        .Col = 99
+        AssertEquals "Col clamps to the last column", 4, .Col
+        .Col = 0
+        AssertEquals "Col clamps to the first column", 1, .Col
+        '--- ColumnAutoResize spreads the columns over the client width
+        AssertEquals "ColumnAutoResize: default", False, .ColumnAutoResize
+        .ColumnAutoResize = True
+        AssertEquals "ColumnAutoResize stored", True, .ColumnAutoResize
+        .ColumnAutoResize = False
+        '--- Redraw batches repaints, and the property itself round-trips
+        AssertEquals "Redraw: default", True, .Redraw
+        .Redraw = False
+        AssertEquals "Redraw off", False, .Redraw
+        .ItemCount = 60
+        .Redraw = True
+        AssertEquals "Redraw back on", True, .Redraw
+        AssertEquals "Redraw: changes made while off are kept", 60, .RowCount
     End With
     Unload oForm
 End Sub

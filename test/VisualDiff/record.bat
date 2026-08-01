@@ -23,11 +23,11 @@ echo Golden corpus recorded and self-test PASSED at both DPIs ^(%MASK%^)
 exit /b 0
 
 :record
-set "__COMPAT_LAYER=%~1"
+set "LAYER=%~1"
 echo === recording %~2 ===
 if exist VisualDiff.out.txt del VisualDiff.out.txt
 rem --- watchdog: a wedged run must not hang the loop
-powershell -NoProfile -Command "$p = Start-Process '.\VisualDiff.exe' -ArgumentList 'record','%MASK%' -PassThru; if (-not $p.WaitForExit(300000)) { $p.Kill(); Write-Host 'TIMEOUT: killed after 300s'; exit 1 }"
+powershell -NoProfile -Command "$env:__COMPAT_LAYER = '%LAYER%'; $p = Start-Process '.\VisualDiff.exe' -ArgumentList 'record','%MASK%' -PassThru; if (-not $p.WaitForExit(300000)) { $p.Kill(); Write-Host 'TIMEOUT: killed after 300s'; exit 1 }"
 findstr /C:"RESULT: PASSED" VisualDiff.out.txt >nul || (
     type VisualDiff.out.txt
     exit /b 1
@@ -35,7 +35,7 @@ findstr /C:"RESULT: PASSED" VisualDiff.out.txt >nul || (
 type VisualDiff.out.txt
 if exist VisualDiff.out.txt del VisualDiff.out.txt
 rem --- watchdog: a wedged run must not hang the loop
-powershell -NoProfile -Command "$p = Start-Process '.\VisualDiff.exe' -ArgumentList 'selftest','%MASK%' -PassThru; if (-not $p.WaitForExit(300000)) { $p.Kill(); Write-Host 'TIMEOUT: killed after 300s'; exit 1 }"
+powershell -NoProfile -Command "$env:__COMPAT_LAYER = '%LAYER%'; $p = Start-Process '.\VisualDiff.exe' -ArgumentList 'selftest','%MASK%' -PassThru; if (-not $p.WaitForExit(300000)) { $p.Kill(); Write-Host 'TIMEOUT: killed after 300s'; exit 1 }"
 findstr /C:"RESULT: PASSED" VisualDiff.out.txt >nul || (
     type VisualDiff.out.txt
     exit /b 1
