@@ -1,0 +1,5 @@
+RowColChange(LastRow=1, LastCol=0)
+BeforeColEdit(ColIndex=1)
+MouseDown(Button=1, X=120, Y=696)
+MouseUp(Button=1, X=120, Y=696)
+Click()

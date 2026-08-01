@@ -272,6 +272,105 @@ All notable changes to this project will be documented in this file.
   `050-group-empty-caption`, `051-group-empty-default` and `052-group-format`,
   recorded from the original at both DPIs
 
+### Added (M5 -- event log recorder and the in-place text editor)
+
+- VisualDiff records what a control *raised*, not only what it painted: a
+  scenario gains an `input` block (clicks, keys, typed text) and the harness
+  writes an `.events.txt` beside each golden PNG, which verify diffs line by
+  line and reports the first disagreement. Event order is the contract editing
+  lives or dies by, and no picture can hold it. Two things are left out of a
+  logged event: parameters carrying an object, since the `JSRet*` and
+  `JSRowData` carriers say nothing by identity and the test asserts their
+  contents through the control instead, and `Shift`, since a synthetic
+  `WM_KEYDOWN` carries no modifier state and both controls read it off the live
+  keyboard -- a modifier held while the corpus runs would otherwise show up as a
+  mismatch that says nothing about either of them
+- The in-place text editor: `EditType = jgexEditTextBox` opens a native EDIT
+  over the cell, one created per session and destroyed with it, because the
+  styles a column asks for are fixed when the window is made -- `ES_LEFT`/
+  `ES_CENTER`/`ES_RIGHT` from `TextAlignment`, `ES_MULTILINE` or `ES_AUTOHSCROLL`
+  from `WordWrap`, `EM_LIMITTEXT` from `MaxLength`. It sits one pixel inside the
+  cell so the row's selection colour and marquee still show around it, and
+  `EM_SETMARGINS` gives its text the two pixel margin a painted cell has (sent
+  after the font, which resets it)
+- The recorded contracts it satisfies: a click raises `RowColChange` and
+  `BeforeColEdit` before the client sees `MouseDown`; each keystroke raises
+  `KeyDown`/`KeyPress`/`Change`/`KeyUp`; Enter commits through `BeforeColUpdate`,
+  `AfterColUpdate`, `AfterColEdit`, `BeforeUpdate`, `RowFormat`, `AfterUpdate`,
+  `RowFormat`, `SelectionChange`, `RowColChange`; Escape cancels through
+  `RowFormat` and `AfterColEdit`. Scenarios `057-edit-textbox`,
+  `058-edit-commit-enter`, `059-edit-cancel-escape` and `061-edit-tall-row`
+  pass pixels and event log against the original at both DPIs
+- The editor's text lands where the painted cell's does, which is what places
+  the window: an EDIT draws at the top of its client, so the window itself is
+  put where the text centres to -- `(rowContentHeight - tmHeight) \ 2`. A row
+  keeps its 19 pixels at either dpi while the font grows, and that alone is the
+  difference between a two pixel inset at 96 and one at 120;
+  `061-edit-tall-row` holds the same rule at a 40 pixel row
+- It shows a caret because it holds the focus, which needs no help from the
+  control beyond not losing it: the grid's own click handling takes the focus
+  for itself, so the default runs first and the editor takes it back after
+
+### Fixed (M5 -- what the event log caught)
+
+- `MouseDown`/`MouseUp`/`MouseMove` reported pixels where the original reports
+  container units: a click 38 pixels in comes out as 570 twips
+- `SelectionChange` fired even when the selection had not changed, and fired
+  after `RowColChange` where the original raises it before
+- A fresh bind left the current column at 1. `Col = 0` means the whole row is
+  selected, which is the state the original starts in -- its first
+  `RowColChange` reports `LastCol=0` for that reason. It also decides a paint
+  rule: inside a selected row the current cell is drawn unselected, inset by
+  one pixel so the row's colour still shows in the marquee band
+- Three of those four were M3d-era divergences that no pixel golden could see
+
+### Added (M5 -- the checkbox editor and wrapping cells)
+
+- A `jgexCheckBox` column draws its state instead of its text: a fixed 11x12
+  box, white inside with one grey line around it and a shade darker on the cell
+  the marquee is on. The tick is the same seven runs of pixels at either dpi but
+  sits further into the box as the screen scales, two pixels in at 96 and three
+  at 120 -- the font does not move it, since a 12pt cell font at 96 leaves it
+  exactly where an 8.25pt one does (`063-checkbox-large-font` is the scenario
+  that settled that), and neither `DrawFrameControl` nor a plain dpi ratio
+  reproduces it, so the two offsets are the ones the recordings show
+- `EditType = jgexEditCheckBox` flips the value on a click level with the box
+  and says one `Change` about it, with no editor window and no update trio.
+  Only the vertical band counts, which is the whole of why the same point
+  toggles at 96dpi and not at 120: the taller bands there put the row lower and
+  leave the point above the box
+- A `WordWrap` column wraps its painted text from the top of the cell rather
+  than centring one line in it, and its editor takes the whole cell, since the
+  room it has is what decides how many lines the text breaks into. The click
+  that opens an editor carries on into it, so the caret lands on the character
+  under the point -- which is what decides where typing goes and, in a wrapping
+  cell, which line the view sits on
+- Scenarios `060`-`064` recorded from the original: both checkbox states, a
+  large font, a click straight onto the box, and a wrapping editor in a 40 pixel
+  row
+
+### Fixed (M5 -- what the checkbox found)
+
+- `Col` raised `RowColChange` without ever invalidating. The current cell is
+  drawn out of the selected row it sits in, so moving between columns is a
+  repaint and not only an event -- reachable by arrow key, not just by the
+  scenario that exposed it, where the capture kept showing a pre-click paint
+- A wrapping editor was created without `ES_AUTOVSCROLL`, so it refused text it
+  could not fit and the refusal came back as a phantom `KeyPress(8)` after every
+  character typed
+- The white the current cell keeps inside a selected row insets only where the
+  marquee runs, which is the row's own edge -- not the boundary between two
+  cells, which no marquee follows
+
+### Known red
+
+- `061-edit-tall-row` at 96dpi. The original puts the caret at the end of the
+  text there and at the clicked character at 120, from the same scenario and the
+  same 40 pixel row, with only the font size between them. One rule has to
+  produce both and two recordings do not show it; a third at 144dpi would say
+  whether the editor's opening scroll follows the lines that fit or the lines
+  there are
+
 ### Added (M4 -- aggregates and group footers)
 
 - `GroupFooterStyle` closes every group with a footer row: `jgexCaptionGroupFooter`

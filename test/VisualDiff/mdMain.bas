@@ -14,8 +14,6 @@ DefObj A-Z
 ' API
 '=========================================================================
 
-Private Const GW_CHILD                      As Long = 5
-Private Const GW_HWNDNEXT                   As Long = 2
 Private Const GWL_STYLE                     As Long = -16
 Private Const WS_HSCROLL                    As Long = &H100000
 Private Const WS_VSCROLL                    As Long = &H200000
@@ -23,6 +21,12 @@ Private Const WS_TABSTOP                    As Long = &H10000
 Private Const SB_CTL                         As Long = 2
 Private Const SIF_ALL                        As Long = &H17
 Private Const OBJID_CLIENT                   As Long = &HFFFFFFFC
+
+Private Declare Function GetWindowRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
+Private Declare Function GetClientRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
+Private Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long) As Long
+Private Declare Function GetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal nBar As Long, lpsi As SCROLLINFO) As Long
+Private Declare Function GetScrollBarInfo Lib "user32" (ByVal hWnd As Long, ByVal idObject As Long, psbi As SCROLLBARINFO) As Long
 
 Private Type RECT
     Left                    As Long
@@ -56,14 +60,6 @@ Private Type SCROLLBARINFO
     rgstate5                As Long
 End Type
 
-Private Declare Function GetWindow Lib "user32" (ByVal hWnd As Long, ByVal wCmd As Long) As Long
-Private Declare Function GetClassName Lib "user32" Alias "GetClassNameW" (ByVal hWnd As Long, ByVal lpClassName As Long, ByVal nMaxCount As Long) As Long
-Private Declare Function GetWindowRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
-Private Declare Function GetClientRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
-Private Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long) As Long
-Private Declare Function GetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal nBar As Long, lpsi As SCROLLINFO) As Long
-Private Declare Function GetScrollBarInfo Lib "user32" (ByVal hWnd As Long, ByVal idObject As Long, psbi As SCROLLBARINFO) As Long
-
 '=========================================================================
 ' Constants and member variables
 '=========================================================================
@@ -94,6 +90,7 @@ Public Sub Main()
     Dim lDiff           As Long
     Dim sReport         As String
     Dim sGolden         As String
+    Dim sEvents         As String
     Dim lDpi            As Long
     Dim sDpi            As String
 
@@ -184,6 +181,12 @@ Public Sub Main()
                 Case "record"
                     pvEnsureDir App.Path & "\golden" & sDpi
                     Assert "record " & sName & sDpi & "dpi", SavePng(sGolden, lWidth, lHeight, baBits)
+                    '--- a scenario that drives input records what the control
+                    '--- raised as well: the order of the edit events is a
+                    '--- contract a picture cannot hold
+                    If Not C2Obj(JsonValue(C2Obj(vDoc), "input")) Is Nothing Then
+                        WriteTextFile Left$(sGolden, Len(sGolden) - Len(".png")) & ".events.txt", oForm.EventLog
+                    End If
                 Case "dump", "dump-ours"
                     pvEnsureDir App.Path & "\output" & sDpi
                     WriteTextFile App.Path & "\output" & sDpi & "\" & sName & ".dump.json", oForm.DumpState(True)
@@ -203,6 +206,12 @@ Public Sub Main()
                         lDiff = DiffBits(baGolden, baBits, lWidth, lHeight, sReport)
                         Assert sMode & " " & sName & sDpi & "dpi" & IIf(lDiff > 0, " diff=" & lDiff & "px " & sReport, vbNullString), lDiff = 0
                     End If
+                    If Not C2Obj(JsonValue(C2Obj(vDoc), "input")) Is Nothing Then
+                        sEvents = Left$(sGolden, Len(sGolden) - Len(".png")) & ".events.txt"
+                        WriteTextFile App.Path & "\output" & sDpi & "\" & sName & ".events.txt", oForm.EventLog
+                        Assert sMode & " " & sName & sDpi & "dpi events" & pvEventReport(ReadTextFile(sEvents), oForm.EventLog), _
+                            ReadTextFile(sEvents) = oForm.EventLog
+                    End If
                 End Select
             End If
             Unload oForm
@@ -216,6 +225,30 @@ EH:
     Assert "Unhandled error &H" & Hex$(Err.Number) & " " & Err.Description & " in " & sName, False
     TestsDone
 End Sub
+
+Private Function pvEventReport(sGolden As String, sActual As String) As String
+    Dim vGolden         As Variant
+    Dim vActual         As Variant
+    Dim lIdx            As Long
+
+    '--- the first line that differs is what a reader needs, not the two logs
+    If sGolden = sActual Then
+        Exit Function
+    End If
+    vGolden = Split(sGolden, vbCrLf)
+    vActual = Split(sActual, vbCrLf)
+    For lIdx = 0 To UBound(vGolden)
+        If lIdx > UBound(vActual) Then
+            pvEventReport = " (missing at " & lIdx + 1 & ": " & vGolden(lIdx) & ")"
+            Exit Function
+        End If
+        If vGolden(lIdx) <> vActual(lIdx) Then
+            pvEventReport = " (line " & lIdx + 1 & ": expected " & vGolden(lIdx) & " got " & vActual(lIdx) & ")"
+            Exit Function
+        End If
+    Next
+    pvEventReport = " (extra at " & UBound(vGolden) + 2 & ": " & vActual(UBound(vGolden) + 1) & ")"
+End Function
 
 Private Sub pvDumpScrollInfo(ByVal hWndRoot As Long, ByVal hWnd As Long)
     Dim hChild          As Long

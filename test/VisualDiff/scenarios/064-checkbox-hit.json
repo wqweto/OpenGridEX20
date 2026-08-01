@@ -1,0 +1,23 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "checkbox-hit",
+    "width": 400,
+    "height": 200,
+    "apply": "before-show",
+    "props": {
+        "AllowEdit": true,
+        "Columns": [
+            { "Caption": "F", "Width": 300, "ColumnType": 3, "EditType": 2 },
+            { "Caption": "Alpha", "Width": 1500 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ true, "a1" ],
+            [ false, "a2" ]
+        ]
+    },
+    "input": [
+        { "click": [ 12, 60 ] }
+    ]
+}

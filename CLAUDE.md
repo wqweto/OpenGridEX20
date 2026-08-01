@@ -47,3 +47,5 @@
 - Write code which works with `Break on All Errors` setting in the IDE i.e. don't depend on `On Error Resume Next` for normal workflow
 - Put `DefObj A-Z` on all modules so untyped vars/params do not remain of Variant type
 - Put `API`, `Constants and member variables`, `Error management`, `Properties`, `Methods`, `Functions`, `Control events`, `Base class events`, `Interface Xxx` separators in all modules
+- Classes have Methods section, standard modules have Functions section
+- Keep API section ordered by consts first, then declares, types last

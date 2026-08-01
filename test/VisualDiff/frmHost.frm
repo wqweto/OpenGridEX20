@@ -46,6 +46,16 @@ Private WithEvents m_oExt           As VBControlExtender
 Attribute m_oExt.VB_VarHelpID = -1
 Private m_oUnboundRows              As Object
 Private m_sClass                    As String
+Private m_sEventLog                 As String
+Private m_bLogEvents                As Boolean
+
+'=========================================================================
+' Properties
+'=========================================================================
+
+Public Property Get EventLog() As String
+    EventLog = m_sEventLog
+End Property
 
 '=========================================================================
 ' Methods
@@ -103,6 +113,16 @@ Public Function RunScenario(sProgId As String, oScenario As Object, baBits() As 
         pvSelectRows C2Obj(JsonValue(oScenario, "select"))
         DoEvents
     End If
+    '--- the input a scenario drives -- clicks, keys and characters -- with
+    '--- the event log cleared first so it holds the interaction alone and
+    '--- not the flood of reads the data feed above raised
+    m_sEventLog = vbNullString
+    m_bLogEvents = True
+    If Not C2Obj(JsonValue(oScenario, "input")) Is Nothing Then
+        pvRunInput C2Obj(JsonValue(oScenario, "input"))
+        pvSettle 10
+    End If
+    m_bLogEvents = False
     '--- always the host form client, never the control window: the two
     '--- controls do not expose the same window from hWnd -- the original's
     '--- is an inner grid window sized inside its own chrome, ours is the
@@ -307,6 +327,141 @@ EH:
     LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
+Private Function pvFormatEvent(Info As EventInfo) As String
+    Const FUNC_NAME     As String = "pvFormatEvent"
+    Dim lIdx            As Long
+    Dim sParams         As String
+    Dim vValue          As Variant
+
+    '--- an event reads as name(param=value, ...), skipping the ones whose
+    '--- value is an object: those are the JSRet* and JSRowData carriers,
+    '--- whose identity says nothing and whose contents the test asserts
+    '--- through the control instead. Shift is skipped too: a synthetic
+    '--- WM_KEYDOWN carries no modifier state, so both controls read it off
+    '--- the live keyboard and a modifier held while the corpus runs would
+    '--- show up as a mismatch that says nothing about either of them
+    On Error GoTo EH
+    For lIdx = 0 To Info.EventParameters.Count - 1
+        vValue = Empty
+        If Info.EventParameters(lIdx).Name = "Shift" Then
+            '--- environment, not behaviour
+        ElseIf Not IsObject(Info.EventParameters(lIdx).Value) Then
+            vValue = Info.EventParameters(lIdx).Value
+            If LenB(sParams) <> 0 Then
+                sParams = sParams & ", "
+            End If
+            sParams = sParams & Info.EventParameters(lIdx).Name & "=" & C2Str(vValue)
+        End If
+    Next
+    pvFormatEvent = Info.Name & "(" & sParams & ")"
+    Exit Function
+EH:
+    pvFormatEvent = Info.Name & "(?)"
+End Function
+
+Private Sub pvRunInput(oList As Object)
+    Const FUNC_NAME     As String = "pvRunInput"
+    Dim lCount          As Long
+    Dim lIdx            As Long
+    Dim oEntry          As Object
+    Dim oPoint          As Object
+    Dim lX              As Long
+    Dim lY              As Long
+    Dim sText           As String
+    Dim lJdx            As Long
+    Dim hTarget         As Long
+    Dim uPt             As POINTAPI
+
+    '--- clicks and keystrokes are posted at the control the same way the
+    '--- ported samples receive them, so an edit session can be scripted
+    On Error GoTo EH
+    lCount = C2Lng(JsonValue(oList, "-1"))
+    For lIdx = 0 To lCount - 1
+        Set oEntry = C2Obj(JsonValue(oList, lIdx))
+        Set oPoint = C2Obj(JsonValue(oEntry, "click"))
+        If Not oPoint Is Nothing Then
+            '--- a scenario clicks where the capture shows it, so the point is
+            '--- in the host form's client space and travels through the screen
+            '--- to whichever window actually sits under it -- the original's
+            '--- grid is an inner window, ours is the UserControl itself
+            uPt.X = C2Lng(JsonValue(oPoint, 0))
+            uPt.Y = C2Lng(JsonValue(oPoint, 1))
+            Call ClientToScreen(hWnd, uPt)
+            hTarget = WindowFromPoint(uPt.X, uPt.Y)
+            Call ScreenToClient(hTarget, uPt)
+            Call SendMessage(hTarget, WM_LBUTTONDOWN, MK_LBUTTON, ByVal pvMakeLong(uPt.X, uPt.Y))
+            Call SendMessage(hTarget, WM_LBUTTONUP, 0, ByVal pvMakeLong(uPt.X, uPt.Y))
+        End If
+        '--- keys follow the focus, which an in-place editor takes from the grid
+        If Not IsEmpty(JsonValue(oEntry, "key")) Then
+            Call SendMessage(pvFocusHwnd(), WM_KEYDOWN, C2Lng(JsonValue(oEntry, "key")), ByVal 0&)
+            '--- resolved again: a key that closes an in-place editor destroys
+            '--- the window it went down on, and the release lands on whatever
+            '--- holds the focus by then, exactly as real input would
+            Call SendMessage(pvFocusHwnd(), WM_KEYUP, C2Lng(JsonValue(oEntry, "key")), ByVal 0&)
+        End If
+        sText = C2Str(JsonValue(oEntry, "text"))
+        For lJdx = 1 To Len(sText)
+            hTarget = pvFocusHwnd()
+            Call SendMessage(hTarget, WM_KEYDOWN, AscW(UCase$(Mid$(sText, lJdx, 1))), ByVal 0&)
+            Call SendMessage(hTarget, WM_CHAR, AscW(Mid$(sText, lJdx, 1)), ByVal 0&)
+            Call SendMessage(hTarget, WM_KEYUP, AscW(UCase$(Mid$(sText, lJdx, 1))), ByVal 0&)
+        Next
+        pvSettle 5
+    Next
+    Exit Sub
+EH:
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+End Sub
+
+Private Function pvFocusHwnd() As Long
+    Dim hChild          As Long
+    Dim sClass          As String
+
+    '--- an in-place editor is a child edit window the grid puts over the
+    '--- cell, and synthetic keys have to go at it rather than at the grid,
+    '--- which would only raise KeyPress and drop them
+    hChild = pvFindEditWindow(hWnd)
+    If hChild <> 0 Then
+        pvFocusHwnd = hChild
+        Exit Function
+    End If
+    pvFocusHwnd = GetFocus()
+    If pvFocusHwnd = 0 Then
+        pvFocusHwnd = m_oExt.hWnd
+    End If
+End Function
+
+Private Function pvFindEditWindow(ByVal hParent As Long) As Long
+    Dim hChild          As Long
+    Dim sClass          As String
+    Dim hFound          As Long
+
+    hChild = GetWindow(hParent, GW_CHILD)
+    Do While hChild <> 0
+        If IsWindowVisible(hChild) <> 0 Then
+            sClass = String$(256, 0)
+            sClass = Left$(sClass, GetClassName(hChild, StrPtr(sClass), 256))
+            '--- the original's editor is an EDIT window and ours is a VB
+            '--- TextBox, whose class is ThunderRT6TextBox
+            If InStr(1, sClass, "Edit", vbTextCompare) > 0 Or InStr(1, sClass, "TextBox", vbTextCompare) > 0 Then
+                pvFindEditWindow = hChild
+                Exit Function
+            End If
+            hFound = pvFindEditWindow(hChild)
+            If hFound <> 0 Then
+                pvFindEditWindow = hFound
+                Exit Function
+            End If
+        End If
+        hChild = GetWindow(hChild, GW_HWNDNEXT)
+    Loop
+End Function
+
+Private Function pvMakeLong(ByVal lLo As Long, ByVal lHi As Long) As Long
+    pvMakeLong = (lLo And &HFFFF&) Or (lHi * &H10000)
+End Function
+
 Private Sub pvRunCalls(oList As Object)
     Const FUNC_NAME     As String = "pvRunCalls"
     Dim lCount          As Long
@@ -402,6 +557,9 @@ Private Sub m_oExt_ObjectEvent(Info As EventInfo)
     Dim nIdx            As Integer
 
     On Error GoTo EH
+    If m_bLogEvents Then
+        m_sEventLog = m_sEventLog & pvFormatEvent(Info) & vbCrLf
+    End If
     If Info.Name = "UnboundReadData" Then
         If Not m_oUnboundRows Is Nothing Then
             lRowIndex = C2Lng(Info.EventParameters("RowIndex").Value)

@@ -25,11 +25,8 @@ Public Const NULL_PTR                   As LongPtr = 0
 Public Const PTR_SIZE                   As Long = 4
 Public Const NULL_PTR                   As Long = 0
 #End If
-
 Public Const INTERFACESAFE_FOR_UNTRUSTED_CALLER As Long = 1
 Public Const INTERFACESAFE_FOR_UNTRUSTED_DATA As Long = 2
-
-'--- painting
 Public Const OPAQUE                     As Long = 2
 Public Const PS_SOLID                   As Long = 0
 Public Const PATINVERT                  As Long = &H5A0049
@@ -40,6 +37,7 @@ Public Const DT_CENTER                  As Long = 1
 Public Const DT_RIGHT                   As Long = 2
 Public Const DT_VCENTER                 As Long = 4
 Public Const DT_SINGLELINE              As Long = &H20
+Public Const DT_WORDBREAK               As Long = &H10
 Public Const DT_CALCRECT                As Long = &H400
 Public Const DT_NOPREFIX                As Long = &H800
 Public Const DT_NOCLIP                  As Long = &H100
@@ -85,8 +83,71 @@ Public Const DFCS_SCROLLRIGHT           As Long = 3
 Public Const DFCS_INACTIVE              As Long = &H100
 Public Const DFC_BUTTON                 As Long = 4
 Public Const DFCS_BUTTONPUSH            As Long = &H10
+Public Const LOGPIXELSY                 As Long = 90
+Public Const DFCS_BUTTONCHECK           As Long = &H0
+Public Const DFCS_CHECKED               As Long = &H400
+Public Const DFCS_FLAT                  As Long = &H4000
 Public Const EDGE_SUNKEN                As Long = &HA
 Public Const BF_RECT                    As Long = &HF
+Public Const EM_SETMARGINS              As Long = &HD3
+Public Const EC_LEFTMARGIN              As Long = 1
+Public Const EM_SETSEL                  As Long = &HB1
+Public Const EM_CHARFROMPOS             As Long = &HD7
+Public Const EM_LIMITTEXT               As Long = &HC5
+Public Const WM_SETFONT                 As Long = &H30
+Public Const WM_COMMAND                 As Long = &H111
+Public Const WM_KEYUP                   As Long = &H101
+Public Const WM_SETTEXT                 As Long = &HC
+Public Const WM_GETTEXT                 As Long = &HD
+Public Const WM_GETTEXTLENGTH           As Long = &HE
+Public Const EN_CHANGE                  As Long = &H300
+Public Const WS_CHILD                   As Long = &H40000000
+Public Const WS_VISIBLE                 As Long = &H10000000
+Public Const ES_LEFT                    As Long = 0
+Public Const ES_CENTER                  As Long = 1
+Public Const ES_RIGHT                   As Long = 2
+Public Const ES_MULTILINE               As Long = 4
+Public Const ES_AUTOHSCROLL             As Long = &H80
+Public Const ES_AUTOVSCROLL             As Long = &H40
+
+Public Declare Function SendMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long
+Public Declare Function CreateWindowEx Lib "user32" Alias "CreateWindowExW" (ByVal dwExStyle As Long, ByVal lpClassName As Long, ByVal lpWindowName As Long, ByVal dwStyle As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hWndParent As Long, ByVal hMenu As Long, ByVal hInstance As Long, lpParam As Any) As Long
+Public Declare Function DestroyWindow Lib "user32" (ByVal hWnd As Long) As Long
+Public Declare Function SetFocusApi Lib "user32" Alias "SetFocus" (ByVal hWnd As Long) As Long
+Public Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (Destination As Any, Source As Any, ByVal Length As Long)
+Public Declare Function OleTranslateColor Lib "olepro32" (ByVal clrOle As OLE_COLOR, ByVal hPal As Long, clrRef As Long) As Long
+Public Declare Function CreateSolidBrush Lib "gdi32" (ByVal crColor As Long) As Long
+Public Declare Function CreatePen Lib "gdi32" (ByVal nPenStyle As Long, ByVal nWidth As Long, ByVal crColor As Long) As Long
+Public Declare Function SelectObject Lib "gdi32" (ByVal hDC As Long, ByVal hObject As Long) As Long
+Public Declare Function DeleteObject Lib "gdi32" (ByVal hObject As Long) As Long
+Public Declare Function FillRect Lib "user32" (ByVal hDC As Long, lpRect As RECT, ByVal hBrush As Long) As Long
+Public Declare Function MoveToEx Lib "gdi32" (ByVal hDC As Long, ByVal X As Long, ByVal Y As Long, ByVal lpPoint As Long) As Long
+Public Declare Function LineTo Lib "gdi32" (ByVal hDC As Long, ByVal X As Long, ByVal Y As Long) As Long
+Public Declare Function SetBkMode Lib "gdi32" (ByVal hDC As Long, ByVal nBkMode As Long) As Long
+Public Declare Function SetTextColor Lib "gdi32" (ByVal hDC As Long, ByVal crColor As Long) As Long
+Public Declare Function SetBkColor Lib "gdi32" (ByVal hDC As Long, ByVal crColor As Long) As Long
+Public Declare Function DrawText Lib "user32" Alias "DrawTextW" (ByVal hDC As Long, ByVal lpStr As Long, ByVal nCount As Long, lpRect As RECT, ByVal wFormat As Long) As Long
+Public Declare Function DrawFocusRect Lib "user32" (ByVal hDC As Long, lpRect As RECT) As Long
+Public Declare Function PatBlt Lib "gdi32" (ByVal hDC As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal dwRop As Long) As Long
+Public Declare Function IntersectClipRect Lib "gdi32" (ByVal hDC As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long) As Long
+Public Declare Function SaveDC Lib "gdi32" (ByVal hDC As Long) As Long
+Public Declare Function RestoreDC Lib "gdi32" (ByVal hDC As Long, ByVal nSavedDC As Long) As Long
+Public Declare Function GetDeviceCaps Lib "gdi32" (ByVal hDC As Long, ByVal nIndex As Long) As Long
+Public Declare Function GetDC Lib "user32" (ByVal hWnd As Long) As Long
+Public Declare Function ReleaseDC Lib "user32" (ByVal hWnd As Long, ByVal hDC As Long) As Long
+Public Declare Function GetTextMetrics Lib "gdi32" Alias "GetTextMetricsW" (ByVal hDC As Long, lpMetrics As TEXTMETRICW) As Long
+Public Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long) As Long
+Public Declare Function SetWindowLong Lib "user32" Alias "SetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long, ByVal dwNewLong As Long) As Long
+Public Declare Function WindowFromPoint Lib "user32" (ByVal xPoint As Long, ByVal yPoint As Long) As Long
+Public Declare Function GetCursorPos Lib "user32" (lpPoint As POINTAPI) As Long
+Public Declare Function DrawFrameControl Lib "user32" (ByVal hDC As Long, lpRect As RECT, ByVal un1 As Long, ByVal un2 As Long) As Long
+Public Declare Function DrawEdge Lib "user32" (ByVal hDC As Long, qrc As RECT, ByVal edge As Long, ByVal grfFlags As Long) As Long
+Public Declare Function SetWindowPos Lib "user32" (ByVal hWnd As Long, ByVal hWndInsertAfter As Long, ByVal X As Long, ByVal Y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long
+Public Declare Function SetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal fnBar As Long, lpsi As SCROLLINFO, ByVal fRedraw As Long) As Long
+Public Declare Function GetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal fnBar As Long, lpsi As SCROLLINFO) As Long
+Public Declare Function GetKeyState Lib "user32" (ByVal nVirtKey As Long) As Integer
+Private Declare Function VariantChangeType Lib "oleaut32" (Dest As Variant, Src As Variant, ByVal wFlags As Integer, ByVal vt As VbVarType) As Long
+Public Declare Function GetSystemMetrics Lib "user32" (ByVal nIndex As Long) As Long
 
 Public Type POINTAPI
     X                       As Long
@@ -132,40 +193,6 @@ Public Type TEXTMETRICW
     tmPitchAndFamily        As Byte
     tmCharSet               As Byte
 End Type
-
-Public Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (Destination As Any, Source As Any, ByVal Length As Long)
-Public Declare Function OleTranslateColor Lib "olepro32" (ByVal clrOle As OLE_COLOR, ByVal hPal As Long, clrRef As Long) As Long
-Public Declare Function CreateSolidBrush Lib "gdi32" (ByVal crColor As Long) As Long
-Public Declare Function CreatePen Lib "gdi32" (ByVal nPenStyle As Long, ByVal nWidth As Long, ByVal crColor As Long) As Long
-Public Declare Function SelectObject Lib "gdi32" (ByVal hDC As Long, ByVal hObject As Long) As Long
-Public Declare Function DeleteObject Lib "gdi32" (ByVal hObject As Long) As Long
-Public Declare Function FillRect Lib "user32" (ByVal hDC As Long, lpRect As RECT, ByVal hBrush As Long) As Long
-Public Declare Function MoveToEx Lib "gdi32" (ByVal hDC As Long, ByVal X As Long, ByVal Y As Long, ByVal lpPoint As Long) As Long
-Public Declare Function LineTo Lib "gdi32" (ByVal hDC As Long, ByVal X As Long, ByVal Y As Long) As Long
-Public Declare Function SetBkMode Lib "gdi32" (ByVal hDC As Long, ByVal nBkMode As Long) As Long
-Public Declare Function SetTextColor Lib "gdi32" (ByVal hDC As Long, ByVal crColor As Long) As Long
-Public Declare Function SetBkColor Lib "gdi32" (ByVal hDC As Long, ByVal crColor As Long) As Long
-Public Declare Function DrawText Lib "user32" Alias "DrawTextW" (ByVal hDC As Long, ByVal lpStr As Long, ByVal nCount As Long, lpRect As RECT, ByVal wFormat As Long) As Long
-Public Declare Function DrawFocusRect Lib "user32" (ByVal hDC As Long, lpRect As RECT) As Long
-Public Declare Function PatBlt Lib "gdi32" (ByVal hDC As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal dwRop As Long) As Long
-Public Declare Function IntersectClipRect Lib "gdi32" (ByVal hDC As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long) As Long
-Public Declare Function SaveDC Lib "gdi32" (ByVal hDC As Long) As Long
-Public Declare Function RestoreDC Lib "gdi32" (ByVal hDC As Long, ByVal nSavedDC As Long) As Long
-Public Declare Function GetDC Lib "user32" (ByVal hWnd As Long) As Long
-Public Declare Function ReleaseDC Lib "user32" (ByVal hWnd As Long, ByVal hDC As Long) As Long
-Public Declare Function GetTextMetrics Lib "gdi32" Alias "GetTextMetricsW" (ByVal hDC As Long, lpMetrics As TEXTMETRICW) As Long
-Public Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long) As Long
-Public Declare Function SetWindowLong Lib "user32" Alias "SetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long, ByVal dwNewLong As Long) As Long
-Public Declare Function WindowFromPoint Lib "user32" (ByVal xPoint As Long, ByVal yPoint As Long) As Long
-Public Declare Function GetCursorPos Lib "user32" (lpPoint As POINTAPI) As Long
-Public Declare Function DrawFrameControl Lib "user32" (ByVal hDC As Long, lpRect As RECT, ByVal un1 As Long, ByVal un2 As Long) As Long
-Public Declare Function DrawEdge Lib "user32" (ByVal hDC As Long, qrc As RECT, ByVal edge As Long, ByVal grfFlags As Long) As Long
-Public Declare Function SetWindowPos Lib "user32" (ByVal hWnd As Long, ByVal hWndInsertAfter As Long, ByVal X As Long, ByVal Y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long
-Public Declare Function SetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal fnBar As Long, lpsi As SCROLLINFO, ByVal fRedraw As Long) As Long
-Public Declare Function GetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal fnBar As Long, lpsi As SCROLLINFO) As Long
-Public Declare Function GetKeyState Lib "user32" (ByVal nVirtKey As Long) As Integer
-Private Declare Function VariantChangeType Lib "oleaut32" (Dest As Variant, Src As Variant, ByVal wFlags As Integer, ByVal vt As VbVarType) As Long
-Public Declare Function GetSystemMetrics Lib "user32" (ByVal nIndex As Long) As Long
 
 '=========================================================================
 ' Functions

@@ -16,6 +16,57 @@ Private Const SRCCOPY                       As Long = &HCC0020
 Private Const DIB_RGB_COLORS                As Long = 0
 Private Const BI_RGB                        As Long = 0
 Private Const LOGPIXELSY                    As Long = 90
+'--- scripted input for the scenarios that drive an edit session
+Public Const WM_KEYDOWN                     As Long = &H100
+Public Const WM_KEYUP                       As Long = &H101
+Public Const WM_CHAR                        As Long = &H102
+Public Const WM_LBUTTONDOWN                 As Long = &H201
+Public Const WM_LBUTTONUP                   As Long = &H202
+Public Const MK_LBUTTON                     As Long = &H1
+Public Const GW_CHILD                       As Long = 5
+Public Const GW_HWNDNEXT                    As Long = 2
+
+Private Declare Function GetClientRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
+Private Declare Function GetWindowRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
+Private Declare Function GetWindowDC Lib "user32" (ByVal hWnd As Long) As Long
+Private Declare Function GetDC Lib "user32" (ByVal hWnd As Long) As Long
+Private Declare Function ReleaseDC Lib "user32" (ByVal hWnd As Long, ByVal hdc As Long) As Long
+Private Declare Function GetDeviceCaps Lib "gdi32" (ByVal hdc As Long, ByVal nIndex As Long) As Long
+Private Declare Function GetTextMetrics Lib "gdi32" Alias "GetTextMetricsW" (ByVal hdc As Long, lpMetrics As TEXTMETRICW) As Long
+Private Declare Function CreateCompatibleDC Lib "gdi32" (ByVal hdc As Long) As Long
+Private Declare Function CreateCompatibleBitmap Lib "gdi32" (ByVal hdc As Long, ByVal nWidth As Long, ByVal nHeight As Long) As Long
+Private Declare Function SelectObject Lib "gdi32" (ByVal hdc As Long, ByVal hObject As Long) As Long
+Private Declare Function BitBlt Lib "gdi32" (ByVal hDestDC As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hSrcDC As Long, ByVal xSrc As Long, ByVal ySrc As Long, ByVal dwRop As Long) As Long
+Private Declare Function GetDIBits Lib "gdi32" (ByVal hdc As Long, ByVal hBitmap As Long, ByVal nStartScan As Long, ByVal nNumScans As Long, lpBits As Any, lpBI As BITMAPINFOHEADER, ByVal wUsage As Long) As Long
+Private Declare Function DeleteObject Lib "gdi32" (ByVal hObject As Long) As Long
+Private Declare Function DeleteDC Lib "gdi32" (ByVal hdc As Long) As Long
+Private Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (Destination As Any, Source As Any, ByVal Length As Long)
+Public Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+Public Declare Function SendMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, lParam As Any) As Long
+Public Declare Function GetFocus Lib "user32" () As Long
+Public Declare Function ClientToScreen Lib "user32" (ByVal hWnd As Long, lpPoint As POINTAPI) As Long
+Public Declare Function ScreenToClient Lib "user32" (ByVal hWnd As Long, lpPoint As POINTAPI) As Long
+Public Declare Function WindowFromPoint Lib "user32" (ByVal xPoint As Long, ByVal yPoint As Long) As Long
+Public Declare Function GetWindow Lib "user32" (ByVal hWnd As Long, ByVal wCmd As Long) As Long
+Public Declare Function GetClassName Lib "user32" Alias "GetClassNameW" (ByVal hWnd As Long, ByVal lpClassName As Long, ByVal nMaxCount As Long) As Long
+Public Declare Function IsWindowVisible Lib "user32" (ByVal hWnd As Long) As Long
+'--- GDI+
+Private Declare Function GdiplusStartup Lib "gdiplus" (token As Long, inputbuf As Any, ByVal outputbuf As Long) As Long
+Private Declare Function GdiplusShutdown Lib "gdiplus" (ByVal token As Long) As Long
+Private Declare Function GdipCreateBitmapFromHBITMAP Lib "gdiplus" (ByVal hBitmap As Long, ByVal hPalette As Long, hGdipBmp As Long) As Long
+Private Declare Function GdipDisposeImage Lib "gdiplus" (ByVal image As Long) As Long
+Private Declare Function GdipSaveImageToFile Lib "gdiplus" (ByVal image As Long, ByVal fileName As Long, clsidEncoder As Any, encoderParams As Any) As Long
+Private Declare Function GdipCreateBitmapFromFile Lib "gdiplus" (ByVal fileName As Long, hGdipBmp As Long) As Long
+Private Declare Function GdipCreateHBITMAPFromBitmap Lib "gdiplus" (ByVal hGdipBmp As Long, hBmpReturn As Long, ByVal background As Long) As Long
+Private Declare Function CreateDIBSection Lib "gdi32" (ByVal hdc As Long, lpBI As BITMAPINFOHEADER, ByVal wUsage As Long, lplpVoid As Long, ByVal hSection As Long, ByVal dwOffset As Long) As Long
+Private Declare Function GetObjectApi Lib "gdi32" Alias "GetObjectA" (ByVal hObject As Long, ByVal nCount As Long, lpObject As Any) As Long
+'--- DWM
+Private Declare Function DwmSetWindowAttribute Lib "dwmapi" (ByVal hWnd As Long, ByVal dwAttribute As Long, pvAttribute As Any, ByVal cbAttribute As Long) As Long
+
+Public Type POINTAPI
+    X                       As Long
+    Y                       As Long
+End Type
 
 Private Type RECT
     Left                    As Long
@@ -37,14 +88,6 @@ Private Type BITMAPINFOHEADER
     biClrUsed               As Long
     biClrImportant          As Long
 End Type
-
-Private Declare Function GetClientRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
-Private Declare Function GetWindowRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
-Private Declare Function GetWindowDC Lib "user32" (ByVal hWnd As Long) As Long
-Private Declare Function GetDC Lib "user32" (ByVal hWnd As Long) As Long
-Private Declare Function ReleaseDC Lib "user32" (ByVal hWnd As Long, ByVal hdc As Long) As Long
-Private Declare Function GetDeviceCaps Lib "gdi32" (ByVal hdc As Long, ByVal nIndex As Long) As Long
-Private Declare Function GetTextMetrics Lib "gdi32" Alias "GetTextMetricsW" (ByVal hdc As Long, lpMetrics As TEXTMETRICW) As Long
 
 Private Type TEXTMETRICW
     tmHeight                As Long
@@ -68,27 +111,6 @@ Private Type TEXTMETRICW
     tmPitchAndFamily        As Byte
     tmCharSet               As Byte
 End Type
-Private Declare Function CreateCompatibleDC Lib "gdi32" (ByVal hdc As Long) As Long
-Private Declare Function CreateCompatibleBitmap Lib "gdi32" (ByVal hdc As Long, ByVal nWidth As Long, ByVal nHeight As Long) As Long
-Private Declare Function SelectObject Lib "gdi32" (ByVal hdc As Long, ByVal hObject As Long) As Long
-Private Declare Function BitBlt Lib "gdi32" (ByVal hDestDC As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hSrcDC As Long, ByVal xSrc As Long, ByVal ySrc As Long, ByVal dwRop As Long) As Long
-Private Declare Function GetDIBits Lib "gdi32" (ByVal hdc As Long, ByVal hBitmap As Long, ByVal nStartScan As Long, ByVal nNumScans As Long, lpBits As Any, lpBI As BITMAPINFOHEADER, ByVal wUsage As Long) As Long
-Private Declare Function DeleteObject Lib "gdi32" (ByVal hObject As Long) As Long
-Private Declare Function DeleteDC Lib "gdi32" (ByVal hdc As Long) As Long
-Private Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (Destination As Any, Source As Any, ByVal Length As Long)
-Public Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
-'--- GDI+
-Private Declare Function GdiplusStartup Lib "gdiplus" (token As Long, inputbuf As Any, ByVal outputbuf As Long) As Long
-Private Declare Function GdiplusShutdown Lib "gdiplus" (ByVal token As Long) As Long
-Private Declare Function GdipCreateBitmapFromHBITMAP Lib "gdiplus" (ByVal hBitmap As Long, ByVal hPalette As Long, hGdipBmp As Long) As Long
-Private Declare Function GdipDisposeImage Lib "gdiplus" (ByVal image As Long) As Long
-Private Declare Function GdipSaveImageToFile Lib "gdiplus" (ByVal image As Long, ByVal fileName As Long, clsidEncoder As Any, encoderParams As Any) As Long
-Private Declare Function GdipCreateBitmapFromFile Lib "gdiplus" (ByVal fileName As Long, hGdipBmp As Long) As Long
-Private Declare Function GdipCreateHBITMAPFromBitmap Lib "gdiplus" (ByVal hGdipBmp As Long, hBmpReturn As Long, ByVal background As Long) As Long
-Private Declare Function CreateDIBSection Lib "gdi32" (ByVal hdc As Long, lpBI As BITMAPINFOHEADER, ByVal wUsage As Long, lplpVoid As Long, ByVal hSection As Long, ByVal dwOffset As Long) As Long
-Private Declare Function GetObjectApi Lib "gdi32" Alias "GetObjectA" (ByVal hObject As Long, ByVal nCount As Long, lpObject As Any) As Long
-'--- DWM
-Private Declare Function DwmSetWindowAttribute Lib "dwmapi" (ByVal hWnd As Long, ByVal dwAttribute As Long, pvAttribute As Any, ByVal cbAttribute As Long) As Long
 
 Private Type BITMAP
     bmType                  As Long

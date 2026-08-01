@@ -469,8 +469,9 @@ Private Sub pvTestUnbound()
         .Row = 2
         .FirstItem = 2
         .FirstItem = 2
-        '--- Rebind positioned the current cell on (1,1)
-        AssertEquals "Unbound: nav event order", "RowCol(1,1);RowCol(2,1);First;", oForm.EventLog
+        '--- Rebind selects the whole row, which is what Col = 0 means, so
+        '--- both changes report coming from there
+        AssertEquals "Unbound: nav event order", "RowCol(1,0);RowCol(2,0);First;", oForm.EventLog
     End With
     Unload oForm
 End Sub
@@ -855,10 +856,14 @@ Private Sub pvTestKeyNav()
         .ItemCount = 50
         .Rebind
         AssertEquals "KeyNav: initial Row", 1, .Row
-        AssertEquals "KeyNav: initial Col", 1, .Col
+        '--- a fresh bind has the whole row selected, not a cell in it
+        AssertEquals "KeyNav: initial Col", 0, .Col
         '--- arrows drive the current cell through the subclassed proc
         SendMessage .hWnd, WM_KEYDOWN, vbKeyDown, 0
         AssertEquals "KeyNav: Down -> Row 2", 2, .Row
+        '--- the first Right steps off the row selection onto column 1
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyRight, 0
+        AssertEquals "KeyNav: Right off the row selection -> Col 1", 1, .Col
         SendMessage .hWnd, WM_KEYDOWN, vbKeyRight, 0
         AssertEquals "KeyNav: Right -> Col 2", 2, .Col
         SendMessage .hWnd, WM_KEYDOWN, vbKeyRight, 0

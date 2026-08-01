@@ -1,0 +1,25 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "edit-tall-row",
+    "width": 400,
+    "height": 220,
+    "apply": "before-show",
+    "props": {
+        "AllowEdit": true,
+        "RowHeight": 600,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500, "EditType": 1, "WordWrap": true },
+            { "Caption": "Beta", "Width": 1500, "EditType": 1 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "the quick brown fox jumps over the lazy dog", "b1" ],
+            [ "a2", "b2" ]
+        ]
+    },
+    "input": [
+        { "click": [ 40, 70 ] },
+        { "text": "Xy" }
+    ]
+}

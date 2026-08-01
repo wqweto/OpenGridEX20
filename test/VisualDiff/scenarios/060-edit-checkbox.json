@@ -1,0 +1,24 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "edit-checkbox",
+    "width": 400,
+    "height": 200,
+    "apply": "before-show",
+    "props": {
+        "AllowEdit": true,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500 },
+            { "Caption": "Flag", "Width": 1500, "ColumnType": 3, "EditType": 2 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "a1", true ],
+            [ "a2", false ]
+        ]
+    },
+    "input": [
+        { "click": [ 140, 60 ] },
+        { "key": 32 }
+    ]
+}
