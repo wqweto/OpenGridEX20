@@ -25,8 +25,8 @@ DefObj A-Z
 ' Constants and member variables
 '=========================================================================
 
+Private m_pOwner                    As GridEX
 Private m_cItems                    As Collection
-Private m_lDefaultWidth             As Long
 
 '=========================================================================
 ' Properties
@@ -56,9 +56,11 @@ End Property
 Public Function Add(Optional ByVal Caption As String, Optional ByVal ColumnType As jgexColumnTypeConstants = jgexText, Optional ByVal EditType As jgexEditTypeConstants = jgexEditTextBox, Optional ByVal Key As String) As JSColumn
 Attribute Add.VB_Description = "Adds a JSColumn and returns a reference to the newly created object."
     Set Add = New JSColumn
-    Add.frInit m_cItems.Count + 1, Caption, ColumnType, EditType, Key
+    Add.frInit m_pOwner, m_cItems.Count + 1, Caption, ColumnType, EditType, Key
     '--- a new column takes the control's DefaultColumnWidth, as in the original
-    Add.frWidthPx = m_lDefaultWidth
+    If Not m_pOwner Is Nothing Then
+        Add.frWidthPx = m_pOwner.frDefaultColumnWidthPx
+    End If
     If LenB(Key) <> 0 Then
         m_cItems.Add Add, Key
     Else
@@ -110,9 +112,21 @@ End Sub
 ' Friend methods
 '=========================================================================
 
-Friend Property Let frDefaultWidth(ByVal lValue As Long)
-    m_lDefaultWidth = lValue
-End Property
+Friend Sub frInit(ByVal oCtl As GridEX)
+    '--- weak, as everywhere else the object model points back at its owner
+    Call CopyMemory(m_pOwner, oCtl, PTR_SIZE)
+End Sub
+
+Friend Sub frTerminate()
+    Dim lIdx            As Long
+    Dim oItem           As JSColumn
+
+    For lIdx = 1 To m_cItems.Count
+        Set oItem = m_cItems.Item(lIdx)
+        oItem.frTerminate
+    Next
+    Call CopyMemory(m_pOwner, NULL_PTR, PTR_SIZE)
+End Sub
 
 '=========================================================================
 ' Base class events
@@ -120,5 +134,8 @@ End Property
 
 Private Sub Class_Initialize()
     Set m_cItems = New Collection
-    m_lDefaultWidth = 100
+End Sub
+
+Private Sub Class_Terminate()
+    frTerminate
 End Sub

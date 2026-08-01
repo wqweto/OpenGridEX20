@@ -1,0 +1,24 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "group-footer-aggregates",
+    "width": 500,
+    "height": 300,
+    "apply": "before-show",
+    "props": {
+        "GroupFooterStyle": 2,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1200, "AggregateFunction": 1 },
+            { "Caption": "Beta", "Width": 1200, "AggregateFunction": 3 },
+            { "Caption": "Gamma", "Width": 1200, "AggregateFunction": 4 },
+            { "Caption": "Delta", "Width": 1200, "AggregateFunction": 5 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "north", 10, 10, 10 ],
+            [ "north", 20, 20, 20 ],
+            [ "south", 5, 5, 5 ]
+        ]
+    },
+    "post": { "Groups": [ { "ColIndex": 1, "SortOrder": 1 } ] }
+}

@@ -84,3 +84,10 @@ Friend Sub frSetIndex(ByVal nIndex As Integer)
     m_nIndex = nIndex
 End Sub
 
+'=========================================================================
+' Base class events
+'=========================================================================
+
+Private Sub Class_Terminate()
+    frTerminate
+End Sub

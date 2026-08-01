@@ -83,7 +83,7 @@ snapshot corpus, but the renderer never looks at them.
 more distinct values. Two of them cannot be proven by a picture and are pinned
 by `ModelTests` instead: `ContinuousScroll` only shows up mid-drag, and `Redraw`
 suppresses painting rather than changing it. `Col` is state with no pixels of
-its own -- it is listed to record that, not as a gap. The 68 that remain are
+its own -- it is listed to record that, not as a gap. The 60 that remain are
 unimplemented, each owned by a later milestone.
 
 Getting there took eight scenarios and turned up **eleven** real defects. Each had
@@ -96,7 +96,6 @@ Not-implemented properties by owning milestone:
 | milestone | count |
 |---|---:|
 | M10 styling extras | 38 |
-| M4 sorting/grouping | 8 |
 | M6 card view | 12 |
 | M5 editing | 5 |
 | **unowned** | **5** |
@@ -116,7 +115,7 @@ Five remain unowned: the drag/resize affordances (`AllowColumnDrag`,
 ### The matrix
 
 Scenario names refer to `test\VisualDiff\scenarios\NNN-*.json`, numbered in
-creation order; all 48 are verified at 96 and 120 dpi, and the first 28 at 144 as
+creation order; all 56 are verified at 96 and 120 dpi, and the first 28 at 144 as
 well. The `Commit` column records where the property started affecting pixels,
 not where it was first stored -- every member was declared in the M2 storage
 commit, so that hash carries no information about painting.
@@ -167,14 +166,14 @@ commit, so that hash carries no information about painting.
 | `GridLineStyle` | `jgexGridLineStyleConstants` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `022-colors-rows` (dots), `028-gridlines-vertical` (dashes), solid default |
 | `GroupByBoxInfoText` | `String` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `021-colors-chrome` custom text vs default |
 | `GroupByBoxVisible` | `Boolean` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `010-headers-noborder`, `011-headers-single3d`, `012-headers-singleflat` vs default |
-| `GroupFooterStyle` | `jgexGroupFooterStyleConstants` | **not impl** | M4 | -- | -- |
+| `GroupFooterStyle` | `jgexGroupFooterStyleConstants` | verified | M4 | -- | `053-group-footer-caption` (caption) and `054-group-footer-totals` (totals) vs the `jgexNoGroupFooter` default elsewhere |
 | `Groups` | `JSGroups` | verified | M4 | -- | `038-grouped-one-level`, `041-grouped-two-levels` (nested levels, indent rules, chip staircase), `039`/`044` (font scaling), `040-group-caption-width` |
 | `HeaderStyle` | `jgexHeaderStyleConstants` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | all four values: default 0 everywhere, `010-headers-noborder` (1), `012-headers-singleflat` and `003-headers-flat` (2, the latter over a 400tw header with rows), `011-headers-single3d` (3) |
 | `HideSelection` | `Boolean` | **not impl** | M10 | -- | -- |
 | `ImageHeight` | `Integer` | **not impl** | M10 | -- | -- |
 | `ImageWidth` | `Integer` | **not impl** | M10 | -- | -- |
 | `ItemCount` | `Long` | verified | M3a | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | row counts 2/3/5/6/14/16 across the corpus |
-| `JSColumn.AggregateFunction` | `jgexAggregateFunctionConstants` | **not impl** | M4 | -- | -- |
+| `JSColumn.AggregateFunction` | `jgexAggregateFunctionConstants` | verified | M4 | -- | `054-group-footer-totals` (sum) and `056-group-footer-aggregates` (count/avg/min/max); `ModelTests` covers stddev and value count |
 | `JSColumn.AllowSizing` | `Boolean` | **not impl** | unowned | -- | -- |
 | `JSColumn.ButtonStyle` | `jgexButtonStyleConstants` | **not impl** | M5 | -- | -- |
 | `JSColumn.Caption` | `String` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | distinct captions in every scenario |
@@ -186,22 +185,22 @@ commit, so that hash carries no information about painting.
 | `JSColumn.DefaultIcon` | `Integer` | **not impl** | M10 | -- | -- |
 | `JSColumn.EditType` | `jgexEditTypeConstants` | **not impl** | M5 | -- | -- |
 | `JSColumn.Format` | `String` | **not impl** | M10 | -- | -- |
-| `JSColumn.GroupEmptyStringCaption` | `String` | **not impl** | M4 | -- | -- |
-| `JSColumn.GroupFormat` | `String` | **not impl** | M4 | -- | -- |
-| `JSColumn.GroupPrefix` | `String` | **not impl** | M4 | -- | -- |
+| `JSColumn.GroupEmptyStringCaption` | `String` | verified | M4 | -- | `050-group-empty-caption` (`<blank>`) vs `051-group-empty-default` (the `(none)` default) |
+| `JSColumn.GroupFormat` | `String` | verified | M4 | -- | `052-group-format` (`0` over 10.2/10.4/20.4) vs unformatted elsewhere; labels the caption only, the group still breaks on the raw value |
+| `JSColumn.GroupPrefix` | `String` | verified | M4 | -- | `049-group-prefix` (`Region: `) vs unprefixed elsewhere; joined by a space, caption starts one space earlier |
 | `JSColumn.HeaderAlignment` | `jgexAlignmentConstants` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `003-headers-flat` sets 2; default 0 elsewhere |
 | `JSColumn.HeaderIcon` | `Integer` | **not impl** | M10 | -- | -- |
 | `JSColumn.HeaderStyle` | `String` | **not impl** | M10 | -- | -- |
 | `JSColumn.HeaderToolTip` | `String` | **not impl** | M10 | -- | -- |
-| `JSColumn.IsGrouped` | `Boolean` | **not impl** | M4 | -- | -- |
+| `JSColumn.IsGrouped` | `Boolean` | consumed | M4 | -- | `ModelTests` pvTestAutomaticSort: follows `Groups`, and routes a header click to the group |
 | `JSColumn.MaxRowsInCardView` | `Long` | **not impl** | M6 | -- | -- |
 | `JSColumn.MinRowsInCardView` | `Long` | **not impl** | M6 | -- | -- |
 | `JSColumn.ShowCaptionInCardView` | `Boolean` | **not impl** | M6 | -- | -- |
 | `JSColumn.SortOrder` | `jgexSortOrderConstants` | verified | M4 | -- | drives the header arrow: `035-sorted-column` (ascending) vs `037-sorted-descending` |
 | `JSColumn.SortType` | `jgexSortTypeConstants` | verified | M4 | -- | `037-sorted-descending` sorts Beta as numeric; string default in `035-sorted-column` |
 | `JSColumn.TextAlignment` | `jgexAlignmentConstants` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | 1 in `006-unbound-rows`, 2 in `019-font-segoeui`, default 0 elsewhere |
-| `JSColumn.TotalRowFormat` | `String` | **not impl** | M4 | -- | -- |
-| `JSColumn.TotalRowPrefix` | `String` | **not impl** | M4 | -- | -- |
+| `JSColumn.TotalRowFormat` | `String` | verified | M4 | -- | `055-group-footer-prefix-format` (`0.00`) vs unformatted in `054-group-footer-totals` |
+| `JSColumn.TotalRowPrefix` | `String` | verified | M4 | -- | `055-group-footer-prefix-format` (`Sum=`) vs no prefix in `054-group-footer-totals` |
 | `JSColumn.Visible` | `Boolean` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `013-hidden-column` (False) vs default True |
 | `JSColumn.Width` | `Long` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | 900/1200/1400/1500/1800tw across the corpus |
 | `JSColumn.WordWrap` | `Boolean` | **not impl** | M10 | -- | -- |
@@ -373,8 +372,8 @@ is no member behind it at all -- computed on demand, or parameterized like
 `RowSelected(RowPosition)`. That comes to 71 consumed, 85 storage, 6 derived.
 
 `Milestone` is filled only for `storage` rows, since those are the ones still
-owed behaviour -- M4 sorting/grouping (5), M5 editing (15), M8 ADO binding (17),
-M10 styling (14), M11 printing (33), M12 long tail (1). `Commit` points at the
+owed behaviour -- M5 editing (15), M8 ADO binding (17), M10 styling (14),
+M11 printing (33), M12 long tail (1); M4 owes none. `Commit` points at the
 commit that introduced the routine doing the consuming, and `Test` at what covers
 the property today: `snapshot round-trip` means the corpus proves the value
 survives import and export, which is all a storage property can be asked to
@@ -386,7 +385,7 @@ prove.
 | `ADORecordset` | `Object` | storage | M8 | -- | -- |
 | `AllowDelete` | `Boolean` | storage | M5 | -- | `Samples` frmUnboundArray |
 | `AllowEdit` | `Boolean` | storage | M5 | -- | snapshot round-trip |
-| `AutomaticSort` | `Boolean` | storage | M4 | -- | snapshot round-trip |
+| `AutomaticSort` | `Boolean` | consumed | M4 | -- | `ModelTests` pvTestAutomaticSort: a header click sorts under True, leaves the keys alone under the default False |
 | `BoundColumnIndex` | `Variant` | consumed | -- | -- | -- |
 | `CalendarNoneText` | `String` | storage | M5 | -- | snapshot round-trip |
 | `CalendarTodayText` | `String` | storage | M5 | -- | snapshot round-trip |

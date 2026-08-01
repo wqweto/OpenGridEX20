@@ -119,8 +119,12 @@ Private Sub Form_Load()
     pvTestScrollProps
     pvTestSorting
     pvTestGrouping
+    pvTestGroupCaption
+    pvTestGroupFooter
+    pvTestAdvancedSampleParts
     pvTestKeyNav
     pvTestMouse
+    pvTestAutomaticSort
     pvTestNavigator
     pvTestGeneratedSetup
     pvTestSelection
@@ -648,6 +652,197 @@ Private Sub pvTestGrouping()
     Unload oForm
 End Sub
 
+Private Sub pvTestGroupCaption()
+    Dim oForm           As frmWeak
+    Dim lIdx            As Long
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add "Alpha"
+        .Columns.Add "Beta"
+        .DataMode = jgexUnbound
+        .ItemCount = 4
+        .Rebind
+        For lIdx = 1 To 4
+            .GetRowData(lIdx).Value(1) = IIf(lIdx <= 2, "north", "south")
+        Next
+        .Groups.Add 1, jgexSortAscending
+        .Refresh
+        AssertEquals "GroupCaption: plain value by default", "north", .GetRowData(1).GroupCaption
+        AssertEquals "GroupCaption: default empty caption", "(none)", .Columns.Item(1).GroupEmptyStringCaption
+        '--- a space joins the prefix to the value, and the caption then starts
+        '--- one space earlier so the value lands where an unprefixed one does
+        '--- -- 049-group-prefix pins both against the original
+        .Columns.Item(1).GroupPrefix = "Region:"
+        .RefreshGroups
+        AssertEquals "GroupCaption: prefix leads the value", "Region: north", .GetRowData(1).GroupCaption
+        '--- an empty value gives way to the empty caption, prefix and all
+        .GetRowData(1).Value(1) = vbNullString
+        .GetRowData(2).Value(1) = vbNullString
+        .RefreshGroups
+        AssertEquals "GroupCaption: empty value takes the empty caption", "Region: (none)", .GetRowData(1).GroupCaption
+        .Columns.Item(1).GroupEmptyStringCaption = "<blank>"
+        .RefreshGroups
+        AssertEquals "GroupCaption: empty caption is settable", "Region: <blank>", .GetRowData(1).GroupCaption
+        .Columns.Item(1).GroupPrefix = vbNullString
+    End With
+    Unload oForm
+    '--- GroupFormat re-formats the value the group shows, which is the point
+    '--- of the property: group by month over a column of full dates
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add "When"
+        .DataMode = jgexUnbound
+        .ItemCount = 2
+        .Rebind
+        .GetRowData(1).Value(1) = DateSerial(2026, 8, 1)
+        .GetRowData(2).Value(1) = DateSerial(2026, 8, 20)
+        '--- month names are localized, so the assertion sticks to digits
+        .Columns.Item(1).GroupFormat = "yyyy\-mm"
+        .Groups.Add 1, jgexSortAscending
+        .Refresh
+        AssertEquals "GroupCaption: GroupFormat applied", "2026-08", .GetRowData(1).GroupCaption
+        '--- it labels the caption and nothing else: the original still breaks
+        '--- groups on the raw value, so two August dates are two groups that
+        '--- happen to read the same -- 052-group-format pins that
+        AssertEquals "GroupCaption: GroupFormat does not group", 4, .RowCount
+        AssertEquals "GroupCaption: second group reads the same", "2026-08", .GetRowData(3).GroupCaption
+    End With
+    Unload oForm
+End Sub
+
+Private Sub pvTestGroupFooter()
+    Dim oForm           As frmWeak
+    Dim lIdx            As Long
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add "Alpha"
+        .Columns.Add "Beta"
+        .DataMode = jgexUnbound
+        .ItemCount = 3
+        .Rebind
+        '--- north: 10 and 20, south: 5
+        For lIdx = 1 To 3
+            .GetRowData(lIdx).Value(1) = IIf(lIdx <= 2, "north", "south")
+            .GetRowData(lIdx).Value(2) = Array(10, 20, 5)(lIdx - 1)
+        Next
+        .Groups.Add 1, jgexSortAscending
+        .Refresh
+        AssertEquals "Footer: none by default", 5, .RowCount
+        '--- a footer per group, after its records
+        .GroupFooterStyle = jgexCaptionGroupFooter
+        .RefreshGroups
+        AssertEquals "Footer: a row per group", 7, .RowCount
+        AssertEquals "Footer: sits after the records", jgexRowTypeGroupFooter, .GetRowData(4).RowType
+        AssertEquals "Footer: repeats the caption", "north", .GetRowData(4).GroupCaption
+        AssertEquals "Footer: the header stays a header", jgexRowTypeGroupHeader, .GetRowData(1).RowType
+        AssertEquals "Footer: counts the same records", 2, .GetRowData(4).RecordCount
+        '--- GetSubTotal aggregates over the group either row stands for
+        AssertEquals "SubTotal: sum from the header", 30, .GetRowData(1).GetSubTotal(2, jgexSum)
+        AssertEquals "SubTotal: sum from the footer", 30, .GetRowData(4).GetSubTotal(2, jgexSum)
+        AssertEquals "SubTotal: count", 2, .GetRowData(1).GetSubTotal(2, jgexCount)
+        AssertEquals "SubTotal: value count", 2, .GetRowData(1).GetSubTotal(2, jgexValueCount)
+        AssertEquals "SubTotal: avg", 15, .GetRowData(1).GetSubTotal(2, jgexAvg)
+        AssertEquals "SubTotal: min", 10, .GetRowData(1).GetSubTotal(2, jgexMin)
+        AssertEquals "SubTotal: max", 20, .GetRowData(1).GetSubTotal(2, jgexMax)
+        AssertEquals "SubTotal: stddev", 5, .GetRowData(1).GetSubTotal(2, jgexStdDev)
+        AssertEquals "SubTotal: the second group is its own", 5, .GetRowData(5).GetSubTotal(2, jgexSum)
+        AssertEquals "SubTotal: none aggregates to nothing", True, IsEmpty(.GetRowData(1).GetSubTotal(2, jgexAggregateNone))
+        '--- a record is not a group and has nothing to total
+        AssertEquals "SubTotal: a record totals nothing", True, IsEmpty(.GetRowData(2).GetSubTotal(2, jgexSum))
+        '--- collapsing hides the footer along with the records it closes
+        .RowExpanded(1) = False
+        AssertEquals "Footer: collapsed hides its footer too", 4, .RowCount
+        AssertEquals "Footer: the next group follows straight on", True, .IsGroupItem(2)
+        .RowExpanded(1) = True
+        AssertEquals "Footer: expanding brings both back", 7, .RowCount
+        '--- totals style keeps the same rows, only what they draw changes
+        .GroupFooterStyle = jgexTotalsGroupFooter
+        .RefreshGroups
+        AssertEquals "Footer: totals style has the same rows", 7, .RowCount
+        .GroupFooterStyle = jgexNoGroupFooter
+        .RefreshGroups
+        AssertEquals "Footer: turning them off drops the rows", 5, .RowCount
+        AssertEquals "SubTotal: still totals with no footers", 30, .GetRowData(1).GetSubTotal(2, jgexSum)
+    End With
+    Unload oForm
+End Sub
+
+Private Sub pvTestAdvancedSampleParts()
+    Dim oForm           As frmWeak
+    Dim lIdx            As Long
+    Dim oKey            As JSSortKey
+    Dim oGroup          As JSGroup
+    Dim oKeys           As JSSortKeys
+    Dim oGroups         As JSGroups
+
+    '--- the Advanced Sample drives sorting and grouping from three dialogs:
+    '--- frmSort rebuilds SortKeys and calls RefreshSort, frmGroupBy does the
+    '--- same over Groups, frmSummary reads the keys back and totals columns.
+    '--- Their data comes from ADO, which is M8, so what is exercised here is
+    '--- the API sequence each of them runs
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("Region").Tag = "Region"
+        .Columns.Add("Rep").Tag = "Rep"
+        .Columns.Add("Amount").Tag = "Amount"
+        .DataMode = jgexUnbound
+        .ItemCount = 4
+        .Rebind
+        For lIdx = 1 To 4
+            .GetRowData(lIdx).Value(1) = IIf(lIdx <= 2, "north", "south")
+            .GetRowData(lIdx).Value(2) = Array("bea", "abe", "dee", "cy")(lIdx - 1)
+            .GetRowData(lIdx).Value(3) = Array(10, 20, 5, 7)(lIdx - 1)
+        Next
+        '--- frmSort: clear, re-add from the combos, RefreshSort
+        Set oKeys = .SortKeys
+        oKeys.Clear
+        oKeys.Add 2, jgexSortAscending
+        .RefreshSort
+        AssertEquals "AdvSort: sorted by the rep column", "abe", .GetRowData(1).Value(2)
+        AssertEquals "AdvSort: which is the second data row", 2, .RowIndex(1)
+        AssertEquals "AdvSort: key readable back", 2, .SortKeys.Item(1).ColIndex
+        '--- reading the keys back is what frmSort does to preselect its combos
+        For Each oKey In .SortKeys
+            AssertEquals "AdvSort: NewEnum walks the keys", 2, oKey.ColIndex
+        Next
+        '--- frmGroupBy: same shape over Groups, then RefreshGroups
+        Set oGroups = .Groups
+        oGroups.Clear
+        oGroups.Add 1, jgexSortAscending
+        .RefreshGroups
+        AssertEquals "AdvGroup: group rows appear", 6, .RowCount
+        AssertEquals "AdvGroup: the column reports itself grouped", True, .Columns.Item(1).IsGrouped
+        For Each oGroup In .Groups
+            AssertEquals "AdvGroup: NewEnum walks the groups", 1, oGroup.ColIndex
+        Next
+        '--- the sample's dialog offers "all collapsed" straight off the call
+        .RefreshGroups True
+        AssertEquals "AdvGroup: RefreshGroups collapses on demand", 2, .RowCount
+        .RefreshGroups
+        AssertEquals "AdvGroup: and expands again", 6, .RowCount
+        '--- frmSummary: totals per column over each group
+        .Columns.Item(3).AggregateFunction = jgexSum
+        .GroupFooterStyle = jgexTotalsGroupFooter
+        .RefreshGroups
+        AssertEquals "AdvSummary: footers close each group", 8, .RowCount
+        AssertEquals "AdvSummary: north totals its amounts", 30, .GetRowData(1).GetSubTotal(3, jgexSum)
+        AssertEquals "AdvSummary: the column carries the function", jgexSum, .Columns.Item(3).AggregateFunction
+        '--- and the sample's grid clears back to a plain list
+        oGroups.Clear
+        oKeys.Clear
+        .RefreshSort
+        AssertEquals "AdvSample: cleared back to the records", 4, .RowCount
+        AssertEquals "AdvSample: no column left grouped", False, .Columns.Item(1).IsGrouped
+    End With
+    Unload oForm
+End Sub
+
 Private Sub pvTestKeyNav()
     Dim oForm           As frmWeak
 
@@ -821,6 +1016,67 @@ Private Sub pvTestMouse()
         oForm.EventLog = vbNullString
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
         AssertEquals "Mouse: header click fires ColumnHeaderClick", "HdrClick(A);", oForm.EventLog
+        '--- AutomaticSort off by default, so the click above sorted nothing
+        AssertEquals "AutoSort: off leaves the sort keys alone", 0, .SortKeys.Count
+    End With
+    Unload oForm
+End Sub
+
+Private Sub pvTestAutomaticSort()
+    Dim oForm           As frmWeak
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("A").Width = 1500
+        .Columns.Add("B").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 50
+        .Rebind
+        .AutomaticSort = True
+        '--- same geometry as pvTestMouse: header band 33..51, A=0..99
+        '--- an unsorted column sorts ascending and becomes the only key
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
+        AssertEquals "AutoSort: one key after the first click", 1, .SortKeys.Count
+        AssertEquals "AutoSort: on the column clicked", 1, .SortKeys.Item(1).ColIndex
+        AssertEquals "AutoSort: ascending first", jgexSortAscending, .SortKeys.Item(1).SortOrder
+        '--- clicking it again flips to descending, never back to unsorted
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
+        AssertEquals "AutoSort: still one key", 1, .SortKeys.Count
+        AssertEquals "AutoSort: descending on the second click", jgexSortDescending, .SortKeys.Item(1).SortOrder
+        '--- and a third click comes back to ascending
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
+        AssertEquals "AutoSort: ascending again on the third", jgexSortAscending, .SortKeys.Item(1).SortOrder
+        '--- another column replaces the key rather than adding to it
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(150, 40)
+        AssertEquals "AutoSort: the new column is the only key", 1, .SortKeys.Count
+        AssertEquals "AutoSort: keyed on the second column", 2, .SortKeys.Item(1).ColIndex
+        AssertEquals "AutoSort: ascending on a fresh column", jgexSortAscending, .SortKeys.Item(1).SortOrder
+        '--- a grouped column flips its group instead of touching the keys
+        .SortKeys.Clear
+        .Groups.Add 1, jgexSortAscending
+        AssertEquals "AutoSort: IsGrouped follows Groups", True, .Columns.Item(1).IsGrouped
+        AssertEquals "AutoSort: an ungrouped column says so", False, .Columns.Item(2).IsGrouped
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
+        AssertEquals "AutoSort: group flipped to descending", jgexSortDescending, .Groups.Item(1).SortOrder
+        AssertEquals "AutoSort: no sort key added for it", 0, .SortKeys.Count
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
+        AssertEquals "AutoSort: group back to ascending", jgexSortAscending, .Groups.Item(1).SortOrder
+        '--- the chip in the group-by box stands for the same column: it sits
+        '--- at x=8, y=7, sized off the caption, so (30, 15) lands inside it
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(30, 15)
+        AssertEquals "GBox: chip click fires GroupByBoxHeaderClick", "GBoxClick(1);", oForm.EventLog
+        AssertEquals "GBox: chip click flips the group", jgexSortDescending, .Groups.Item(1).SortOrder
+        AssertEquals "GBox: no sort key added for it", 0, .SortKeys.Count
+        '--- the empty part of the box is not a chip
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(300, 15)
+        AssertEquals "GBox: a click off the chips does nothing", vbNullString, oForm.EventLog
+        AssertEquals "GBox: and leaves the order alone", jgexSortDescending, .Groups.Item(1).SortOrder
+        '--- ungrouping hands the column back to the sort keys
+        .Groups.Clear
+        AssertEquals "AutoSort: IsGrouped cleared with the group", False, .Columns.Item(1).IsGrouped
     End With
     Unload oForm
 End Sub

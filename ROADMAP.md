@@ -101,12 +101,20 @@ do, the other three build their data in code -- and the golden corpus passes at
 sorting, grouping and editing stay with M4/M5, so the samples' header-click and
 edit paths are inert for now.)
 
-## M4 -- Sorting and grouping
+## M4 -- Sorting and grouping (done)
 
 - `SortKeys`/`SortType` comparers, header-click auto sort, `Groups`, group rows,
   expand/collapse, group-by box, aggregates and group footers
 
-Exit: sorting/grouping visual scenarios + relevant Advanced Sample parts.
+Exit (met): scenarios `035`-`056` cover sorting, grouping, expand/collapse, the
+group caption properties and both footer styles with their aggregates, all
+passing at 96 and 120 dpi; `PROPERTIES.md` has no M4 property left unimplemented
+or merely stored. The Advanced Sample's M4 parts are covered as the API sequence
+its `frmSort`, `frmGroupBy` and `frmSummary` dialogs run (`ModelTests`), the
+sample itself waiting on ADO binding, card view and printing.
+
+Known divergence recorded from the original: `JSColumn.GroupFormat` labels a
+group caption but does not group by it, despite the help reading otherwise.
 
 ## M5 -- Editing
 

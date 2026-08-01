@@ -692,6 +692,10 @@ Private Type UcsGroupRow
     RecordCount             As Long
     Collapsed               As Boolean
     IconIndex               As Integer
+    Prefixed                As Boolean
+    Footer                  As Boolean
+    FirstSlot               As Long
+    LastSlot                As Long
     RowData                 As JSRowData
 End Type
 
@@ -959,7 +963,6 @@ End Property
 Public Property Let DefaultColumnWidth(ByVal lValue As Long)
     '--- stored in pixels; snapped to nearest like the original
     m_lDefaultColumnWidth = ToPixels(lValue)
-    m_oColumns.frDefaultWidth = m_lDefaultColumnWidth
 End Property
 
 Public Property Get View() As jgexViewConstants
@@ -1898,7 +1901,11 @@ End Property
 
 Friend Property Get frRowType(ByVal lRowIndex As Long) As jgexRowTypeConstants
     If lRowIndex < 0 Then
-        frRowType = jgexRowTypeGroupHeader
+        If m_aGroupRow(-lRowIndex).Footer Then
+            frRowType = jgexRowTypeGroupFooter
+        Else
+            frRowType = jgexRowTypeGroupHeader
+        End If
         Exit Property
     End If
     pvEnsureRow lRowIndex
@@ -2053,6 +2060,11 @@ End Sub
 
 Public Sub RefreshSort()
 Attribute RefreshSort.VB_Description = "Forces the re-sort of the records."
+    '--- the collections mark the order stale as they are edited, so this only
+    '--- has to bring the rebuild forward from the next paint
+    frSortChanged
+    pvEnsureOrder
+    pvInvalidate
 End Sub
 
 Public Function RowIndex(ByVal RowPosition As Long) As Long
@@ -2337,6 +2349,30 @@ Friend Sub frSortChanged(Optional ByVal bInvalidate As Boolean)
     End If
 End Sub
 
+Friend Property Get frDefaultColumnWidthPx() As Long
+    frDefaultColumnWidthPx = m_lDefaultColumnWidth
+End Property
+
+Friend Function frRowSubTotal(ByVal lRowIndex As Long, ByVal nColIndex As Integer, ByVal eFunc As jgexAggregateFunctionConstants) As Variant
+    '--- only a group row aggregates, over the records it covers
+    If lRowIndex < 0 Then
+        With m_aGroupRow(-lRowIndex)
+            frRowSubTotal = pvAggregate(.FirstSlot, .LastSlot, nColIndex, eFunc)
+        End With
+    End If
+End Function
+
+Friend Function frColIsGrouped(ByVal nColIndex As Integer) As Boolean
+    Dim lIdx            As Long
+
+    For lIdx = 1 To m_oGroups.Count
+        If m_oGroups.Item(lIdx).ColIndex = nColIndex Then
+            frColIsGrouped = True
+            Exit For
+        End If
+    Next
+End Function
+
 Private Function pvSlot(ByVal lPos As Long) As Long
     '--- a display position addresses one of the rows currently on show,
     '--- which is a slot in the full order the sort built
@@ -2441,17 +2477,21 @@ Private Sub pvBuildGroupRows(aRows() As Long)
     Dim lJdx            As Long
     Dim lPos            As Long
     Dim lFrom           As Long
+    Dim lRoom           As Long
     Dim aStart()        As Long
 
     '--- the sorted rows are walked once and a group row is emitted wherever
     '--- a group key changes, so the display is group row, its records, the
     '--- next group row and so on
-    ReDim m_aOrder(1 To m_lItemCount + m_lItemCount * m_lGroupCols) As Long
+    '--- room for a header and a footer per level per row, which is what a
+    '--- corpus of all-distinct keys would come to
+    lRoom = m_lItemCount + 2 * m_lItemCount * m_lGroupCols
+    ReDim m_aOrder(1 To lRoom) As Long
     '--- a plain ReDim drops the wrappers the previous order handed out, so
     '--- they get detached first, exactly as an Erase has to
     pvEraseGroupRows
-    ReDim m_aGroupRow(1 To m_lItemCount + m_lItemCount * m_lGroupCols) As UcsGroupRow
-    m_lGroupRowsUBound = m_lItemCount + m_lItemCount * m_lGroupCols
+    ReDim m_aGroupRow(1 To lRoom) As UcsGroupRow
+    m_lGroupRowsUBound = lRoom
     ReDim aStart(1 To m_lGroupCols) As Long
     For lIdx = 1 To m_lItemCount
         '--- the first level whose key changed opens a new group row here and
@@ -2470,12 +2510,16 @@ Private Sub pvBuildGroupRows(aRows() As Long)
             End If
         Next
         If lFrom > 0 Then
+            '--- whatever this change closes gets its footer before the next
+            '--- level opens, innermost first
+            pvCloseGroups lFrom, lPos, aStart
             For lJdx = lFrom To m_lGroupCols
                 lPos = lPos + 1
                 m_aOrder(lPos) = 0
                 With m_aGroupRow(lPos)
                     .Level = lJdx
-                    .Caption = pvCellText(aRows(lIdx), m_aSortCol(lJdx))
+                    .Caption = pvGroupCaption(aRows(lIdx), m_aSortCol(lJdx))
+                    .Prefixed = (LenB(m_oColumns.Item(m_aSortCol(lJdx)).GroupPrefix) <> 0)
                     .RecordCount = 0
                     .Collapsed = (m_eDefaultGroupMode = jgexDGMCollapsed)
                 End With
@@ -2488,10 +2532,42 @@ Private Sub pvBuildGroupRows(aRows() As Long)
         lPos = lPos + 1
         m_aOrder(lPos) = aRows(lIdx)
     Next
+    '--- the last group of every level is closed by running out of rows
+    pvCloseGroups 1, lPos, aStart
     m_lOrderCount = lPos
     ReDim Preserve m_aOrder(1 To lPos) As Long
     ReDim Preserve m_aGroupRow(1 To lPos) As UcsGroupRow
     m_lGroupRowsUBound = lPos
+End Sub
+
+Private Sub pvCloseGroups(ByVal lFromLevel As Long, lPos As Long, aStart() As Long)
+    Dim lJdx            As Long
+    Dim lHdr            As Long
+
+    '--- closing a level records the span of rows it covered -- what the
+    '--- aggregates and GetSubTotal are computed over -- and lays down its
+    '--- footer row when the control is showing them
+    For lJdx = m_lGroupCols To lFromLevel Step -1
+        lHdr = aStart(lJdx)
+        If lHdr > 0 Then
+            m_aGroupRow(lHdr).FirstSlot = lHdr + 1
+            m_aGroupRow(lHdr).LastSlot = lPos
+            If m_eGroupFooterStyle <> jgexNoGroupFooter Then
+                lPos = lPos + 1
+                m_aOrder(lPos) = 0
+                With m_aGroupRow(lPos)
+                    .Level = lJdx
+                    .Caption = m_aGroupRow(lHdr).Caption
+                    .Prefixed = m_aGroupRow(lHdr).Prefixed
+                    .RecordCount = m_aGroupRow(lHdr).RecordCount
+                    .Collapsed = m_aGroupRow(lHdr).Collapsed
+                    .Footer = True
+                    .FirstSlot = m_aGroupRow(lHdr).FirstSlot
+                    .LastSlot = m_aGroupRow(lHdr).LastSlot
+                End With
+            End If
+        End If
+    Next
 End Sub
 
 Private Sub pvEraseDataRows()
@@ -2533,7 +2609,12 @@ Private Sub pvBuildVisible()
     ReDim m_aVisible(1 To m_lOrderCount) As Long
     For lIdx = 1 To m_lOrderCount
         If lHidden > 0 And m_aOrder(lIdx) = 0 Then
-            If m_aGroupRow(lIdx).Level <= lHidden Then
+            '--- a collapsed group hides its own footer along with its records,
+            '--- so only a header at that level -- or anything from a level
+            '--- further out, footers included -- brings the display back
+            If m_aGroupRow(lIdx).Level < lHidden Then
+                lHidden = 0
+            ElseIf m_aGroupRow(lIdx).Level = lHidden And Not m_aGroupRow(lIdx).Footer Then
                 lHidden = 0
             End If
         End If
@@ -2909,10 +2990,45 @@ Private Function pvChipStagger() As Long
     pvChipStagger = m_lColumnHeaderHeight \ 2
 End Function
 
+Private Sub pvLayoutGroupChips(ByVal hDC As Long, ByVal lY As Long)
+    Dim lIdx            As Long
+    Dim oGroup          As JSGroup
+    Dim lLeft           As Long
+    Dim lTop            As Long
+    Dim lChipH          As Long
+    Dim uRect           As RECT
+    Dim uMetrics        As TEXTMETRICW
+
+    '--- a chip per group level, sized off its column caption with the room
+    '--- the original leaves for the drop affordance, each stepping right past
+    '--- the one before it and down by half a header row -- the staircase the
+    '--- original draws. Every level keeps the rectangle it landed on so the
+    '--- painter and the hit-test never disagree about where a chip is
+    uMetrics = FontTextMetrics(m_oColumnHeaderFont, hDC)
+    lChipH = uMetrics.tmHeight + 6
+    lLeft = CHIP_LEFT
+    lTop = lY + CHIP_TOP
+    For lIdx = 1 To m_oGroups.Count
+        Set oGroup = m_oGroups.Item(lIdx)
+        uRect.Left = 0
+        uRect.Top = 0
+        uRect.Right = 0
+        uRect.Bottom = 0
+        If oGroup.ColIndex >= 1 And oGroup.ColIndex <= m_oColumns.Count Then
+            uRect.Left = lLeft
+            uRect.Top = lTop
+            uRect.Right = lLeft + pvTextWidth(hDC, m_oColumns.Item(oGroup.ColIndex).Caption) + CHIP_PAD
+            uRect.Bottom = lTop + lChipH
+            lLeft = uRect.Right + CHIP_GAP
+            lTop = lTop + pvChipStagger()
+        End If
+        oGroup.frChipRect = uRect
+    Next
+End Sub
+
 Private Sub pvPaintGroupChips(ByVal hDC As Long, ByVal lY As Long)
     Dim lIdx            As Long
     Dim oGroup          As JSGroup
-    Dim oCol            As JSColumn
     Dim sCaption        As String
     Dim lLeft           As Long
     Dim lTop            As Long
@@ -2921,19 +3037,18 @@ Private Sub pvPaintGroupChips(ByVal hDC As Long, ByVal lY As Long)
     Dim lChipW          As Long
     Dim uMetrics        As TEXTMETRICW
 
-    '--- a chip per group level: a raised button carrying the column caption
-    '--- and the same sort arrow its header shows, sized off the caption with
-    '--- the room the original leaves for the drop affordance
+    '--- a raised button carrying the column caption and the same sort arrow
+    '--- its header shows, on the rectangle the layout gave it
     uMetrics = FontTextMetrics(m_oColumnHeaderFont, hDC)
-    lChipH = uMetrics.tmHeight + 6
-    lLeft = CHIP_LEFT
-    lTop = lY + CHIP_TOP
+    pvLayoutGroupChips hDC, lY
     For lIdx = 1 To m_oGroups.Count
         Set oGroup = m_oGroups.Item(lIdx)
         If oGroup.ColIndex >= 1 And oGroup.ColIndex <= m_oColumns.Count Then
-            Set oCol = m_oColumns.Item(oGroup.ColIndex)
-            sCaption = oCol.Caption
-            lChipW = pvTextWidth(hDC, sCaption) + CHIP_PAD
+            sCaption = m_oColumns.Item(oGroup.ColIndex).Caption
+            lLeft = oGroup.frChipRect.Left
+            lTop = oGroup.frChipRect.Top
+            lChipW = oGroup.frChipRect.Right - lLeft
+            lChipH = oGroup.frChipRect.Bottom - lTop
             pvFillRect hDC, lLeft, lTop, lLeft + lChipW, lTop + lChipH, m_clrBackColorHeader
             pvLine hDC, lLeft, lTop, lLeft + lChipW - 1, lTop, vb3DHighlight, PS_SOLID
             pvLine hDC, lLeft, lTop, lLeft, lTop + lChipH - 1, vb3DHighlight, PS_SOLID
@@ -2957,10 +3072,6 @@ Private Sub pvPaintGroupChips(ByVal hDC As Long, ByVal lY As Long)
                 pvLine hDC, lLeft + lChipW - 5, lTop + lChipH, lLeft + lChipW - 5, lElbowTop + 1, vb3DDKShadow, PS_SOLID
                 pvLine hDC, lLeft + lChipW - 5, lElbowTop, lLeft + lChipW + CHIP_GAP, lElbowTop, vb3DDKShadow, PS_SOLID
             End If
-            '--- each level's chip steps right past the one before it and
-            '--- down by half a header row, the staircase the original draws
-            lLeft = lLeft + lChipW + CHIP_GAP
-            lTop = lTop + pvChipStagger()
         End If
     Next
 End Sub
@@ -3434,6 +3545,7 @@ Private Sub pvPaintGroupRow(ByVal hDC As Long, ByVal lPos As Long, ByVal lRowTop
     Dim lBoxLeft        As Long
     Dim lTextTop        As Long
     Dim lTextLeft       As Long
+    Dim lLineLeft       As Long
     Dim uMetrics        As TEXTMETRICW
 
     '--- a group row spans the whole block in header colour, with the expand
@@ -3454,20 +3566,84 @@ Private Sub pvPaintGroupRow(ByVal hDC As Long, ByVal lPos As Long, ByVal lRowTop
     '--- so it starts where the records start
     pvLine hDC, pvBlockLeft() - 1, lRowTop + lRowH - 1, lRight, lRowTop + lRowH - 1, m_clrGridLinesColor, pvPenStyle()
     '--- the line above it starts at this group's own edge instead: a level
-    '--- one group opens the full width, a nested one only its own part
+    '--- one group opens the full width, a nested one only its own part. A
+    '--- footer closes a group rather than opening one, so the rule above it
+    '--- belongs to the records and starts where they do
     If lRowTop > lBlockTop Then
-        pvLine hDC, pvRowHeaderWidth() + lIndent - 1, lRowTop - 1, lRight, lRowTop - 1, m_clrGridLinesColor, pvPenStyle()
+        lLineLeft = pvRowHeaderWidth() + lIndent - 1
+        If m_aGroupRow(lSlot).Footer Then
+            lLineLeft = pvBlockLeft() - 1
+        End If
+        pvLine hDC, lLineLeft, lRowTop - 1, lRight, lRowTop - 1, m_clrGridLinesColor, pvPenStyle()
     End If
     lBoxLeft = pvRowHeaderWidth() + lIndent + (GROUP_INDENT_W - GROUP_BOX_W) \ 2
     lBoxTop = lRowTop + (lRowH - 1 - GROUP_BOX_W) \ 2
-    pvPaintGroupBox hDC, lBoxLeft, lBoxTop, Not m_aGroupRow(lSlot).Collapsed
+    '--- a footer carries no expand box: it closes the group rather than
+    '--- opening it, and under the totals style it reads across the columns
+    '--- instead of carrying the caption
+    If m_aGroupRow(lSlot).Footer Then
+        If m_eGroupFooterStyle = jgexTotalsGroupFooter Then
+            pvPaintGroupTotals hDC, lSlot, lRowTop, lRowH, clrBack, clrText
+            Exit Sub
+        End If
+    Else
+        pvPaintGroupBox hDC, lBoxLeft, lBoxTop, Not m_aGroupRow(lSlot).Collapsed
+    End If
     uMetrics = FontTextMetrics(m_oFont, hDC)
     lTextTop = lRowTop + (lRowH - 1 - uMetrics.tmHeight) \ 2
     '--- the caption is drawn a space past the expand box, plus the two pixel
     '--- margin text keeps everywhere else -- this tracks the font at any dpi
-    lTextLeft = lBoxLeft + GROUP_BOX_W + pvTextWidth(hDC, " ") + 2
+    '--- the caption sits two pixels past the expand box behind a leading
+    '--- space, which a prefix supplies itself -- so a prefixed level starts
+    '--- one space earlier and its value still lands where a plain one does
+    lTextLeft = lBoxLeft + GROUP_BOX_W + 2
+    If Not m_aGroupRow(lSlot).Prefixed Then
+        lTextLeft = lTextLeft + pvTextWidth(hDC, " ")
+    End If
     pvDrawText hDC, m_aGroupRow(lSlot).Caption, lTextLeft, lTextTop, lRight, lTextTop + uMetrics.tmHeight, _
         clrText, clrBack, jgexAlignLeft, lTextLeft, lRight
+End Sub
+
+Private Sub pvPaintGroupTotals(ByVal hDC As Long, ByVal lSlot As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal clrBack As OLE_COLOR, ByVal clrText As OLE_COLOR)
+    Dim lIdx            As Long
+    Dim lX              As Long
+    Dim lW              As Long
+    Dim oCol            As JSColumn
+    Dim vValue          As Variant
+    Dim sText           As String
+    Dim lTextTop        As Long
+    Dim vOrder          As Variant
+    Dim uMetrics        As TEXTMETRICW
+
+    '--- each column reads its own aggregate over the group, laid out on the
+    '--- cell origins a record uses so the totals line up under their values
+    uMetrics = FontTextMetrics(m_oFont, hDC)
+    lTextTop = lRowTop + (lRowH - 1 - uMetrics.tmHeight) \ 2
+    lX = pvBlockLeft()
+    vOrder = pvColOrder()
+    For lIdx = 0 To pvOrderMax(vOrder)
+        Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
+        If oCol.Visible Then
+            lW = pvColWidth(oCol)
+            If oCol.AggregateFunction <> jgexAggregateNone Then
+                With m_aGroupRow(lSlot)
+                    vValue = pvAggregate(.FirstSlot, .LastSlot, oCol.Index, oCol.AggregateFunction)
+                End With
+                sText = vbNullString
+                If Not IsEmpty(vValue) Then
+                    If LenB(oCol.TotalRowFormat) <> 0 Then
+                        sText = Format$(vValue, oCol.TotalRowFormat)
+                    Else
+                        sText = CStr(vValue)
+                    End If
+                End If
+                sText = oCol.TotalRowPrefix & sText
+                pvDrawText hDC, sText, lX + 2, lTextTop, lX + lW - 3, lTextTop + uMetrics.tmHeight, _
+                    clrText, clrBack, oCol.TextAlignment, lX, lX + lW - 3
+            End If
+            lX = lX + lW
+        End If
+    Next
 End Sub
 
 Private Sub pvPaintGroupBox(ByVal hDC As Long, ByVal lX As Long, ByVal lY As Long, ByVal bExpanded As Boolean)
@@ -3560,6 +3736,110 @@ Private Sub pvPaintRowHeader(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lRo
         Next
     End If
 End Sub
+
+Private Function pvAggregate(ByVal lFirst As Long, ByVal lLast As Long, ByVal nColIndex As Integer, ByVal eFunc As jgexAggregateFunctionConstants) As Variant
+    Dim lIdx            As Long
+    Dim lRow            As Long
+    Dim lCount          As Long
+    Dim dblSum          As Double
+    Dim dblSquares      As Double
+    Dim dblValue        As Double
+    Dim vValue          As Variant
+    Dim vMin            As Variant
+    Dim vMax            As Variant
+
+    '--- one walk over the records of a group serves every function: the
+    '--- counts take any value, the rest only the ones that are numbers
+    For lIdx = lFirst To lLast
+        If lIdx >= 1 And lIdx <= m_lOrderCount Then
+            lRow = m_aOrder(lIdx)
+            '--- nested group rows and footers sit in the span too, and are
+            '--- not records of it
+            If lRow > 0 Then
+                If eFunc = jgexCount Then
+                    lCount = lCount + 1
+                Else
+                    vValue = frRowValue(lRow, nColIndex)
+                    If Not pvIsBlank(vValue) And Not IsObject(vValue) Then
+                        lCount = lCount + 1
+                        If IsEmpty(vMin) Then
+                            vMin = vValue
+                            vMax = vValue
+                        Else
+                            If pvCompareValues(vValue, vMin, jgexSortTypeString) < 0 Then
+                                vMin = vValue
+                            End If
+                            If pvCompareValues(vValue, vMax, jgexSortTypeString) > 0 Then
+                                vMax = vValue
+                            End If
+                        End If
+                        If IsNumeric(vValue) Then
+                            dblValue = CDbl(vValue)
+                            dblSum = dblSum + dblValue
+                            dblSquares = dblSquares + dblValue * dblValue
+                        End If
+                    End If
+                End If
+            End If
+        End If
+    Next
+    Select Case eFunc
+    Case jgexCount, jgexValueCount
+        pvAggregate = lCount
+    Case jgexSum
+        pvAggregate = dblSum
+    Case jgexAvg
+        If lCount > 0 Then
+            pvAggregate = dblSum / lCount
+        End If
+    Case jgexMin
+        pvAggregate = vMin
+    Case jgexMax
+        pvAggregate = vMax
+    Case jgexStdDev
+        '--- population deviation over the values that were numbers
+        If lCount > 1 Then
+            dblValue = (dblSquares - dblSum * dblSum / lCount) / lCount
+            If dblValue > 0 Then
+                pvAggregate = Sqr(dblValue)
+            Else
+                pvAggregate = 0
+            End If
+        End If
+    End Select
+End Function
+
+Private Function pvGroupCaption(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As String
+    Dim oCol            As JSColumn
+    Dim vValue          As Variant
+    Dim sText           As String
+
+    '--- the value a group row shows: GroupFormat re-formats it -- for the
+    '--- caption only, the original still breaks groups on the raw value --
+    '--- an empty or Null one gives way to GroupEmptyStringCaption, and
+    '--- GroupPrefix leads whichever of the two ends up there, joined with no
+    '--- separator of its own -- a prefix brings its own spacing
+    Set oCol = m_oColumns.Item(nColIndex)
+    vValue = frRowValue(lRowIndex, nColIndex)
+    Select Case VarType(vValue)
+    Case vbEmpty, vbNull, vbObject, vbError
+    Case Else
+        If Not IsArray(vValue) Then
+            If LenB(oCol.GroupFormat) <> 0 Then
+                sText = Format$(vValue, oCol.GroupFormat)
+            Else
+                sText = pvCellText(lRowIndex, nColIndex)
+            End If
+        End If
+    End Select
+    If LenB(sText) = 0 Then
+        sText = oCol.GroupEmptyStringCaption
+    End If
+    If LenB(oCol.GroupPrefix) <> 0 Then
+        sText = oCol.GroupPrefix & " " & sText
+    End If
+    pvGroupCaption = sText
+End Function
 
 Private Function pvCellText(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As String
     Dim vValue          As Variant
@@ -4530,27 +4810,97 @@ Private Function pvColAtX(ByVal lX As Long, oCol As JSColumn) As Integer
     Next
 End Function
 
+Private Function pvGroupAtPoint(ByVal lX As Long, ByVal lY As Long, oGroup As JSGroup) As Integer
+    Dim lIdx            As Long
+    Dim oItem           As JSGroup
+    Dim hDC             As Long
+    Dim hPrevFont       As Long
+
+    '--- laid out again rather than read off the last paint: a control that
+    '--- has not painted yet still hit-tests, and a caption or font changed
+    '--- since would otherwise leave the rectangles behind. It costs one text
+    '--- measurement per group level, on a click
+    hDC = picGrid.hDC
+    hPrevFont = pvSelectFont(hDC, m_oFont)
+    pvLayoutGroupChips hDC, 0
+    Call SelectObject(hDC, hPrevFont)
+    For lIdx = 1 To m_oGroups.Count
+        Set oItem = m_oGroups.Item(lIdx)
+        With oItem.frChipRect
+            If lX >= .Left And lX < .Right And lY >= .Top And lY < .Bottom And .Right > .Left Then
+                Set oGroup = oItem
+                pvGroupAtPoint = lIdx
+                Exit For
+            End If
+        End With
+    Next
+End Function
+
+Private Sub pvAutoSort(oCol As JSColumn)
+    Dim lIdx            As Long
+    Dim oGroup          As JSGroup
+
+    '--- what the original documents client code used to write in the two
+    '--- events: a grouped column flips the order of its group, any other one
+    '--- becomes the only sort key, ascending unless it already was
+    For lIdx = 1 To m_oGroups.Count
+        Set oGroup = m_oGroups.Item(lIdx)
+        If oGroup.ColIndex = oCol.Index Then
+            If oGroup.SortOrder = jgexSortAscending Then
+                oGroup.SortOrder = jgexSortDescending
+            Else
+                oGroup.SortOrder = jgexSortAscending
+            End If
+            Exit Sub
+        End If
+    Next
+    If pvColSortOrder(oCol) = jgexSortAscending Then
+        m_oSortKeys.Clear
+        m_oSortKeys.Add oCol.Index, jgexSortDescending
+    Else
+        m_oSortKeys.Clear
+        m_oSortKeys.Add oCol.Index, jgexSortAscending
+    End If
+End Sub
+
 Private Sub pvOnLButtonDown(ByVal lX As Long, ByVal lY As Long, ByVal nShift As Integer)
     Dim lTopGbox        As Long
     Dim lTopHdr         As Long
     Dim nPos            As Integer
     Dim oCol            As JSColumn
+    Dim oGroup          As JSGroup
     Dim lRow            As Long
 
     If m_bGroupByBoxVisible Then
         lTopGbox = m_lColumnHeaderHeight + 14
+        If m_oGroups.Count > 1 Then
+            '--- the box grew to hold the staircase, so the bands below it did
+            '--- move down -- pvPaintGroupByBox sizes it the same way
+            lTopGbox = lTopGbox + (m_oGroups.Count - 1) * pvChipStagger()
+        End If
     End If
     lTopHdr = lTopGbox
     If m_bColumnHeaders Then
         lTopHdr = lTopHdr + m_lColumnHeaderHeight
     End If
     If lY < lTopGbox Then
-        '--- group-by box: grouping not implemented yet
+        '--- group-by box: a chip stands for its column, so clicking one sorts
+        '--- exactly as clicking that column's header does
+        nPos = pvGroupAtPoint(lX, lY, oGroup)
+        If Not oGroup Is Nothing Then
+            RaiseEvent GroupByBoxHeaderClick(oGroup)
+            If m_bAutomaticSort Then
+                pvAutoSort m_oColumns.Item(oGroup.ColIndex)
+            End If
+        End If
     ElseIf lY < lTopHdr Then
         '--- column header band
         nPos = pvColAtX(lX, oCol)
         If Not oCol Is Nothing Then
             RaiseEvent ColumnHeaderClick(oCol)
+            If m_bAutomaticSort Then
+                pvAutoSort oCol
+            End If
         End If
     ElseIf m_lRowHeight > 0 Then
         '--- data area cell
@@ -4766,6 +5116,7 @@ Private Sub UserControl_Initialize()
     Set m_oSortKeys = New JSSortKeys
     m_oSortKeys.frInit Me
     m_oGroups.frInit Me
+    m_oColumns.frInit Me
     Set m_oSelectedItems = New JSSelectedItems
     Set m_oFormatStyles = New JSFormatStyles
     Set m_oPrinterProperties = New JSPrinterProperties
@@ -4908,4 +5259,5 @@ Private Sub UserControl_Terminate()
     '--- and the collections that point back for their change notifications
     m_oGroups.frTerminate
     m_oSortKeys.frTerminate
+    m_oColumns.frTerminate
 End Sub

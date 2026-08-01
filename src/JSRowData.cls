@@ -174,6 +174,7 @@ End Function
 
 Public Function GetSubTotal(ByVal ColIndex As Integer, ByVal AggregateFunction As jgexAggregateFunctionConstants) As Variant
 Attribute GetSubTotal.VB_Description = "Returns the aggregate function result of the set of values contained in a specified column on a group."
+    GetSubTotal = m_pOwner.frRowSubTotal(m_lRowIndex, ColIndex, AggregateFunction)
 End Function
 
 '= friend ================================================================

@@ -29,6 +29,9 @@ Private m_pOwner                    As GridEX
 Private m_nIndex                    As Integer
 Private m_eSortOrder                As jgexSortOrderConstants
 Private m_nColIndex                 As Integer
+'--- where the control last laid this level's chip out, so painting and
+'--- hit-testing read the same rectangle instead of each walking the row
+Private m_uChipRect                 As RECT
 
 '=========================================================================
 ' Properties
@@ -79,4 +82,20 @@ End Sub
 
 Friend Sub frSetIndex(ByVal nIndex As Integer)
     m_nIndex = nIndex
+End Sub
+
+Friend Property Get frChipRect() As RECT
+    frChipRect = m_uChipRect
+End Property
+
+Friend Property Let frChipRect(uValue As RECT)
+    m_uChipRect = uValue
+End Property
+
+'=========================================================================
+' Base class events
+'=========================================================================
+
+Private Sub Class_Terminate()
+    frTerminate
 End Sub

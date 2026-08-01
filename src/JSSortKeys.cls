@@ -124,3 +124,7 @@ End Sub
 Private Sub Class_Initialize()
     Set m_cItems = New Collection
 End Sub
+
+Private Sub Class_Terminate()
+    frTerminate
+End Sub

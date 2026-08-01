@@ -29,6 +29,7 @@ Private m_sKey                      As String
 Private m_eHeaderAlignment          As jgexAlignmentConstants
 Private m_nHeaderIcon               As Integer
 Private m_nDefaultIcon              As Integer
+Private m_pOwner                    As GridEX
 Private m_nIndex                    As Integer
 Private m_nColPosition              As Integer
 Private m_oValueList                As JSValueList
@@ -44,7 +45,6 @@ Private m_bHasValueList             As Boolean
 Private m_eSortOrder                As jgexSortOrderConstants
 Private m_eSortType                 As jgexSortTypeConstants
 Private m_bShowCaptionInCardView    As Boolean
-Private m_bIsGrouped                As Boolean
 Private m_sFormat                   As String
 Private m_eTextAlignment            As jgexAlignmentConstants
 Private m_sGroupFormat              As String
@@ -240,7 +240,9 @@ End Property
 
 Public Property Get IsGrouped() As Boolean
 Attribute IsGrouped.VB_Description = "Returns a value that indicates whether the Column is grouped."
-    IsGrouped = m_bIsGrouped
+    If Not m_pOwner Is Nothing Then
+        IsGrouped = m_pOwner.frColIsGrouped(m_nIndex)
+    End If
 End Property
 
 Public Property Get Format() As String
@@ -485,7 +487,8 @@ Public Sub AutoSize()
 Attribute AutoSize.VB_Description = "Adjusts the width of a column to accommodate the longest text."
 End Sub
 
-Friend Sub frInit(ByVal nIndex As Integer, sCaption As String, ByVal eColumnType As jgexColumnTypeConstants, ByVal eEditType As jgexEditTypeConstants, sKey As String)
+Friend Sub frInit(ByVal oCtl As GridEX, ByVal nIndex As Integer, sCaption As String, ByVal eColumnType As jgexColumnTypeConstants, ByVal eEditType As jgexEditTypeConstants, sKey As String)
+    Call CopyMemory(m_pOwner, oCtl, PTR_SIZE)
     m_nIndex = nIndex
     m_nColPosition = nIndex
     m_sCaption = sCaption
@@ -506,8 +509,8 @@ Friend Sub frSetSortOrder(ByVal eValue As jgexSortOrderConstants)
     m_eSortOrder = eValue
 End Sub
 
-Friend Sub frSetIsGrouped(ByVal bValue As Boolean)
-    m_bIsGrouped = bValue
+Friend Sub frTerminate()
+    Call CopyMemory(m_pOwner, NULL_PTR, PTR_SIZE)
 End Sub
 
 '=========================================================================
@@ -527,4 +530,9 @@ Private Sub Class_Initialize()
     m_nDefaultIcon = -1
     m_lMinRowsInCardView = 1
     m_lMaxRowsInCardView = 1
+    m_sGroupEmptyStringCaption = "(none)"
+End Sub
+
+Private Sub Class_Terminate()
+    frTerminate
 End Sub

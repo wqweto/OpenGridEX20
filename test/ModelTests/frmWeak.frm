@@ -109,6 +109,16 @@ EH:
     LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
 End Sub
 
+Private Sub GridEX1_GroupByBoxHeaderClick(ByVal Group As JSGroup)
+    Const FUNC_NAME     As String = "GridEX1_GroupByBoxHeaderClick"
+
+    On Error GoTo EH
+    EventLog = EventLog & "GBoxClick(" & Group.ColIndex & ");"
+    Exit Sub
+EH:
+    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+End Sub
+
 Private Sub GridEX1_SelectionChange()
     Const FUNC_NAME     As String = "GridEX1_SelectionChange"
 

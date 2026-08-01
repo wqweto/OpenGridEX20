@@ -238,8 +238,92 @@ All notable changes to this project will be documented in this file.
   shape. `RowExpanded` and `DefaultGroupMode` move from not implemented to
   verified
 
+### Added (M4 -- automatic sort)
+
+- `AutomaticSort` sorts on a column header click, doing what the original
+  documents client code used to write in the `ColumnHeaderClick` and
+  `GroupByBoxHeaderClick` events: a grouped column flips the sort order of its
+  group, any other one becomes the only sort key, ascending unless it already
+  was ascending -- so a header never cycles back to unsorted. The event goes out
+  before the control sorts, and under the default `False` a click still only
+  raises it
+- `GroupByBoxHeaderClick` fires: the chips were painted but never hit-tested, so
+  the event was dead. `JSGroup` now keeps the rectangle the layout gave its chip,
+  and painting and hit-testing both read it instead of each walking the
+  staircase. A chip stands for its column, so clicking one sorts through the
+  same path a click on that column's header takes
+- `JSColumn.IsGrouped` answers off the `Groups` collection through a weak owner
+  reference, the same one every other part of the object model uses to point
+  back; it is what routes a header click to the group rather than the keys
+- Group row captions honour `JSColumn.GroupPrefix`, `GroupFormat` and
+  `GroupEmptyStringCaption` (defaulting to `(none)` as the original does, which
+  our `JSColumn` was missing). A prefix is joined to the value by a space, and
+  the caption then starts one space earlier, so the value lands exactly where an
+  unprefixed one does: the caption is really `prefix & " " & value` drawn two
+  pixels past the expand box, and what looked like a space-width margin for an
+  unprefixed level is that same leading space with an empty prefix
+- `GroupFormat` labels the caption and nothing else. The help reads as though it
+  groups too ("in order to group records on a Month-Year basis"), but the
+  original still breaks groups on the raw value: two dates in one month give two
+  groups whose captions read alike, which `052-group-format` records
+- `AutomaticSort` and `JSColumn.IsGrouped` move to consumed, covered by
+  `pvTestAutomaticSort` in `ModelTests`; `GroupPrefix`, `GroupFormat` and
+  `GroupEmptyStringCaption` move to verified against scenarios `049-group-prefix`,
+  `050-group-empty-caption`, `051-group-empty-default` and `052-group-format`,
+  recorded from the original at both DPIs
+
+### Added (M4 -- aggregates and group footers)
+
+- `GroupFooterStyle` closes every group with a footer row: `jgexCaptionGroupFooter`
+  repeats the group caption, `jgexTotalsGroupFooter` reads the columns' aggregates
+  across the block. Closing a level is what records the span of rows it covered,
+  so the spans exist whether or not footers are shown, and a footer carries no
+  expand box -- it closes a group rather than opening one, which is also why the
+  rule above it starts where the records start rather than at the group's own edge
+- `JSRowData.GetSubTotal` computes all eight functions (`jgexCount`, `jgexSum`,
+  `jgexAvg`, `jgexMin`, `jgexMax`, `jgexStdDev`, `jgexValueCount`) over the
+  records a group row stands for, header or footer alike, skipping the nested
+  group rows that sit inside the span. It is the same routine the totals footer
+  paints from, driven per column by `JSColumn.AggregateFunction` and formatted by
+  `TotalRowPrefix`/`TotalRowFormat`; totals sit on the cell origins a record uses,
+  so they line up under the values they total
+- A collapsed group hides its own footer along with its records, while a footer
+  from a level further out still ends the hiding
+- `GroupFooterStyle`, `JSColumn.AggregateFunction`, `TotalRowFormat` and
+  `TotalRowPrefix` move to verified against scenarios `053-group-footer-caption`,
+  `054-group-footer-totals`, `055-group-footer-prefix-format` and
+  `056-group-footer-aggregates`, recorded from the original at both DPIs;
+  `pvTestGroupFooter` in `ModelTests` covers `GetSubTotal` including the standard
+  deviation and value count no scenario renders
+- `RefreshSort` was an empty stub, which the Advanced Sample's sort dialog calls
+  after rebuilding the keys; it now brings the rebuild forward from the next
+  paint exactly as `RefreshGroups` does
+- The Advanced Sample's M4 parts are covered by `pvTestAdvancedSampleParts` in
+  `ModelTests`, which runs the API sequence each of its three dialogs uses --
+  `frmSort` clearing and re-adding `SortKeys` then `RefreshSort`, `frmGroupBy`
+  doing the same over `Groups` (including the all-collapsed overload), and
+  `frmSummary` reading the keys back and totalling a column. The sample itself
+  is not ported: its data is ADO and it opens on card view and print preview,
+  which are M8, M6 and M11
+- **M4 is complete**: no property it owns is left unimplemented or merely stored
+  in `PROPERTIES.md`, and the corpus stands at 56 scenarios passing at 96 and
+  120 dpi
+
+### Fixed (M4 -- automatic sort)
+
+- The click handler sized the group-by box without the room the painter adds for
+  the chip staircase, so with two or more group levels every band below it was
+  hit-tested too high and a click landed on the wrong row
+
 ### Fixed
 
+- Every class holding the control through a weak reference now zeroes it in
+  `Class_Terminate`, as `JSRowData` already did: `JSGroup`, `JSSortKey`,
+  `JSGroups`, `JSSortKeys` and `JSColumns`/`JSColumn`. None of them AddRef the
+  control, so releasing one that was still attached -- which `Groups.Clear` is
+  the first caller to do while the control is alive -- had VB6 release a control
+  it never AddRef-ed and took the process down. `Clear` and `Remove` both drop
+  items that way, so it was reachable from ordinary client code
 - A group row's `JSRowData` wrappers are detached before the array holding them
   is discarded, by `Erase`, by `ReDim`, or at control teardown. The order array
   and the group row array are discarded on different paths -- a sort with no
