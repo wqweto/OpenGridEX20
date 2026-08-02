@@ -67,24 +67,44 @@ gridline is ever drawn and the golden's full colour histogram
 
 | | count | share |
 |---|---:|---:|
-| verified | 52 | 41% |
+| verified | 65 | 52% |
+| partial | 2 | 2% |
 | weak | 0 | 0% |
 | unverified | 0 | 0% |
-| partial | 0 | 0% |
+| consumed (no pixels of its own) | 1 | 1% |
 | n/a (state only) | 1 | 1% |
-| **not implemented** | **73** | **58%** |
+| **not implemented** | **57** | **45%** |
 | **total** | **126** | |
 
-**53 of 126 (42%) are read by the paint path**; the other **73 (58%) are not
-implemented** -- they store and return their value, and round-trip through the
-snapshot corpus, but the renderer never looks at them.
+**67 of 126 (53%) are read by the paint path**; **57 (45%) are not implemented**
+-- they store and return their value, and round-trip through the snapshot
+corpus, but the renderer never looks at them -- and the remaining 2 are read by
+the engine without painting anything themselves.
 
 **Every property the renderer reads is proven** against the original at two or
-more distinct values. Two of them cannot be proven by a picture and are pinned
-by `ModelTests` instead: `ContinuousScroll` only shows up mid-drag, and `Redraw`
-suppresses painting rather than changing it. `Col` is state with no pixels of
-its own -- it is listed to record that, not as a gap. The 60 that remain are
+more distinct values, with two exceptions that are proven only over the part of
+their range that exists (below). Two more cannot be proven by a picture and are
+pinned by `ModelTests` instead: `ContinuousScroll` only shows up mid-drag, and
+`Redraw` suppresses painting rather than changing it. `Col` is state with no
+pixels of its own and `JSColumn.IsGrouped` is read by the engine rather than the
+renderer -- both are listed to record that, not as gaps. The 57 that remain are
 unimplemented, each owned by a later milestone.
+
+The two partials are enums implemented over part of their range, which the
+two-value bar would otherwise score as fully verified:
+
+| property | implemented | missing |
+|---|---|---|
+| `JSColumn.ColumnType` | `jgexText`, `jgexCheckBox` | `jgexIcon`, `jgexIconAndText` -- both need the unimplemented image support |
+| `JSColumn.EditType` | `jgexEditNone`, `jgexEditTextBox`, `jgexEditCheckBox` | `jgexEditCustom`, `jgexEditDropDown`, `jgexEditCalendarDropDown`, `jgexEditCombo` |
+
+`JSColumn.WordWrap` is proven through the in-place editor rather than a painted
+cell: `061-edit-tall-row` opens a multiline editor whose three line breaks are
+pixel-matched at all three dpi, which is a stricter test of the wrap than a
+painted cell would be -- the break points move with the editor's width, and
+getting that width wrong by two pixels is exactly what broke it once already.
+The painted (non-editing) wrapped cell shares `pvDrawText`'s `bWordWrap` path
+but has no golden of its own.
 
 Getting there took eight scenarios and turned up **eleven** real defects. Each had
 survived because the corpus could not see it: solid gridlines hide both dotted
@@ -95,10 +115,14 @@ Not-implemented properties by owning milestone:
 
 | milestone | count |
 |---|---:|
-| M10 styling extras | 38 |
+| M10 styling extras | 36 |
 | M6 card view | 12 |
-| M5 editing | 5 |
+| M5 editing | 4 |
 | **unowned** | **5** |
+
+The two partials sit outside this table -- `ColumnType`'s missing icon modes are
+M10's and `EditType`'s missing dropdown/combo editors are M5's, but neither
+property is unimplemented.
 
 M3d has none left: `Col`, `ColumnAutoResize`, `ContinuousScroll`, `FrozenColumns`
 and `Redraw` closed the milestone.
@@ -115,8 +139,8 @@ Five remain unowned: the drag/resize affordances (`AllowColumnDrag`,
 ### The matrix
 
 Scenario names refer to `test\VisualDiff\scenarios\NNN-*.json`, numbered in
-creation order; all 56 are verified at 96 and 120 dpi, and the first 28 at 144 as
-well. The `Commit` column records where the property started affecting pixels,
+creation order; all 66 are verified at 96, 120 and 144 dpi. The `Commit` column
+records where the property started affecting pixels,
 not where it was first stored -- every member was declared in the M2 storage
 commit, so that hash carries no information about painting.
 
@@ -140,7 +164,7 @@ commit, so that hash carries no information about painting.
 | `CardWidth` | `Long` | **not impl** | M6 | -- | -- |
 | `Col` | `Integer` | n/a | M3d | -- | `ModelTests` clamps it to the column range |
 | `ColumnAutoResize` | `Boolean` | verified | M3d | -- | `032-column-autoresize` (True, 900/1500/600tw -> 113/189/76px) vs default False |
-| `ColumnHeaderFont` | `Font` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `009-font-large`, `020-font-tahoma`, `019-font-segoeui` + MS Sans Serif default |
+| `ColumnHeaderFont` | `Font` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `009-font-large`, `020-font-tahoma`, `019-font-segoeui`, `065`/`066` (Tahoma 12 and Segoe UI 14 under two group levels) + MS Sans Serif default |
 | `ColumnHeaderHeight` | `Long` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `003-headers-flat` sets 400tw; font-derived defaults elsewhere |
 | `ColumnHeaders` | `Boolean` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `004-no-headers-no-rowheaders` (False) vs default True |
 | `Columns` | `JSColumns` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | all 30 scenarios -- see the `JSColumn.*` rows |
@@ -153,7 +177,7 @@ commit, so that hash carries no information about painting.
 | `Enabled` | `Boolean` | **not impl** | M10 | -- | -- |
 | `FirstItem` | `Long` | verified | M3d | [`e95c15e`](../../commit/e95c15e1b1d35f09c9bbe557228ddc1329ed6c6f) | `016-scrolled` sets 4 in its `post` block; 1 elsewhere |
 | `FmtConditions` | `JSFmtConditions` | **not impl** | M10 | -- | -- |
-| `Font` | `Font` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `009-font-large`, `020-font-tahoma`, `019-font-segoeui` + default |
+| `Font` | `Font` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `009-font-large`, `020-font-tahoma`, `019-font-segoeui`, `065`/`066` (Tahoma 12 and Segoe UI 14) + default |
 | `ForeColor` | `OLE_COLOR` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `022-colors-rows` (`0xFF0000`) vs default -- also drives the marquee XOR mask |
 | `ForeColorHeader` | `OLE_COLOR` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `021-colors-chrome` (`0x00FFFF`) vs default |
 | `ForeColorInfoText` | `OLE_COLOR` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `021-colors-chrome` (`0x0020FF`) vs default |
@@ -181,9 +205,9 @@ commit, so that hash carries no information about painting.
 | `JSColumn.CardIcon` | `Boolean` | **not impl** | M6 | -- | -- |
 | `JSColumn.CellStyle` | `String` | **not impl** | M10 | -- | -- |
 | `JSColumn.ColPosition` | `Integer` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `023-column-order` reorders 3 columns to 1/2/3 from declaration order |
-| `JSColumn.ColumnType` | `jgexColumnTypeConstants` | **not impl** | M10 | -- | -- |
+| `JSColumn.ColumnType` | `jgexColumnTypeConstants` | partial | M10 | -- | `062-checkbox-values`, `063-checkbox-large-font` (`jgexCheckBox`) vs `jgexText` default; `jgexIcon`/`jgexIconAndText` unimplemented |
 | `JSColumn.DefaultIcon` | `Integer` | **not impl** | M10 | -- | -- |
-| `JSColumn.EditType` | `jgexEditTypeConstants` | **not impl** | M5 | -- | -- |
+| `JSColumn.EditType` | `jgexEditTypeConstants` | partial | M5 | -- | `057-edit-textbox` (`jgexEditTextBox`), `060-edit-checkbox` (`jgexEditCheckBox`) vs `jgexEditNone` default; `jgexEditCustom`/`DropDown`/`CalendarDropDown`/`Combo` unimplemented |
 | `JSColumn.Format` | `String` | **not impl** | M10 | -- | -- |
 | `JSColumn.GroupEmptyStringCaption` | `String` | verified | M4 | -- | `050-group-empty-caption` (`<blank>`) vs `051-group-empty-default` (the `(none)` default) |
 | `JSColumn.GroupFormat` | `String` | verified | M4 | -- | `052-group-format` (`0` over 10.2/10.4/20.4) vs unformatted elsewhere; labels the caption only, the group still breaks on the raw value |
@@ -203,7 +227,7 @@ commit, so that hash carries no information about painting.
 | `JSColumn.TotalRowPrefix` | `String` | verified | M4 | -- | `055-group-footer-prefix-format` (`Sum=`) vs no prefix in `054-group-footer-totals` |
 | `JSColumn.Visible` | `Boolean` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `013-hidden-column` (False) vs default True |
 | `JSColumn.Width` | `Long` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | 900/1200/1400/1500/1800tw across the corpus |
-| `JSColumn.WordWrap` | `Boolean` | **not impl** | M10 | -- | -- |
+| `JSColumn.WordWrap` | `Boolean` | verified | M5 | -- | `061-edit-tall-row` (True -- the editor breaks the string over 3 lines) vs `057-edit-textbox` (default False, single line) |
 | `JSFormatStyle.BackColor` | `OLE_COLOR` | verified | M3d | [`a5d9590`](../../commit/a5d959050e1911c9b78ce1a64c2743bdba83d47c) | `025-formatstyles-selection` (`0x004080`) vs the system default |
 | `JSFormatStyle.BackgroundPicture` | `Picture` | **not impl** | M10 | -- | -- |
 | `JSFormatStyle.DrawModeBackGroundPicture` | `jgexDrawModePictureBackgroundConstants` | **not impl** | M10 | -- | -- |
@@ -267,19 +291,27 @@ The three `gridlines-*` scenarios each carry 5-6 properties rather than one, so
 clearing the weak block cost three captures instead of seven -- recording is the
 slow part of the loop, so scenarios are packed deliberately.
 
-The corpus is recorded and verified at **96 and 120 dpi** throughout. `golden/144`
-covers the first 28 scenarios only: everything from `029-hscrolled` on was
-recorded after the machine left 150%, so the scrollbar band, the navigator,
-frozen columns and column auto-resize have no 150% golden yet. That pair is also the third data point the
-navigator's box-width term (`tmHeight + BandH + 16`) still wants -- two scales
-cannot separate a constant from a metric-derived one.
+The corpus is recorded and verified at **96, 120 and 144 dpi** throughout -- all
+66 scenarios at each. Three scales is the working minimum here, not a luxury:
+two of them cannot separate a constant from a metric-derived term, and every
+rule that broke during the 125% and 150% passes had been fitted on a pair. The
+record navigator's box width is the worked example -- `7 * tmAveCharWidth + 11`
+agreed with the original at 96 and 144 purely because the average character is 5
+and 8 there, and only 120, where it is 7 rather than the assumed 6, showed the
+term was wrong. It is the measured width of `"9999999"` plus the client border.
+
+A scale can also fail to separate two rules by landing on a whole number. The
+group chip elbow and the group-by box staircase both round with `CLng`, VB6's
+round-half-to-**even**, and only chip heights whose half is a `.5` tell that
+apart from truncation -- so a font whose metrics come out even proves nothing
+about the rounding. Where a metric is fitted, prefer a scenario in a *font* that
+moves the chip height (`065`/`066`) over waiting for another dpi.
 
 Note on goldens and the system accent: it changed twice during this work
 (`0x0078D7` -> `0x0078D4` -> back), and every selected row carries it. A golden
 set recorded in an earlier session can therefore fail on colour alone while the
 geometry is perfect -- the tell is a diff whose only pairs are the accent and its
-XOR complement. Re-record rather than debug. `golden/144` currently holds the
-older accent and wants a re-record next time the machine is at 150%.
+XOR complement. Re-record rather than debug.
 
 M3d closed with four more scenarios (`031`-`034`), and each turned up a rule that
 no amount of reading the docs would have produced:
@@ -325,11 +357,12 @@ keep the order the client app supplied them in.
 
 M7 is complete. Horizontal scrolling landed with it, since `LeftCol` was the one
 property the renderer only partly consumed. The scrollbar band that came out of
-it brought two more paint properties into the matrix: `RecordNavigator`, verified
-against the original at both values, and `RecordNavigatorString`, which is the
-only weak entry left -- the corpus renders it at its default `Record:|of` and
-nothing else, so the prefix/middle text metrics that drive the whole navigator
-layout are unproven at any other string.
+it brought two more paint properties into the matrix, both since verified
+against the original at two values: `RecordNavigator` at both of its own, and
+`RecordNavigatorString` once `033-record-navigator-string` rendered it at
+`Row:|from a total of` beside the default `Record:|of`. That second string is
+what pins the prefix/middle text metrics driving the navigator layout -- and it
+is the scenario that caught the box-width term at 125%.
 
 Both harness scripts take an optional scenario mask -- `make.bat 029*`,
 `record.bat *gridlines-*` -- which cuts a single-scenario check to about a second

@@ -5,6 +5,7 @@
     "height": 200,
     "apply": "before-show",
     "props": {
+        "GroupByBoxVisible": false,
         "AllowEdit": true,
         "Columns": [
             { "Caption": "Alpha", "Width": 1500, "EditType": 1 },
@@ -18,7 +19,7 @@
         ]
     },
     "input": [
-        { "click": [ 40, 60 ] },
+        { "click": [ 40, 32 ] },
         { "text": "Xy" },
         { "key": 27 }
     ]

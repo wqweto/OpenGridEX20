@@ -5,6 +5,7 @@
     "height": 220,
     "apply": "before-show",
     "props": {
+        "GroupByBoxVisible": false,
         "AllowEdit": true,
         "RowHeight": 600,
         "Columns": [
@@ -19,7 +20,7 @@
         ]
     },
     "input": [
-        { "click": [ 40, 70 ] },
+        { "click": [ 40, 40 ] },
         { "text": "Xy" }
     ]
 }

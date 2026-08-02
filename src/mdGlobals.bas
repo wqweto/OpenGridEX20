@@ -136,6 +136,7 @@ Public Declare Function GetDeviceCaps Lib "gdi32" (ByVal hDC As Long, ByVal nInd
 Public Declare Function GetDC Lib "user32" (ByVal hWnd As Long) As Long
 Public Declare Function ReleaseDC Lib "user32" (ByVal hWnd As Long, ByVal hDC As Long) As Long
 Public Declare Function GetTextMetrics Lib "gdi32" Alias "GetTextMetricsW" (ByVal hDC As Long, lpMetrics As TEXTMETRICW) As Long
+Public Declare Function GetTextExtentPoint32 Lib "gdi32" Alias "GetTextExtentPoint32W" (ByVal hDC As Long, ByVal lpString As Long, ByVal cbString As Long, lpSize As SIZEAPI) As Long
 Public Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long) As Long
 Public Declare Function SetWindowLong Lib "user32" Alias "SetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long, ByVal dwNewLong As Long) As Long
 Public Declare Function WindowFromPoint Lib "user32" (ByVal xPoint As Long, ByVal yPoint As Long) As Long
@@ -152,6 +153,11 @@ Public Declare Function GetSystemMetrics Lib "user32" (ByVal nIndex As Long) As 
 Public Type POINTAPI
     X                       As Long
     Y                       As Long
+End Type
+
+Public Type SIZEAPI
+    cx                      As Long
+    cy                      As Long
 End Type
 
 Public Type RECT

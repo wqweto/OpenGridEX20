@@ -21,12 +21,17 @@ Private Const WS_TABSTOP                    As Long = &H10000
 Private Const SB_CTL                         As Long = 2
 Private Const SIF_ALL                        As Long = &H17
 Private Const OBJID_CLIENT                   As Long = &HFFFFFFFC
+Private Const EM_GETSEL                      As Long = &HB0
+Private Const EM_GETLINECOUNT                As Long = &HBA
+Private Const EM_GETFIRSTVISIBLELINE         As Long = &HCE
 
 Private Declare Function GetWindowRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
 Private Declare Function GetClientRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
 Private Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long) As Long
 Private Declare Function GetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal nBar As Long, lpsi As SCROLLINFO) As Long
 Private Declare Function GetScrollBarInfo Lib "user32" (ByVal hWnd As Long, ByVal idObject As Long, psbi As SCROLLBARINFO) As Long
+Private Declare Function GetWindowText Lib "user32" Alias "GetWindowTextW" (ByVal hWnd As Long, ByVal lpString As Long, ByVal nMaxCount As Long) As Long
+Private Declare Function SendMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long
 
 Private Type RECT
     Left                    As Long
@@ -113,7 +118,7 @@ Public Sub Main()
         sMask = "*"
     End If
     TestInit App.Path & "\VisualDiff.out.txt"
-    If sMode = "verify" Or sMode = "scrollinfo-ours" Or sMode = "dump-ours" Then
+    If sMode = "verify" Or sMode = "scrollinfo-ours" Or sMode = "dump-ours" Or sMode = "windows-ours" Then
         sProgId = STR_PROGID_OURS
     Else
         sProgId = STR_PROGID_ORIGINAL
@@ -136,7 +141,7 @@ Public Sub Main()
         TestsDone
         Exit Sub
     End If
-    If sMode = "windows" Then
+    If sMode = "windows" Or sMode = "windows-ours" Then
         For Each vFile In EnumFiles(App.Path & "\scenarios", "*.json")
             sName = Mid$(vFile, InStrRev(vFile, "\") + 1)
             sName = Left$(sName, Len(sName) - Len(".json"))
@@ -156,6 +161,7 @@ Public Sub Main()
         Exit Sub
     End If
     If sMode = "metrics" Then
+        Assert "SM_CYHSCROLL=" & GetSystemMetrics(3) & " SM_CXVSCROLL=" & GetSystemMetrics(2) & sDpi & "dpi", True
         Assert FontMetrics("MS Sans Serif", 8) & sDpi & "dpi", True
         Assert FontMetrics("Tahoma", 8) & sDpi & "dpi", True
         Assert FontMetrics("Tahoma", 12) & sDpi & "dpi", True
@@ -290,6 +296,9 @@ Private Sub pvDumpWindows(ByVal hWndRoot As Long, ByVal hWnd As Long, ByVal lLev
     Dim uClient         As RECT
     Dim lStyle          As Long
     Dim sFlags          As String
+    Dim sText           As String
+    Dim lSelStart       As Long
+    Dim lSelEnd         As Long
 
     hChild = GetWindow(hWnd, GW_CHILD)
     Do While hChild <> 0
@@ -310,8 +319,17 @@ Private Sub pvDumpWindows(ByVal hWndRoot As Long, ByVal hWnd As Long, ByVal lLev
         If (lStyle And WS_TABSTOP) <> 0 Then
             sFlags = sFlags & " WS_TABSTOP"
         End If
+        '--- an editor's text and caret say what a picture of it cannot: which
+        '--- character the click that opened it landed on
+        sText = String$(1024, 0)
+        sText = Left$(sText, GetWindowText(hChild, StrPtr(sText), 1024))
+        If LenB(sText) <> 0 Then
+            Call SendMessage(hChild, EM_GETSEL, VarPtr(lSelStart), VarPtr(lSelEnd))
+            sText = " text=""" & sText & """ sel=" & lSelStart & ".." & lSelEnd & _
+                " lines=" & SendMessage(hChild, EM_GETLINECOUNT, 0, 0) & " top=" & SendMessage(hChild, EM_GETFIRSTVISIBLELINE, 0, 0)
+        End If
         Assert Space$(lLevel * 2) & "&H" & Hex$(hChild) & " [" & sClass & "] at (" & uWin.Left - uRoot.Left & "," & uWin.Top - uRoot.Top & ") " & _
-            uWin.Right - uWin.Left & "x" & uWin.Bottom - uWin.Top & " client " & uClient.Right & "x" & uClient.Bottom & sFlags, True
+            uWin.Right - uWin.Left & "x" & uWin.Bottom - uWin.Top & " client " & uClient.Right & "x" & uClient.Bottom & sFlags & sText, True
         pvDumpWindows hWndRoot, hChild, lLevel + 1
         hChild = GetWindow(hChild, GW_HWNDNEXT)
     Loop

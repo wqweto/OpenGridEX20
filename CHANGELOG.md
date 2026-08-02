@@ -362,14 +362,119 @@ All notable changes to this project will be documented in this file.
   marquee runs, which is the row's own edge -- not the boundary between two
   cells, which no marquee follows
 
-### Known red
+### Fixed (M5 -- 150% scaling)
 
-- `061-edit-tall-row` at 96dpi. The original puts the caret at the end of the
-  text there and at the clicked character at 120, from the same scenario and the
-  same 40 pixel row, with only the font size between them. One rule has to
-  produce both and two recordings do not show it; a third at 144dpi would say
-  whether the editor's opening scroll follows the lines that fit or the lines
-  there are
+The corpus was re-recorded from the original at 144dpi and ran 61 of 70 there.
+Every divergence was a metric calibrated against two scales that a third pulled
+apart, and each is now a rule that holds at all three rather than a third
+constant:
+
+- The group-by box grows a staircase step per level past the first and
+  `pvTopHeight` added a flat 14 pixels for it. What the box does not take is
+  what the rows get, so a grouped grid that would otherwise just fit gained a
+  vertical scrollbar it should not have had
+- The record navigator's box holds seven characters and a margin,
+  `7 * tmAveCharWidth + 11` -- 46px at 96dpi, 53 at 120 and 67 at 144 -- which
+  is why 5, 50 and 500 records all render identically. It had been a constant
+- A group chip's elbow meets the next chip on that chip's text baseline, so it
+  follows the ascent rather than the whole font box. The two part company only
+  once the descent grows: 2px at 96 and 120dpi, 4 at 144
+- A grouped block that overflows comes up scrolled to its bottom, reporting
+  `FirstItem = 2` straight after a rebind where an ungrouped block of the same
+  height stays at the top. `018-both-scrollbars` overflows at 144dpi and stays
+  put, which is what makes this grouping-specific rather than a rule about
+  overflow. Collapsing a group now clamps `FirstItem` so it cannot point past
+  the last screenful
+- The navigator's arrow and bar centre a row above the button's own middle,
+  which shows only once the band height turns odd: 247 either way at 96 and
+  120dpi, 242 rather than 243 at 144. The bar is exactly as tall as the arrow
+  beside it and shares that centre -- 9, 11 and 13 rows -- where it had been
+  inset from the button's top and bottom independently, and it starts
+  `(BandH + 2) \ 4` in from the edge, 4, 5 and 7 pixels
+- The record number sits at the top of the box's interior. Centring it in what
+  is left of the band agrees at 96 and 120dpi and puts it a pixel low at 144
+- `pvSetHScrollInfo` counted the columns fitting after the frozen block without
+  the clamp its VB6-side twin already had, so a column too wide for the room
+  left put the last valid `LeftCol` one past the final column and the thumb came
+  out a step too small -- 1500 twip columns take 150px at 144dpi with 72 left
+- The checkbox's 11x12 box does not scale but the tick in it is the system's own
+  and does, so at 144dpi only the mark's top four rows are inside it, both arms
+  already there and the vertex below. It is not the 96dpi shape scaled -- that
+  one's top row is a single pixel on the right
+- A click toggles a checkbox wherever in the cell it lands. The vertical band
+  the toggle required was read off a 120dpi recording of a scenario that has
+  since moved its click, and both current recordings toggle from a point a row
+  above the box
+- The in-place editor is two pixels narrower: it ends where the painted cell's
+  text is clipped, at `lX + lW - 3`. Measured against the original's own window
+  -- 96x37 against our 98x37 at 96dpi, 146x57 against 148x57 at 144 -- and it
+  decides where a wrapping cell breaks its words
+
+`pvDumpWindows` now reports a window's text, selection, line count and first
+visible line, and `windows-ours` runs the mode against this control, so the
+original's editor can be read directly rather than inferred from a picture of
+it. That is what settled the editor width, and what narrowed the one below.
+
+The 120dpi goldens for `057`-`064` were stale here: those scenarios were made
+dpi-robust (group-by box off, clicks inside row 1 at every scale) and only 96
+and 144 had been re-recorded. Re-recorded at 125% below.
+
+### Fixed (M5 -- 125% scaling)
+
+The corpus was re-recorded from the original at 120dpi and ran 65 of 70 there.
+Every divergence was again a metric that two scales agreed on and a third pulled
+apart -- and three of the four turn out to be the same thing, a quantity the
+original rounds where we truncated:
+
+- The record navigator's box is the width of `"9999999"` plus the 2px client
+  border on each side -- 42, 49 and 63 measured, so 46, 53 and 67 -- and not
+  `7 * tmAveCharWidth + 11`. That formula held at 96 and 144dpi by coincidence,
+  since the average character is 5 and 8 there; at 120 it is 7 rather than the 6
+  the constant assumed, so the box came out 60 against the original's own 53px
+  TextBox and shoved the navigator and the scrollbar beside it to the right
+- A group chip's elbow has nothing to do with the font: it meets the next chip
+  three quarters of the way down that chip, less a pixel. Measured over seven
+  chip heights -- 19, 22, 26, 25, 30, 31 and 37px, three faces at two or three
+  dpi -- the leg lands at 13, 16, 18, 18, 22, 22 and 27. Three of those are
+  exactly `.5` and all three go the way `CLng` rounds, to even, which is why no
+  `\` form of it fits: 15.5 has to give 16 while 18.5 has to give 18. The
+  ascent-based rule it replaces fit six of the seven
+- The group-by box measures its staircase whole and rounds once, rather than
+  accumulating a truncated half-chip per level. At a 25px chip the original's
+  box is 52 high -- `CLng` of 37.5 -- where per-level truncation gives 51 and
+  shifts every band below it up a pixel; 19 and 31px chips agree with both, at
+  42 and 60. The chip tops themselves do truncate, 9, 12 and 15, so the box and
+  `pvChipStagger` cannot share the one expression
+- `pvTextWidth` measures with `GetTextExtentPoint32`, which is what VB6's own
+  `TextWidth` calls, instead of `DrawText` with `DT_CALCRECT`. The two agree on
+  every string in the corpus in MS Sans Serif and Tahoma and part company on
+  TrueType, where `CALCRECT` drops the last glyph's overhang: "Region" in Segoe
+  UI 14 measures 58 that way against the 59 the original lays its chip out with
+
+`061-edit-tall-row`, red since the 144dpi pass, is fixed and the divisor guessed
+at there was the wrong question. Probing the original with the editor open and
+clicks at three heights -- the recording that entry asked for -- shows only the
+first line ever answers: a click on line 0 gives the character under it at both
+dpi, while anything below that line takes the caret to the end of the text. It
+hit-tests a wrapping cell the way it does an unwrapped one. The 96dpi click sits
+20px down a 13px line and so falls past it; the same click at 120 sits 15px down
+a 16px line and is still on line 0, which is why one scale looked correct.
+
+### Added (M5 -- two-level grouping at large fonts)
+
+- `065-grouped-two-levels-tahoma` and `066-grouped-two-levels-segoeui`: the
+  corpus had two-level grouping only in the default font, which is one chip
+  height per dpi and cannot tell a rule from a fit. Tahoma 12 and Segoe UI 14
+  add four more chip heights, and they are what settled the elbow above and
+  turned up both the group-by box rounding and the text-measurement difference
+
+All 72 verify at 144dpi as well, on goldens recorded before any of the above,
+so the three rules were re-derived without loosening the scale they came from.
+The two new scenarios were recorded at 144 afterwards and matched on the first
+verify: chips of 35 and 44px, elbows at 25 and 32, boxes of 66 and 80 -- nine
+distinct chip heights now (19, 22, 25, 26, 30, 31, 35, 37, 44) with no
+exception. 65's box is the one that pays: `CLng` of 52.5 is 66, where rounding
+a half away from zero would have given 67.
 
 ### Added (M4 -- aggregates and group footers)
 

@@ -5,6 +5,7 @@
     "height": 220,
     "apply": "before-show",
     "props": {
+        "GroupByBoxVisible": false,
         "Font": { "Name": "Tahoma", "Size": 12 },
         "ColumnHeaderFont": { "Name": "Tahoma", "Size": 12 },
         "Columns": [

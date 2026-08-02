@@ -2482,6 +2482,14 @@ Private Sub pvBuildOrder()
     For Each oItem In m_oSelectedItems
         oItem.frSetPosition pvDataRowPos(oItem.RowIndex)
     Next
+    '--- a grouped block that overflows comes up scrolled to its bottom, where
+    '--- an ungrouped one of the same height stays at the top: the original
+    '--- reports FirstItem = 2 straight after a rebind, which looks far more
+    '--- like a quirk of its group building than anything intended. Matched
+    '--- because the goldens are what this control is measured against
+    If m_lGroupCols > 0 Then
+        EnsureVisible m_lVisibleCount
+    End If
     m_bInOrdering = False
 End Sub
 
@@ -2648,11 +2656,21 @@ End Sub
 Private Sub pvRecalcVisible()
     Dim lSlot           As Long
     Dim oItem           As JSSelectedItem
+    Dim lMax            As Long
 
     '--- an expand or a collapse only reprojects: the sort order underneath
     '--- stays exactly as it was
     lSlot = pvSlot(m_lRow)
     pvBuildVisible
+    '--- collapsing takes rows away, so a view scrolled down into them has to
+    '--- come back up rather than leave the block short of its own bottom
+    lMax = m_lVisibleCount - pvVisibleRows() + 1
+    If lMax < 1 Then
+        lMax = 1
+    End If
+    If m_lFirstItem > lMax Then
+        FirstItem = lMax
+    End If
     If lSlot > 0 Then
         m_lRow = pvSlotPos(lSlot)
     End If
@@ -2977,11 +2995,7 @@ Private Sub pvPaintGroupByBox(ByVal hDC As Long, lY As Long)
 
     hPrevFont = pvSelectFont(hDC, m_oFont)
     lBoxH = m_lColumnHeaderHeight + 4
-    lTotalH = lBoxH + 10
-    If m_oGroups.Count > 1 Then
-        '--- the box grows to hold the staircase of chips
-        lTotalH = lTotalH + (m_oGroups.Count - 1) * pvChipStagger()
-    End If
+    lTotalH = pvGroupByBoxHeight()
     pvFillRect hDC, 0, lY, picGrid.ScaleWidth, lY + lTotalH, m_clrBackColorGBBox
     If m_oGroups.Count > 0 Then
         '--- the grouped columns take the box over, one chip each
@@ -3081,7 +3095,15 @@ Private Sub pvPaintGroupChips(ByVal hDC As Long, ByVal lY As Long)
             '--- chip above, then right into the one below it, meeting it a
             '--- line below its top edge
             If lIdx < m_oGroups.Count Then
-                lElbowTop = lTop + pvChipStagger() + uMetrics.tmHeight
+                '--- it meets the next chip three quarters of the way down
+                '--- that chip, less a pixel -- nothing to do with the font.
+                '--- Measured off the original over seven chip heights (19,
+                '--- 22, 26, 25, 30, 31 and 37px: three faces at two or three
+                '--- DPIs) the leg lands at 13, 16, 18, 18, 22, 22 and 27.
+                '--- Three of those are exactly .5 and all three go the way
+                '--- CLng rounds -- to even -- which is why no \ form of this
+                '--- fits: 15.5 has to give 16 while 18.5 has to give 18
+                lElbowTop = lTop + pvChipStagger() + CLng((3 * lChipH - 4) / 4)
                 pvLine hDC, lLeft + lChipW - 5, lTop + lChipH, lLeft + lChipW - 5, lElbowTop + 1, vb3DDKShadow, PS_SOLID
                 pvLine hDC, lLeft + lChipW - 5, lElbowTop, lLeft + lChipW + CHIP_GAP, lElbowTop, vb3DDKShadow, PS_SOLID
             End If
@@ -3902,20 +3924,30 @@ Private Sub pvPaintCheckBox(ByVal hDC As Long, ByVal lLeft As Long, ByVal lTop A
     If Not bChecked Then
         Exit Sub
     End If
-    '--- the tick is the same seven runs of pixels at either dpi, but it sits
-    '--- further into the box as the screen scales: two pixels in at 96, three
-    '--- at 120. The font does not move it -- a 12pt cell font at 96 leaves it
-    '--- exactly where an 8.25pt one does -- and neither DrawFrameControl nor
-    '--- a plain dpi ratio reproduces it, so the two offsets are the ones the
-    '--- recordings show and a third scale needs a third recording
-    lOffX = 2
-    lOffY = 4
-    If pvScreenDpi() >= 120 Then
+    '--- the box stays 11x12 at every scale but the tick in it is the system's
+    '--- own and grows with the screen, so it sits further in as that happens:
+    '--- two pixels at 96, three at 120. At 144 the mark has outgrown the box
+    '--- and only its top four rows are inside it, both arms already there and
+    '--- the vertex below -- which is why it is not the 96 shape scaled, whose
+    '--- top row is one pixel on the right. The font does not move it -- a 12pt
+    '--- cell font at 96 leaves it exactly where an 8.25pt one does -- and
+    '--- neither DrawFrameControl nor a plain dpi ratio reproduces any of them,
+    '--- so these are the ones the recordings show, a scale each
+    '--- row, first column, last column
+    Select Case pvScreenDpi()
+    Case Is >= 144
+        lOffX = 3
+        lOffY = 8
+        vRuns = Array(0, 0, 0, 0, 6, 6, 1, 0, 1, 1, 5, 6, 2, 0, 2, 2, 4, 6, 3, 0, 6)
+    Case Is >= 120
         lOffX = 3
         lOffY = 6
-    End If
-    '--- row, first column, last column
-    vRuns = Array(0, 6, 6, 1, 5, 6, 2, 0, 0, 2, 4, 6, 3, 0, 1, 3, 3, 5, 4, 0, 4, 5, 1, 3, 6, 2, 2)
+        vRuns = Array(0, 6, 6, 1, 5, 6, 2, 0, 0, 2, 4, 6, 3, 0, 1, 3, 3, 5, 4, 0, 4, 5, 1, 3, 6, 2, 2)
+    Case Else
+        lOffX = 2
+        lOffY = 4
+        vRuns = Array(0, 6, 6, 1, 5, 6, 2, 0, 0, 2, 4, 6, 3, 0, 1, 3, 3, 5, 4, 0, 4, 5, 1, 3, 6, 2, 2)
+    End Select
     For lIdx = 0 To UBound(vRuns) - 2 Step 3
         '--- a run landing on the bottom line draws over it, one past the box
         '--- is dropped: at 120dpi the tick sits low enough to do both
@@ -4024,9 +4056,10 @@ EH:
 End Sub
 
 Private Function pvTopHeight() As Long
-    If m_bGroupByBoxVisible Then
-        pvTopHeight = m_lColumnHeaderHeight + 14
-    End If
+    '--- the group-by box grows a staircase step per level past the first, so
+    '--- the room left for rows shrinks with them -- which is what puts a
+    '--- vertical scrollbar on a grouped grid that would otherwise just fit
+    pvTopHeight = pvGroupByBoxHeight()
     If m_bColumnHeaders Then
         pvTopHeight = pvTopHeight + m_lColumnHeaderHeight
     End If
@@ -4140,11 +4173,13 @@ Private Function pvNavLayout(uNav As UcsNavLayout) As Boolean
     lX = lX + lBtnW
     pvSetRect uNav.BtnPrev, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
     lX = lX + lBtnW + 4
-    '--- the box is a fixed size -- 5, 50 and 500 records render identically --
-    '--- but it does not scale linearly with dpi: 46px at 96 and 53px at 120,
-    '--- which this fits. Two scales cannot identify the formula uniquely, so
-    '--- it wants confirming against a 144dpi golden
-    lBoxW = FontTextMetrics(m_oFont).tmHeight + uNav.BandH + 16
+    '--- the box holds seven digits plus the 2px client border on each side,
+    '--- which is why 5, 50 and 500 records all render identically: the
+    '--- original's TextBox is 46px at 96dpi, 53 at 120 and 67 at 144, i.e.
+    '--- exactly the width of "9999999" (42, 49 and 63) grown by the border.
+    '--- Measured, not derived from tmAveCharWidth: that averages the whole
+    '--- charset (5, 7 and 8 px here) and does not track the digit advance
+    lBoxW = pvTextWidth(UserControl.hDC, "9999999") + 4
     '--- the box is taller than the band and clipped by it, like the original's
     '--- TextBox (53x24 inside a 22px band at 120dpi)
     pvSetRect uNav.Box, lX, uNav.BandTop, lX + lBoxW, uNav.BandTop + uNav.BandH + 4
@@ -4168,10 +4203,15 @@ Private Sub pvSetRect(uRect As RECT, ByVal lLeft As Long, ByVal lTop As Long, By
 End Sub
 
 Private Function pvTextWidth(ByVal hDC As Long, sText As String) As Long
-    Dim uRect           As RECT
+    Dim uSize           As SIZEAPI
 
-    Call DrawText(hDC, StrPtr(sText), Len(sText), uRect, DT_SINGLELINE Or DT_CALCRECT Or DT_NOPREFIX)
-    pvTextWidth = uRect.Right
+    '--- GetTextExtentPoint32, which is what VB6's own TextWidth calls, not
+    '--- DrawText with DT_CALCRECT: the two agree on the bitmap faces but part
+    '--- company on TrueType, where CALCRECT drops the last glyph's overhang
+    '--- -- "Region" in Segoe UI 14 measures 58 that way against the 59 the
+    '--- original lays its group-by chip out with
+    Call GetTextExtentPoint32(hDC, StrPtr(sText), Len(sText), uSize)
+    pvTextWidth = uSize.cx
 End Function
 
 Private Function pvNavigatorWidth() As Long
@@ -4240,7 +4280,10 @@ Private Sub pvNavArrow(ByVal hDC As Long, uBtn As RECT, ByVal bRight As Boolean,
     Else
         lOfs = (uBtn.Right - uBtn.Left - lHalf - 1) \ 2 + 1
     End If
-    lCenter = (uBtn.Top + uBtn.Bottom - 1) \ 2
+    '--- the glyph centres a row above the button's own middle, which only
+    '--- parts company with it once the band height turns odd: 247 either way
+    '--- at 96 and 120dpi, 242 rather than 243 at 144
+    lCenter = uBtn.Top + (uBtn.Bottom - uBtn.Top) \ 2 - 1
     If bRight Then
         lApex = uBtn.Right - 1 - lOfs
     Else
@@ -4277,6 +4320,7 @@ Private Sub pvPaintNavigator(ByVal hDC As Long)
     Dim lBarX           As Long
     Dim lBarW           As Long
     Dim lBarY           As Long
+    Dim lBarHalf        As Long
     Dim lTextH          As Long
     Dim lTextTop        As Long
 
@@ -4305,12 +4349,15 @@ Private Sub pvPaintNavigator(ByVal hDC As Long)
     pvNavArrow hDC, uNav.BtnNext, True, (m_lRow >= RowCount), False, uNav.BandH
     pvNavArrow hDC, uNav.BtnLast, True, False, True, uNav.BandH
     '--- bar metrics scale with the band: 2px wide at 4 in from the edge at
-    '--- 96dpi, 3px at 5 in at 120dpi
-    lBarX = uNav.BandH \ 4
+    '--- 96dpi, 3px at 5 in at 120dpi and 3px at 7 in at 144
+    lBarX = (uNav.BandH + 2) \ 4
     lBarW = uNav.BandH \ 7
-    lBarY = uNav.BandH \ 5
-    pvFillRect hDC, uNav.BtnFirst.Left + lBarX, uNav.BtnFirst.Top + lBarY, uNav.BtnFirst.Left + lBarX + lBarW, uNav.BtnFirst.Bottom - lBarY - 1, vbBlack
-    pvFillRect hDC, uNav.BtnLast.Right - 1 - lBarX - lBarW, uNav.BtnLast.Top + lBarY, uNav.BtnLast.Right - 1 - lBarX, uNav.BtnLast.Bottom - lBarY - 1, vbBlack
+    '--- the bar is exactly as tall as the arrow beside it and shares its
+    '--- centre -- 9, 11 and 13 rows at 96, 120 and 144dpi
+    lBarHalf = uNav.BandH \ 4
+    lBarY = uNav.BtnFirst.Top + (uNav.BtnFirst.Bottom - uNav.BtnFirst.Top) \ 2 - 1 - lBarHalf
+    pvFillRect hDC, uNav.BtnFirst.Left + lBarX, lBarY, uNav.BtnFirst.Left + lBarX + lBarW, lBarY + 2 * lBarHalf + 1, vbBlack
+    pvFillRect hDC, uNav.BtnLast.Right - 1 - lBarX - lBarW, lBarY, uNav.BtnLast.Right - 1 - lBarX, lBarY + 2 * lBarHalf + 1, vbBlack
     uBox = uNav.Box
     Call DrawEdge(hDC, uBox, EDGE_SUNKEN, BF_RECT)
     pvFillRect hDC, uNav.Box.Left + 2, uNav.Box.Top + 2, uNav.Box.Right - 2, uNav.Box.Bottom - 2, vbWindowBackground
@@ -4321,7 +4368,10 @@ Private Sub pvPaintNavigator(ByVal hDC As Long)
     lTextTop = uNav.BandTop + (uNav.BandH - lTextH + 1) \ 2
     pvDrawText hDC, uNav.Prefix, uNav.PrefixX, lTextTop, uNav.PrefixX + pvTextWidth(hDC, uNav.Prefix), lTextTop + lTextH, m_clrForeColorHeader, m_clrBackColorHeader, jgexAlignLeft, uNav.PrefixX, uNav.Width
     pvDrawText hDC, uNav.Middle, uNav.MiddleX, lTextTop, uNav.MiddleX + pvTextWidth(hDC, uNav.Middle), lTextTop + lTextH, m_clrForeColorHeader, m_clrBackColorHeader, jgexAlignLeft, uNav.MiddleX, uNav.Width
-    pvDrawText hDC, CStr(m_lRow), uNav.Box.Left + 2, uNav.Box.Top + 2, uNav.Box.Right - 4, uNav.BandTop + uNav.BandH - 2, m_clrForeColor, vbWindowBackground, jgexAlignRight, uNav.Box.Left + 2, uNav.Box.Right - 2
+    '--- the record number sits at the top of the box's interior rather than
+    '--- centring in what is left of the band, which the two only tell apart
+    '--- once the band height turns odd: a pixel lower at 144dpi
+    pvDrawText hDC, CStr(m_lRow), uNav.Box.Left + 2, uNav.Box.Top + 2, uNav.Box.Right - 4, uNav.Box.Top + 2 + lTextH, m_clrForeColor, vbWindowBackground, jgexAlignRight, uNav.Box.Left + 2, uNav.Box.Right - 2
     Call SelectObject(hDC, hPrevFont)
 End Sub
 
@@ -4452,7 +4502,16 @@ End Sub
 
 Private Sub pvSetHScrollInfo()
     Dim uSi             As SCROLLINFO
+    Dim lPage           As Long
 
+    '--- a column wider than the room left after the frozen block still counts
+    '--- as the one on show, or the last LeftCol lands past the final column
+    '--- and the thumb comes out a step too small -- which is what 1500 twip
+    '--- columns do at 144dpi, where they take 150px of the 72 left over
+    lPage = pvVisibleColsInWidth(pvScrollableWidth(), pvFrozenCount() + 1)
+    If lPage < 1 Then
+        lPage = 1
+    End If
     '--- VB6 maps a scrollbar's Min..Max onto 0..32767 before handing it to
     '--- Windows, and the thumb it computes from that lands a pixel off the
     '--- original's. The original keeps the column numbers themselves in the
@@ -4461,7 +4520,7 @@ Private Sub pvSetHScrollInfo()
     uSi.cbSize = Len(uSi)
     uSi.fMask = SIF_RANGE Or SIF_PAGE Or SIF_POS
     uSi.nMin = pvFrozenCount() + 1
-    uSi.nMax = pvVisibleColCount() - pvVisibleColsInWidth(pvScrollableWidth(), pvFrozenCount() + 1) + 1
+    uSi.nMax = pvVisibleColCount() - lPage + 1
     If uSi.nMax < uSi.nMin Then
         uSi.nMax = uSi.nMin
     End If
@@ -5042,7 +5101,6 @@ Private Function pvBeginEdit(ByVal lPos As Long, ByVal nCol As Integer, ByVal bS
     Dim lY              As Long
     Dim lW              As Long
     Dim lStyle          As Long
-    Dim lBoxTop         As Long
     Dim lCaret          As Long
     Dim lTextTop        As Long
     Dim lEditH          As Long
@@ -5076,16 +5134,12 @@ Private Function pvBeginEdit(ByVal lPos As Long, ByVal nCol As Integer, ByVal bS
     End If
     If oCol.EditType = jgexEditCheckBox Then
         '--- a checkbox has no editor to show: the click is the edit, so the
-        '--- value flips there and then and the client hears one Change. Only
-        '--- a click level with the box counts, which is the whole of why the
-        '--- same point toggles at 96dpi and not at 120: the taller bands
-        '--- there put the row lower and leave the point above the box
-        lBoxTop = lY + (pvRowContentH(m_lRowHeight) - CHECK_BOX_H) \ 2
-        If lClickY >= lBoxTop And lClickY < lBoxTop + CHECK_BOX_H Then
-            frRowValue(lRowIndex, oCol.Index) = Not pvIsChecked(lRowIndex, oCol.Index)
-            RaiseEvent Change
-            pvInvalidate
-        End If
+        '--- value flips there and then and the client hears one Change.
+        '--- Anywhere in the cell counts -- 064 clicks well left of the box and
+        '--- still toggles, and a point a row above it toggles at 144dpi too
+        frRowValue(lRowIndex, oCol.Index) = Not pvIsChecked(lRowIndex, oCol.Index)
+        RaiseEvent Change
+        pvInvalidate
         pvBeginEdit = True
         Exit Function
     End If
@@ -5128,7 +5182,12 @@ Private Function pvBeginEdit(ByVal lPos As Long, ByVal nCol As Integer, ByVal bS
         lTextTop = lY + 1
         lEditH = pvRowContentH(m_lRowHeight) - 2
     End If
-    m_hWndEdit = CreateWindowEx(0, StrPtr("EDIT"), 0, lStyle, lX + 1, lTextTop, lW - 2, lEditH, hWnd, 0, App.hInstance, ByVal 0&)
+    '--- it ends where the painted cell's text is clipped, at lX + lW - 3, and
+    '--- not a pixel further: two more would let "the quick brown fox jumps
+    '--- over the lazy dog" break a word later in a wrapping cell, and the
+    '--- click that opens the editor then lands on a character rather than
+    '--- past the end of the last line
+    m_hWndEdit = CreateWindowEx(0, StrPtr("EDIT"), 0, lStyle, lX + 1, lTextTop, lW - 4, lEditH, hWnd, 0, App.hInstance, ByVal 0&)
     If m_hWndEdit = 0 Then
         m_bEditing = False
         m_bInEditSetup = False
@@ -5148,13 +5207,24 @@ Private Function pvBeginEdit(ByVal lPos As Long, ByVal nCol As Integer, ByVal bS
     ElseIf lClickY >= 0 Then
         '--- the click that opened the editor carries on into it: the caret
         '--- lands on the character under the point, which is what decides
-        '--- where typing goes and, in a wrapping cell, which line shows
-        lCaret = SendMessage(m_hWndEdit, EM_CHARFROMPOS, 0, pvMakeDWord(lClickX - lX, lClickY - lTextTop))
-        If lCaret = -1 Then
-            '--- the point fell outside the editor, which answers with the end
+        '--- where typing goes and, in a wrapping cell, which line shows.
+        '--- Only the first line answers though -- the original hit-tests the
+        '--- cell the way it does an unwrapped one, so a point below that line
+        '--- is simply past the text and takes the caret to the end. Probed
+        '--- against the original on a 3-line wrapping cell: clicking line 0
+        '--- gives the character there at both dpi, while line 1 gives the end
+        '--- at 96 (where the line is 13px and the point falls on it) and the
+        '--- line 0 character at 120 (16px, where the same point does not)
+        If lClickY - lTextTop >= uMetrics.tmHeight Then
             lCaret = Len(m_sEditOldValue)
         Else
-            lCaret = lCaret And &HFFFF&
+            lCaret = SendMessage(m_hWndEdit, EM_CHARFROMPOS, 0, pvMakeDWord(lClickX - lX, lClickY - lTextTop))
+            If lCaret = -1 Then
+                '--- the point fell outside the editor, which answers with the end
+                lCaret = Len(m_sEditOldValue)
+            Else
+                lCaret = lCaret And &HFFFF&
+            End If
         End If
         Call SendMessage(m_hWndEdit, EM_SETSEL, lCaret, lCaret)
     Else
@@ -5249,8 +5319,14 @@ Private Function pvGroupByBoxHeight() As Long
         pvGroupByBoxHeight = m_lColumnHeaderHeight + 14
         If m_oGroups.Count > 1 Then
             '--- the box grew to hold the staircase, so the bands below it did
-            '--- move down -- pvPaintGroupByBox sizes it the same way
-            pvGroupByBoxHeight = pvGroupByBoxHeight + (m_oGroups.Count - 1) * pvChipStagger()
+            '--- move down. The staircase is measured whole and rounded once,
+            '--- not accumulated a truncated half-chip at a time the way the
+            '--- chips themselves step down: at a 25px chip the original's box
+            '--- is 52 high (CLng of 37.5, to even) where per-level truncation
+            '--- would give 51, and 19 and 31px chips agree with both at 42
+            '--- and 60. The chip tops do truncate -- 9, 12 and 15 -- so the
+            '--- two cannot share pvChipStagger
+            pvGroupByBoxHeight = CLng(m_lColumnHeaderHeight * (m_oGroups.Count + 1) / 2) + 14
         End If
     End If
 End Function
@@ -5634,8 +5710,6 @@ Private Sub UserControl_Initialize()
     m_eCursorLocation = jgexUseServer
     m_eBorderStyle = jgexFixed
     m_lDefaultColumnWidth = 100
-    '--- both heights follow their font, so they are DPI-dependent (19px
-    '--- and 19/22px at 96/120dpi); derive them instead of hardcoding
     m_oColumnHeaderFont_FontChanged vbNullString
     m_oFont_FontChanged vbNullString
     m_lImageWidth = 16
