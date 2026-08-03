@@ -362,6 +362,107 @@ All notable changes to this project will be documented in this file.
   marquee runs, which is the row's own edge -- not the boundary between two
   cells, which no marquee follows
 
+### Fixed (horizontal scrollbar)
+
+- Dragging the horizontal thumb always landed on the first column. The bar's
+  VB6 side -- `Min`, `Max` and `Value` -- was never set at all, so `Value` sat
+  on its 0 and the handler computed `LeftCol` as `0 + frozen + 1` whatever the
+  thumb did. The control writes the column numbers straight onto the window
+  with `SetScrollInfo`, over VB6's `Min..Max` mapping, so the position is read
+  back off the window the same way: `nTrackPos` mid-drag, `nPos` once it is
+  released. VB6's own three are set to those same numbers as well, so whichever
+  of the two a drag is reported through says the same thing
+- No automated test covers the drag: a scrollbar runs a modal tracking loop on
+  button down, so a synthetic click deadlocks the harness, and VB6 ignores a
+  posted `WM_HSCROLL` -- its `Change`/`Scroll` only fire for real mouse input.
+  The write side is covered, by `scrollinfo` mode and the `029`-`034` goldens
+
+### Added (M5 -- the pending row buffer and `Value`)
+
+- `Value(colindex)` was an empty pair of stubs -- reads gave `Empty` and writes
+  were dropped. It is implemented, and implementing it meant building what sits
+  under it: the row being edited buffers its cells rather than writing straight
+  through. A column commit and an assignment to `Value` both land in that
+  buffer, the grid paints from it, leaving the row writes it to storage behind
+  `BeforeUpdate`/`RowFormat`/`AfterUpdate`/`RowFormat`, and Escape drops it
+- Escape is two-level, which is what proved the buffer exists: the first press
+  cancels the cell, the second cancels the row and reverts every column
+  buffered since the row became current. Editing three columns and pressing
+  Escape once leaves the first two edits standing and undoes the third;
+  pressing it twice undoes all three
+- `RowFormat` on a cancelled cell only fires when that cancel ends the row's
+  edit -- with other columns still buffered the row stays dirty and keeps it
+- Six scenarios record the whole model from the original, pixels and event log:
+  `069`-`071` for a buffered `Value` showing, being cancelled and being
+  committed by a row move, `072`-`074` for the editor's own commits under one
+  and two Escapes. `ModelTests` pvTestEditLeaveCell covers what they cannot --
+  that storage is untouched until the row is left, which a repaint from the
+  buffer looks identical to
+- `AssignVariant` moved into `mdGlobals.bas`: copying a cell value needs `Set`
+  for an object and refuses it for anything else, and three places now do it
+
+### Fixed (M5 -- leaving a cell)
+
+- `hWndEdit` was an empty property that always answered 0, while the handle it
+  is meant to return sat in a member beside it. It returns the editor's window
+  now, and 0 when no cell is being edited -- which is what the original does,
+  read off its own object model with a cell open and with none
+
+- The in-place editor survived a move of the current cell: it stayed on screen
+  over its old cell and what had been typed was never committed. It now shows
+  on the current cell and nowhere else -- every path that moves either
+  coordinate closes it and commits, whether the move comes from a click, a key
+  or an assignment to `Row`/`Col`
+- The commit is split the way the original splits it, which two new scenarios
+  pin down: leaving the *column* raises `BeforeColUpdate`/`AfterColUpdate`/
+  `AfterColEdit` and nothing else, while leaving the *row* adds
+  `BeforeUpdate`/`RowFormat`/`AfterUpdate`/`RowFormat` behind them. That also
+  fixes where the commit sits in the sequence -- it has to run before
+  `SelectionChange`, which is why it hangs off `pvNavigate` rather than the
+  row setter it first went into. Escape still discards, unchanged
+- `067-edit-commit-on-move` and `068-edit-commit-on-row-move` record both cases
+  from the original, pixels and event log. `ModelTests` pvTestEditLeaveCell
+  covers what a golden cannot: that the typed text reaches the row's storage
+  rather than only the painted cell, and that the editor window is destroyed
+
+### Fixed (invalidation)
+
+- `ItemCount` marked the sort order stale but never repainted, so rows appearing
+  or going only showed up when something else caused a paint. The count drives
+  the scrollbar range as well as the contents, so it now invalidates like every
+  other change (the `Redraw = False` batch guard still holds it back). No golden
+  could have caught this: the visual harness always follows `ItemCount` with
+  `Rebind`, whose own invalidate covered for it, and the original control
+  refuses an `ItemCount` change at runtime at all, so there is nothing to record
+  a golden from. `ModelTests` pvTestItemCountInvalidate pins it instead, on the
+  `WS_VSCROLL` style the same paint pass puts on the control's window --
+  reverting the one-word fix turns that assertion red
+- `pvUpdateScrollBars` decided differently depending on whether it had already
+  run. It measured the surface from `picGrid`, which the previous pass had
+  already shortened by the band and narrowed by the vertical bar, and then
+  charged for both again: a second pass invented a horizontal bar for columns
+  that fit and took its height out of the vertical page, leaving the thumb a row
+  short. It now adds back whatever the last layout took before deciding. The
+  band is one strip the navigator and the horizontal bar share, so it costs its
+  height once rather than once per occupant -- which was wrong for a grid with
+  both, and only stayed invisible because nothing made that routine run twice
+  until `ItemCount` above started invalidating (`018-both-scrollbars` caught it)
+
+### Fixed (object model)
+
+- `JSColumn.SortOrder` always answered `jgexSortNone`. It returned a member of
+  its own that nothing ever wrote -- `frSetSortOrder` had no callers -- while
+  the header arrow was painted from a private helper reading the real sort
+  state, so the property and the pixels had drifted apart without either being
+  obviously wrong. It is read-only in the original, so it is now a view over
+  that same state: the helper is a `Friend` and the property delegates to it,
+  the way `IsGrouped` already delegated to `frColIsGrouped`. Grouping counts
+  towards it -- dumping the original's own object model for
+  `038-grouped-one-level` shows a grouped column reporting the group's order
+  with no `SortKeys` at all -- which is the rule the arrow already painted by.
+  Eight assertions in `ModelTests` pvTestAutomaticSort now read it back off
+  keys and groups, including the transitions the old code could not have failed
+
 ### Fixed (M5 -- 150% scaling)
 
 The corpus was re-recorded from the original at 144dpi and ran 61 of 70 there.

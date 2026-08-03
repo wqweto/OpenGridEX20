@@ -671,6 +671,10 @@ Private m_sEditOldValue             As String
 Private m_bInEditSetup              As Boolean
 Private m_hWndEdit                  As Long
 Private m_pSubclassEdit             As IUnknown
+Private m_lPendRow                  As Long
+Private m_bPendAny                  As Boolean
+Private m_aPendValue()              As Variant
+Private m_aPendDirty()              As Boolean
 
 '--- per-row virtual storage behind JSRowData wrappers
 Private Type UcsCellData
@@ -751,6 +755,7 @@ End Property
 
 Public Property Get hWndEdit() As Long
 Attribute hWndEdit.VB_Description = "Returns the handle of the cell editor."
+    hWndEdit = m_hWndEdit
 End Property
 
 Public Property Get OLEDropMode() As jgexOleDropModeConstants
@@ -859,6 +864,7 @@ Public Property Let Col(ByVal nValue As Integer)
         nValue = 1
     End If
     If m_nCol <> nValue Then
+        pvLeaveCell bRowChanging:=False
         nLastCol = m_nCol
         m_nCol = nValue
         '--- the current cell is drawn out of the selected row it sits in, so
@@ -1045,8 +1051,7 @@ End Property
 
 Public Property Let ItemCount(ByVal lValue As Long)
     m_lItemCount = lValue
-    '--- rows appearing or going invalidates the order the same way a key does
-    frSortChanged
+    frSortChanged bInvalidate:=True
 End Property
 
 Public Property Get DataMode() As jgexDataModeConstants
@@ -1195,6 +1200,7 @@ Public Property Let Row(ByVal lValue As Long)
     Dim lLastRow        As Long
 
     If m_lRow <> lValue Then
+        pvLeaveCell bRowChanging:=True
         pvSetRow lValue
         '--- an assignment from outside collapses the selection onto the new
         '--- row, silently: navigation and drag go through pvSetRow instead
@@ -1413,9 +1419,31 @@ End Property
 
 Public Property Get Value(ByVal ColIndex As Integer) As Variant
 Attribute Value.VB_Description = "Returns/sets the value of a column in the current row."
+    Dim lRowIndex       As Long
+    Dim vValue          As Variant
+
+    lRowIndex = pvDataRow(m_lRow)
+    If lRowIndex <= 0 Then
+        Exit Property
+    End If
+    If pvPendGet(lRowIndex, ColIndex, vValue) Then
+        AssignVariant Value, vValue
+    Else
+        AssignVariant Value, frRowValue(lRowIndex, ColIndex)
+    End If
 End Property
 
 Public Property Let Value(ByVal ColIndex As Integer, ByVal vntValue As Variant)
+    Dim lRowIndex       As Long
+
+    '--- buffered on the current row rather than written through: it shows at
+    '--- once, the row moving commits it and Escape drops it
+    lRowIndex = pvDataRow(m_lRow)
+    If lRowIndex <= 0 Then
+        Exit Property
+    End If
+    pvPendSet lRowIndex, ColIndex, vntValue
+    pvInvalidate
 End Property
 
 Public Property Get FullyLoaded() As Boolean
@@ -3150,13 +3178,13 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
         pvPaintHeaderCell hDC, lX, lY, lW, lHdrH, oCol.Caption, oCol.HeaderAlignment
         '--- a sorted column carries the arrow right after its caption,
         '--- sitting on its baseline
-        If pvColSortOrder(oCol) <> 0 Then
+        If frColSortOrder(oCol.Index) <> 0 Then
             uMetrics = FontTextMetrics(m_oColumnHeaderFont, hDC)
             '--- the arrow centres on the caption rather than sitting on its
             '--- baseline: the two coincide at the default font, which is why
             '--- 16, 19 and 25 pixel fonts were needed to tell them apart
             pvPaintSortGlyph hDC, lX + 2 + pvTextWidth(hDC, oCol.Caption) + 4, _
-                lY + (lHdrH - uMetrics.tmHeight + 1) \ 2 + uMetrics.tmHeight \ 2 + 4, pvColSortOrder(oCol)
+                lY + (lHdrH - uMetrics.tmHeight + 1) \ 2 + uMetrics.tmHeight \ 2 + 4, frColSortOrder(oCol.Index)
         End If
         lX = lX + lW
     Next
@@ -3215,7 +3243,7 @@ Private Sub pvSetPixel(ByVal hDC As Long, ByVal lX As Long, ByVal lY As Long, By
     pvFillRect hDC, lX, lY, lX + 1, lY + 1, clrColor
 End Sub
 
-Private Function pvColSortOrder(oCol As JSColumn) As jgexSortOrderConstants
+Friend Function frColSortOrder(ByVal nColIndex As Integer) As jgexSortOrderConstants
     Dim lIdx            As Long
     Dim oKey            As JSSortKey
     Dim oGroup          As JSGroup
@@ -3224,15 +3252,15 @@ Private Function pvColSortOrder(oCol As JSColumn) As jgexSortOrderConstants
     '--- with the same arrow an explicit sort key gets
     For lIdx = 1 To m_oGroups.Count
         Set oGroup = m_oGroups.Item(lIdx)
-        If oGroup.ColIndex = oCol.Index Then
-            pvColSortOrder = oGroup.SortOrder
+        If oGroup.ColIndex = nColIndex Then
+            frColSortOrder = oGroup.SortOrder
             Exit Function
         End If
     Next
     For lIdx = 1 To m_oSortKeys.Count
         Set oKey = m_oSortKeys.Item(lIdx)
-        If oKey.ColIndex = oCol.Index Then
-            pvColSortOrder = oKey.SortOrder
+        If oKey.ColIndex = nColIndex Then
+            frColSortOrder = oKey.SortOrder
             Exit Function
         End If
     Next
@@ -4001,6 +4029,17 @@ End Function
 Private Function pvCellText(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As String
     Dim vValue          As Variant
 
+    '--- a cell buffered on the row being edited paints from the buffer
+    If pvPendGet(lRowIndex, nColIndex, vValue) Then
+        If Not IsArray(vValue) Then
+            Select Case VarType(vValue)
+            Case vbEmpty, vbNull, vbObject, vbError
+            Case Else
+                pvCellText = CStr(vValue)
+            End Select
+        End If
+        Exit Function
+    End If
     pvCellText = frRowDisplayValue(lRowIndex, nColIndex)
     If LenB(pvCellText) = 0 Then
         vValue = frRowValue(lRowIndex, nColIndex)
@@ -4410,6 +4449,8 @@ Private Sub pvUpdateScrollBars()
     Dim lTopH           As Long
     Dim lAvailH         As Long
     Dim lAvailW         As Long
+    Dim lFullH          As Long
+    Dim lFullW          As Long
     Dim lHdrW           As Long
     Dim lColsW          As Long
     Dim lStyle          As Long
@@ -4428,20 +4469,41 @@ Private Sub pvUpdateScrollBars()
         lHdrW = 18
     End If
     lColsW = lHdrW + pvTotalColWidth()
-    '--- both scrollbars interact: each one steals space from the other
-    lAvailH = picGrid.ScaleHeight - lTopH
-    lAvailW = picGrid.ScaleWidth
+    '--- this routine has to decide the same way whether or not it has run
+    '--- before, so it starts from the surface neither bar has touched: the
+    '--- last pass already took the band out of picGrid's height and the
+    '--- vertical bar out of its width, and both have to be added back or the
+    '--- second call charges for them twice -- it then invents a horizontal
+    '--- bar for columns that do fit and pays for it out of the vertical page,
+    '--- which is a thumb short by a row
+    lFullH = picGrid.ScaleHeight
+    If m_bBand Then
+        lFullH = lFullH + GetSystemMetrics(SM_CYHSCROLL)
+    End If
+    lFullW = picGrid.ScaleWidth
+    If (GetWindowLong(picGrid.hWnd, GWL_STYLE) And WS_VSCROLL) <> 0 Then
+        lFullW = lFullW + GetSystemMetrics(SM_CXVSCROLL)
+    End If
+    '--- both scrollbars interact: each one steals space from the other. The
+    '--- band is a single strip the navigator and the horizontal bar share, so
+    '--- it costs its height once -- the navigator holds it open on its own,
+    '--- and then the bar moving in is free
+    lAvailH = lFullH - lTopH
+    If m_bRecordNavigator Then
+        lAvailH = lAvailH - GetSystemMetrics(SM_CYHSCROLL)
+    End If
+    lAvailW = lFullW
     bNeedV = (m_lRowHeight > 0 And RowCount > 0 And RowCount * m_lRowHeight > lAvailH)
     bNeedH = (lColsW > lAvailW)
     If bNeedV Then
-        lAvailW = lAvailW - GetSystemMetrics(SM_CXVSCROLL)
+        lAvailW = lFullW - GetSystemMetrics(SM_CXVSCROLL)
         bNeedH = (lColsW > lAvailW)
     End If
-    If bNeedH Then
+    If bNeedH And Not m_bRecordNavigator Then
         lAvailH = lAvailH - GetSystemMetrics(SM_CYHSCROLL)
         bNeedV = (m_lRowHeight > 0 And RowCount > 0 And RowCount * m_lRowHeight > lAvailH)
         If bNeedV Then
-            lAvailW = picGrid.ScaleWidth - GetSystemMetrics(SM_CXVSCROLL)
+            lAvailW = lFullW - GetSystemMetrics(SM_CXVSCROLL)
         End If
     End If
     '--- only the vertical bar is a window style. The horizontal one is a
@@ -4526,6 +4588,18 @@ Private Sub pvSetHScrollInfo()
     End If
     uSi.nPage = 1
     uSi.nPos = m_nLeftCol
+    '--- VB6's own Min/Max/Value carry the same column numbers, so whichever
+    '--- of the two a drag ends up reported through says the same thing. They
+    '--- were never set at all, which left Value on its 0 and every drag on
+    '--- the first column. Assigning them here is safe: the caller holds
+    '--- m_bScrollUpdating, which is what pvOnHScroll checks before acting
+    If hsbGrid.Min <> uSi.nMin Or hsbGrid.Max <> uSi.nMax Then
+        hsbGrid.Min = uSi.nMin
+        hsbGrid.Max = uSi.nMax
+    End If
+    If hsbGrid.Value <> m_nLeftCol And m_nLeftCol >= uSi.nMin And m_nLeftCol <= uSi.nMax Then
+        hsbGrid.Value = m_nLeftCol
+    End If
     Call SetScrollInfo(hsbGrid.hWnd, SB_CTL, uSi, 0)
     hsbGrid.Refresh
 End Sub
@@ -4874,14 +4948,14 @@ Attribute EditSubclassProc.VB_MemberFlags = "40"
         RaiseEvent KeyDown(nKeyCode, nShift)
         Select Case nKeyCode
         Case vbKeyReturn
-            pvEndEdit True
-            '--- committing steps to the next row, as the original does
+            '--- it steps to the next row, so the row is flushed with the cell
+            pvEndEdit bCommit:=True, bRowFlush:=True
             If m_lRow < RowCount Then
                 pvNavigate m_lRow + 1, m_nCol, 0, False
             End If
             Handled = True
         Case vbKeyEscape
-            pvEndEdit False
+            pvEndEdit bCommit:=False, bRowFlush:=False
             Handled = True
         End Select
     Case WM_CHAR
@@ -5258,7 +5332,106 @@ Private Sub pvDestroyEditor()
     m_hWndEdit = 0
 End Sub
 
-Private Sub pvEndEdit(ByVal bCommit As Boolean)
+Private Sub pvPendSet(ByVal lRowIndex As Long, ByVal nColIndex As Integer, vValue As Variant)
+    If lRowIndex <= 0 Or nColIndex < 1 Or nColIndex > m_oColumns.Count Then
+        Exit Sub
+    End If
+    '--- one row at a time: landing on another one writes the last one through
+    If m_lPendRow <> lRowIndex Then
+        pvPendCommit
+        m_lPendRow = lRowIndex
+    End If
+    If Not m_bPendAny Then
+        ReDim m_aPendValue(1 To m_oColumns.Count) As Variant
+        ReDim m_aPendDirty(1 To m_oColumns.Count) As Boolean
+        m_bPendAny = True
+    ElseIf UBound(m_aPendDirty) < m_oColumns.Count Then
+        ReDim Preserve m_aPendValue(1 To m_oColumns.Count) As Variant
+        ReDim Preserve m_aPendDirty(1 To m_oColumns.Count) As Boolean
+    End If
+    AssignVariant m_aPendValue(nColIndex), vValue
+    m_aPendDirty(nColIndex) = True
+End Sub
+
+Private Function pvPendGet(ByVal lRowIndex As Long, ByVal nColIndex As Integer, vValue As Variant) As Boolean
+    If Not m_bPendAny Or lRowIndex <> m_lPendRow Then
+        Exit Function
+    End If
+    If nColIndex < 1 Or nColIndex > UBound(m_aPendDirty) Then
+        Exit Function
+    End If
+    If m_aPendDirty(nColIndex) Then
+        AssignVariant vValue, m_aPendValue(nColIndex)
+        pvPendGet = True
+    End If
+End Function
+
+Private Sub pvFlushRow()
+    Dim oCancel         As JSRetBoolean
+    Dim oRowData        As JSRowData
+    Dim lRowIndex       As Long
+
+    '--- the row half of an update: what the buffer holds goes to storage and
+    '--- the client hears about the row rather than the cell
+    If Not m_bPendAny Then
+        Exit Sub
+    End If
+    lRowIndex = m_lPendRow
+    pvPendCommit
+    Set oRowData = GetRowData(pvDataRowPos(lRowIndex))
+    Set oCancel = New JSRetBoolean
+    RaiseEvent BeforeUpdate(oCancel)
+    RaiseEvent RowFormat(oRowData)
+    If Not oCancel.Value Then
+        '--- no UnboundUpdate here: the original commits the row into its own
+        '--- buffer and says only AfterUpdate about it
+        RaiseEvent AfterUpdate
+    End If
+    RaiseEvent RowFormat(oRowData)
+End Sub
+
+Private Sub pvCancelRow()
+    Dim lRowIndex       As Long
+
+    If Not m_bPendAny Then
+        Exit Sub
+    End If
+    lRowIndex = m_lPendRow
+    pvPendDiscard
+    RaiseEvent RowFormat(GetRowData(pvDataRowPos(lRowIndex)))
+    pvInvalidate
+End Sub
+
+Private Sub pvPendCommit()
+    Dim nIdx            As Integer
+
+    If Not m_bPendAny Then
+        Exit Sub
+    End If
+    For nIdx = 1 To UBound(m_aPendDirty)
+        If m_aPendDirty(nIdx) Then
+            frRowValue(m_lPendRow, nIdx) = m_aPendValue(nIdx)
+        End If
+    Next
+    pvPendDiscard
+End Sub
+
+Private Sub pvPendDiscard()
+    m_lPendRow = 0
+    m_bPendAny = False
+    Erase m_aPendValue
+    Erase m_aPendDirty
+End Sub
+
+Private Sub pvLeaveCell(ByVal bRowChanging As Boolean)
+    If m_bEditing Then
+        pvEndEdit bCommit:=True, bRowFlush:=bRowChanging
+    ElseIf bRowChanging Then
+        pvFlushRow
+    End If
+End Sub
+
+Private Sub pvEndEdit(ByVal bCommit As Boolean, ByVal bRowFlush As Boolean)
     Dim oCancel         As JSRetBoolean
     Dim nCol            As Integer
     Dim lRowIndex       As Long
@@ -5283,24 +5456,24 @@ Private Sub pvEndEdit(ByVal bCommit As Boolean)
             pvSetFocusBack
             Exit Sub
         End If
-        frRowValue(lRowIndex, nCol) = sText
+        pvPendSet lRowIndex, nCol, sText
         Set oRowData = GetRowData(pvDataRowPos(lRowIndex))
         RaiseEvent AfterColUpdate(nCol)
         RaiseEvent AfterColEdit(nCol)
-        Set oCancel = New JSRetBoolean
-        RaiseEvent BeforeUpdate(oCancel)
-        RaiseEvent RowFormat(oRowData)
-        If Not oCancel.Value Then
-            '--- no UnboundUpdate here: the original commits the cell into its
-            '--- own buffer and says only AfterUpdate about it
-            RaiseEvent AfterUpdate
+        '--- the row half only when the row is being left, which is where the
+        '--- buffered cells go through to storage
+        If bRowFlush Then
+            pvFlushRow
         End If
-        RaiseEvent RowFormat(oRowData)
     Else
-        '--- a cancelled edit repaints the cell it was covering and says only
-        '--- that the session ended
+        '--- a cancelled edit says only that the session ended. It repaints the
+        '--- cell it was covering when that cancel is the whole of the row's
+        '--- edit: with other columns still buffered the row stays dirty and
+        '--- keeps its RowFormat until whatever resolves it
         Set oRowData = GetRowData(pvDataRowPos(lRowIndex))
-        RaiseEvent RowFormat(oRowData)
+        If sText <> m_sEditOldValue And Not m_bPendAny Then
+            RaiseEvent RowFormat(oRowData)
+        End If
         RaiseEvent AfterColEdit(nCol)
     End If
     pvSetFocusBack
@@ -5404,7 +5577,7 @@ Private Sub pvAutoSort(oCol As JSColumn)
             Exit Sub
         End If
     Next
-    If pvColSortOrder(oCol) = jgexSortAscending Then
+    If frColSortOrder(oCol.Index) = jgexSortAscending Then
         m_oSortKeys.Clear
         m_oSortKeys.Add oCol.Index, jgexSortDescending
     Else
@@ -5481,6 +5654,11 @@ Private Sub pvOnKeyDown(ByVal nKeyCode As Integer, ByVal nShift As Integer)
         pvNavigate pvClampRow(1), m_nCol, nShift, False
     Case vbKeyEnd
         pvNavigate pvClampRow(RowCount), m_nCol, nShift, False
+    Case vbKeyEscape
+        '--- the grid only sees Escape once no editor holds the focus, so this
+        '--- is the second press: the first closes the cell, this one drops
+        '--- every column the row has buffered since it became current
+        pvCancelRow
     End Select
 End Sub
 
@@ -5499,6 +5677,8 @@ End Sub
 
 '--- moves the current cell and updates the selection accordingly
 Private Sub pvNavigate(ByVal lRow As Long, ByVal nCol As Integer, ByVal nShift As Integer, ByVal bCtrlToggle As Boolean)
+    '--- an open editor commits before any of it, ahead of SelectionChange
+    pvLeaveCell bRowChanging:=(lRow <> m_lRow And lRow >= 1 And lRow <= RowCount)
     '--- the selection lands on the new row before the move is announced,
     '--- which is the order the original raises the two events in
     If lRow >= 1 And lRow <= RowCount Then
@@ -5746,18 +5926,35 @@ Private Sub UserControl_ReadProperties(PropBag As PropertyBag)
 End Sub
 
 Private Sub hsbGrid_Change()
-    pvOnHScroll
+    pvOnHScroll bTracking:=False
 End Sub
 
 Private Sub hsbGrid_Scroll()
-    pvOnHScroll
+    pvOnHScroll bTracking:=True
 End Sub
 
-Private Sub pvOnHScroll()
+Private Sub pvOnHScroll(ByVal bTracking As Boolean)
+    Dim uSi             As SCROLLINFO
+
     If m_bScrollUpdating Then
         Exit Sub
     End If
-    LeftCol = pvClampCol(hsbGrid.Value + pvFrozenCount() + 1)
+    '--- the bar carries the column numbers pvSetHScrollInfo put on the window
+    '--- itself, over VB6's Min..Max mapping, so VB6's own Value knows nothing
+    '--- about them and reading it lands on the first column every time. The
+    '--- position comes back off the window for the same reason it went on.
+    '--- A drag reports where it is in nTrackPos, nPos still holding where it
+    '--- started; anything else has already moved nPos
+    uSi.cbSize = Len(uSi)
+    uSi.fMask = SIF_POS Or SIF_TRACKPOS
+    If GetScrollInfo(hsbGrid.hWnd, SB_CTL, uSi) = 0 Then
+        Exit Sub
+    End If
+    If bTracking Then
+        LeftCol = pvClampCol(uSi.nTrackPos)
+    Else
+        LeftCol = pvClampCol(uSi.nPos)
+    End If
 End Sub
 
 Private Sub m_oFont_FontChanged(ByVal PropertyName As String)

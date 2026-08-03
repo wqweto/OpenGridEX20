@@ -49,3 +49,4 @@
 - Put `API`, `Constants and member variables`, `Error management`, `Properties`, `Methods`, `Functions`, `Control events`, `Base class events`, `Interface Xxx` separators in all modules
 - Classes have Methods section, standard modules have Functions section
 - Keep API section ordered by consts first, then declares, types last
+- Always use named params for optional parameters and boolean flags

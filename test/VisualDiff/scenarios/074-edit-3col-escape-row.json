@@ -1,0 +1,28 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "edit-3col-escape-row",
+    "width": 400,
+    "height": 200,
+    "apply": "before-show",
+    "props": {
+        "GroupByBoxVisible": false,
+        "AllowEdit": true,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500, "EditType": 1 },
+            { "Caption": "Beta", "Width": 1500, "EditType": 1 },
+            { "Caption": "Gamma", "Width": 1500, "EditType": 1 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "a1", "b1", "c1" ],
+            [ "a2", "b2", "c2" ]
+        ]
+    },
+    "input": [
+        { "click": [ 40, 32 ] }, { "text": "X" },
+        { "click": [ 160, 32 ] }, { "text": "Y" },
+        { "click": [ 260, 32 ] }, { "text": "Z" },
+        { "key": 27 }, { "key": 27 }
+    ]
+}

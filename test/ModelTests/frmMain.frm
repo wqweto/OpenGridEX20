@@ -77,10 +77,15 @@ Private Const SB_LINEDOWN           As Long = 1
 Private Const SB_PAGEDOWN           As Long = 3
 Private Const SB_THUMBPOSITION      As Long = 4
 Private Const SB_THUMBTRACK         As Long = 5
+Private Const GWL_STYLE             As Long = -16
+Private Const WS_VSCROLL            As Long = &H200000
 
 Private Declare Function SendMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long
 Private Declare Function GetParent Lib "user32" (ByVal hWnd As Long) As Long
 Private Declare Function GetClientRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
+Private Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long) As Long
+Private Declare Function GetFocus Lib "user32" () As Long
+Private Declare Function IsWindow Lib "user32" (ByVal hWnd As Long) As Long
 
 Private Type RECT
     Left                    As Long
@@ -117,6 +122,8 @@ Private Sub Form_Load()
     pvTestUnbound
     pvTestScroll
     pvTestScrollProps
+    pvTestItemCountInvalidate
+    pvTestEditLeaveCell
     pvTestSorting
     pvTestGrouping
     pvTestGroupCaption
@@ -498,6 +505,98 @@ Private Sub pvTestScroll()
         SendMessage .hWnd, WM_VSCROLL, SB_PAGEDOWN, 0
         Assert "Scroll: page down advances", .FirstItem > 2
         AssertEquals "Scroll: FirstItemChange event count", "First;First;First;First;", oForm.EventLog
+    End With
+    Unload oForm
+End Sub
+
+Private Sub pvTestEditLeaveCell()
+    Dim oForm           As frmWeak
+    Dim hEdit           As Long
+
+    '--- the editor only ever shows on the current cell, so moving off it
+    '--- closes the editor and puts what was typed into the row's storage.
+    '--- The visual corpus proves the pixels and the event order; this is the
+    '--- underlying value, which a repaint of stale storage would also show
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("A").Width = 1500
+        .Columns.Add("B").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 5
+        .Rebind
+        .AllowEdit = True
+        .Columns.Item(1).EditType = jgexEditTextBox
+        .Columns.Item(2).EditType = jgexEditTextBox
+        AssertEquals "LeaveCell: the row starts on its fetched value", "R1C1", .GetRowData(1).Value(1)
+        '--- same geometry as pvTestMouse: data from y=52, rows 19px, A=0..99,
+        '--- so (50, 60) is row 1 column A and (50, 80) is row 2. The click
+        '--- lands past the end of the short cell text, which puts the caret
+        '--- there and makes the typing an append
+        AssertEquals "LeaveCell: no editor, no handle", 0, .hWndEdit
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 60)
+        hEdit = GetFocus()
+        Assert "LeaveCell: the editor opened and took the focus", hEdit <> 0 And hEdit <> .hWnd
+        AssertEquals "LeaveCell: hWndEdit is that editor", hEdit, .hWndEdit
+        SendMessage hEdit, WM_CHAR, 90, 0
+        '--- still open, so nothing is in the row yet
+        AssertEquals "LeaveCell: typing alone does not reach the row", "R1C1", .GetRowData(1).Value(1)
+        '--- moving a column over closes the editor and buffers the cell: the
+        '--- row's own storage is not written until the row itself is left
+        .Col = 2
+        AssertEquals "LeaveCell: a column move only buffers it", "R1C1", .GetRowData(1).Value(1)
+        AssertEquals "LeaveCell: and Value reads the buffer back", "R1C1Z", .Value(1)
+        Assert "LeaveCell: the editor is gone", IsWindow(hEdit) = 0
+        AssertEquals "LeaveCell: hWndEdit back to nothing", 0, .hWndEdit
+        '--- the row move is what writes it through
+        .Row = 2
+        AssertEquals "LeaveCell: the row move commits it", "R1C1Z", .GetRowData(1).Value(1)
+        '--- Value buffers the same way with no editor ever opened
+        .Value(1) = "typed in"
+        AssertEquals "LeaveCell: Value shows at once", "typed in", .Value(1)
+        AssertEquals "LeaveCell: without reaching storage", "R2C1", .GetRowData(2).Value(1)
+        '--- and Escape on the grid drops the whole row's buffer
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyEscape, 0
+        AssertEquals "LeaveCell: Escape drops the buffered row", "R2C1", .Value(1)
+        AssertEquals "LeaveCell: storage never saw it", "R2C1", .GetRowData(2).Value(1)
+        '--- one more, this time left rather than cancelled
+        .Value(1) = "kept"
+        .Row = 1
+        AssertEquals "LeaveCell: leaving commits what Value buffered", "kept", .GetRowData(2).Value(1)
+    End With
+    Unload oForm
+End Sub
+
+Private Sub pvTestItemCountInvalidate()
+    Dim oForm           As frmWeak
+
+    '--- setting ItemCount has to repaint on its own. The visual corpus cannot
+    '--- see this: the harness always follows it with Rebind, whose own
+    '--- invalidate covered for it, and the original control refuses an
+    '--- ItemCount change at runtime at all, so no golden could exist either.
+    '--- The vertical bar is a WS_VSCROLL style on the control's own window,
+    '--- put there by the same paint pass, so it stands in for the repaint
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("Alpha").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 2
+        .Rebind
+        Assert "ItemCount: two rows need no vertical bar", (GetWindowLong(.hWnd, GWL_STYLE) And WS_VSCROLL) = 0
+        '--- no Rebind and no Refresh behind it -- the property alone
+        .ItemCount = 500
+        AssertEquals "ItemCount: the count is taken", 500, .RowCount
+        Assert "ItemCount: and the bar appears without a Refresh", (GetWindowLong(.hWnd, GWL_STYLE) And WS_VSCROLL) <> 0
+        '--- and back down again, which has to take the bar away
+        .ItemCount = 2
+        Assert "ItemCount: shrinking takes the bar away again", (GetWindowLong(.hWnd, GWL_STYLE) And WS_VSCROLL) = 0
+        '--- Redraw = False still batches it, the way every other change is
+        .Redraw = False
+        .ItemCount = 500
+        Assert "ItemCount: Redraw off holds the repaint back", (GetWindowLong(.hWnd, GWL_STYLE) And WS_VSCROLL) = 0
+        .Redraw = True
+        Assert "ItemCount: turning Redraw back on pays it", (GetWindowLong(.hWnd, GWL_STYLE) And WS_VSCROLL) <> 0
     End With
     Unload oForm
 End Sub
@@ -1045,10 +1144,15 @@ Private Sub pvTestAutomaticSort()
         AssertEquals "AutoSort: one key after the first click", 1, .SortKeys.Count
         AssertEquals "AutoSort: on the column clicked", 1, .SortKeys.Item(1).ColIndex
         AssertEquals "AutoSort: ascending first", jgexSortAscending, .SortKeys.Item(1).SortOrder
+        '--- the column reads its order back out of the keys rather than
+        '--- keeping one of its own -- read-only, like the original's
+        AssertEquals "AutoSort: the column reports the key's order", jgexSortAscending, .Columns.Item(1).SortOrder
+        AssertEquals "AutoSort: an unsorted column reports none", jgexSortNone, .Columns.Item(2).SortOrder
         '--- clicking it again flips to descending, never back to unsorted
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
         AssertEquals "AutoSort: still one key", 1, .SortKeys.Count
         AssertEquals "AutoSort: descending on the second click", jgexSortDescending, .SortKeys.Item(1).SortOrder
+        AssertEquals "AutoSort: the column follows it down", jgexSortDescending, .Columns.Item(1).SortOrder
         '--- and a third click comes back to ascending
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
         AssertEquals "AutoSort: ascending again on the third", jgexSortAscending, .SortKeys.Item(1).SortOrder
@@ -1057,14 +1161,22 @@ Private Sub pvTestAutomaticSort()
         AssertEquals "AutoSort: the new column is the only key", 1, .SortKeys.Count
         AssertEquals "AutoSort: keyed on the second column", 2, .SortKeys.Item(1).ColIndex
         AssertEquals "AutoSort: ascending on a fresh column", jgexSortAscending, .SortKeys.Item(1).SortOrder
+        '--- and the column the key left goes back to reporting none
+        AssertEquals "AutoSort: the abandoned column reports none", jgexSortNone, .Columns.Item(1).SortOrder
+        AssertEquals "AutoSort: the new one reports the key", jgexSortAscending, .Columns.Item(2).SortOrder
         '--- a grouped column flips its group instead of touching the keys
         .SortKeys.Clear
         .Groups.Add 1, jgexSortAscending
         AssertEquals "AutoSort: IsGrouped follows Groups", True, .Columns.Item(1).IsGrouped
         AssertEquals "AutoSort: an ungrouped column says so", False, .Columns.Item(2).IsGrouped
+        '--- grouping counts towards SortOrder with no sort key in play at all,
+        '--- which is what the original's own object model dump reports
+        AssertEquals "AutoSort: a grouped column reports the group's order", jgexSortAscending, .Columns.Item(1).SortOrder
+        AssertEquals "AutoSort: with no sort key behind it", 0, .SortKeys.Count
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
         AssertEquals "AutoSort: group flipped to descending", jgexSortDescending, .Groups.Item(1).SortOrder
         AssertEquals "AutoSort: no sort key added for it", 0, .SortKeys.Count
+        AssertEquals "AutoSort: the column follows the group down", jgexSortDescending, .Columns.Item(1).SortOrder
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
         AssertEquals "AutoSort: group back to ascending", jgexSortAscending, .Groups.Item(1).SortOrder
         '--- the chip in the group-by box stands for the same column: it sits
@@ -1082,6 +1194,7 @@ Private Sub pvTestAutomaticSort()
         '--- ungrouping hands the column back to the sort keys
         .Groups.Clear
         AssertEquals "AutoSort: IsGrouped cleared with the group", False, .Columns.Item(1).IsGrouped
+        AssertEquals "AutoSort: and SortOrder with it", jgexSortNone, .Columns.Item(1).SortOrder
     End With
     Unload oForm
 End Sub

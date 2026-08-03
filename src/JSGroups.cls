@@ -99,7 +99,7 @@ End Sub
 
 Private Sub pvNotify()
     If Not m_pOwner Is Nothing Then
-        m_pOwner.frSortChanged True
+        m_pOwner.frSortChanged bInvalidate:=True
     End If
 End Sub
 

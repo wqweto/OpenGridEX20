@@ -49,7 +49,7 @@ End Property
 Public Property Let SortOrder(ByVal eValue As jgexSortOrderConstants)
     m_eSortOrder = eValue
     If Not m_pOwner Is Nothing Then
-        m_pOwner.frSortChanged True
+        m_pOwner.frSortChanged bInvalidate:=True
     End If
 End Property
 
@@ -61,7 +61,7 @@ End Property
 Public Property Let ColIndex(ByVal nValue As Integer)
     m_nColIndex = nValue
     If Not m_pOwner Is Nothing Then
-        m_pOwner.frSortChanged True
+        m_pOwner.frSortChanged bInvalidate:=True
     End If
 End Property
 

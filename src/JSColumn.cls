@@ -42,7 +42,6 @@ Private m_eColumnType               As jgexColumnTypeConstants
 Private m_bCardCaption              As Boolean
 Private m_eEditType                 As jgexEditTypeConstants
 Private m_bHasValueList             As Boolean
-Private m_eSortOrder                As jgexSortOrderConstants
 Private m_eSortType                 As jgexSortTypeConstants
 Private m_bShowCaptionInCardView    As Boolean
 Private m_sFormat                   As String
@@ -217,7 +216,9 @@ End Property
 
 Public Property Get SortOrder() As jgexSortOrderConstants
 Attribute SortOrder.VB_Description = "Returns a value that represents the sort applied to a column."
-    SortOrder = m_eSortOrder
+    If Not m_pOwner Is Nothing Then
+        SortOrder = m_pOwner.frColSortOrder(m_nIndex)
+    End If
 End Property
 
 Public Property Get SortType() As jgexSortTypeConstants
@@ -503,10 +504,6 @@ End Property
 
 Friend Sub frSetIndex(ByVal nIndex As Integer)
     m_nIndex = nIndex
-End Sub
-
-Friend Sub frSetSortOrder(ByVal eValue As jgexSortOrderConstants)
-    m_eSortOrder = eValue
 End Sub
 
 Friend Sub frTerminate()

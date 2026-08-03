@@ -219,6 +219,16 @@ Public Function C2Dbl(vValue As Variant) As Double
     End If
 End Function
 
+Public Sub AssignVariant(vDest As Variant, vSrc As Variant)
+    '--- a Variant holding an object needs Set, and one holding anything else
+    '--- refuses it, so every copy of a cell value goes through here
+    If IsObject(vSrc) Then
+        Set vDest = vSrc
+    Else
+        vDest = vSrc
+    End If
+End Sub
+
 Public Function ToPixels(ByVal lTwips As Long) As Long
     ToPixels = (lTwips + Screen.TwipsPerPixelY \ 2) \ Screen.TwipsPerPixelY
 End Function

@@ -220,7 +220,7 @@ commit, so that hash carries no information about painting.
 | `JSColumn.MaxRowsInCardView` | `Long` | **not impl** | M6 | -- | -- |
 | `JSColumn.MinRowsInCardView` | `Long` | **not impl** | M6 | -- | -- |
 | `JSColumn.ShowCaptionInCardView` | `Boolean` | **not impl** | M6 | -- | -- |
-| `JSColumn.SortOrder` | `jgexSortOrderConstants` | verified | M4 | -- | drives the header arrow: `035-sorted-column` (ascending) vs `037-sorted-descending` |
+| `JSColumn.SortOrder` | `jgexSortOrderConstants` | verified | M4 | -- | the same expression the header arrow paints by: `035-sorted-column` (ascending) vs `037-sorted-descending`; `ModelTests` pvTestAutomaticSort reads it back off keys and groups |
 | `JSColumn.SortType` | `jgexSortTypeConstants` | verified | M4 | -- | `037-sorted-descending` sorts Beta as numeric; string default in `035-sorted-column` |
 | `JSColumn.TextAlignment` | `jgexAlignmentConstants` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | 1 in `006-unbound-rows`, 2 in `019-font-segoeui`, default 0 elsewhere |
 | `JSColumn.TotalRowFormat` | `String` | verified | M4 | -- | `055-group-footer-prefix-format` (`0.00`) vs unformatted in `054-group-footer-totals` |
@@ -442,7 +442,7 @@ prove.
 | `GEXPreview.Zoom` | `jgexZoomConstants` | storage | M11 | -- | `ModelTests` pvTestRoundTrip |
 | `HoldSortSettings` | `Boolean` | consumed | -- | [`577e39b`](../../commit/577e39b83d084cbd5105745ef66db1942755c4fe) | snapshot round-trip |
 | `hWnd` | `Long` | computed | -- | -- | `ModelTests` pvTestScroll |
-| `hWndEdit` | `Long` | computed | -- | -- | -- |
+| `hWndEdit` | `Long` | computed | -- | -- | `ModelTests` pvTestEditLeaveCell: the editor's handle while a cell is being edited, 0 either side of it |
 | `JSColumn.DataChanged` | `Boolean` | storage | M8 | -- | -- |
 | `JSColumn.DataField` | `String` | storage | M8 | -- | snapshot round-trip |
 | `JSColumn.DefaultValue` | `Variant` | storage | M5 | -- | -- |
@@ -664,7 +664,7 @@ One entry of a value list -- 5 properties (4 consumed, 1 storage).
 |---|---|---|---|---|
 | `Index` | `Long` | read-only | consumed | Returns a value that represents the index of an object in a collection. |
 | `Text` | `String` | read/write | storage | Returns/sets the text that is linked to the Value. |
-| `Value` | `Variant` | read/write | consumed | Returns/sets the value for the object. |
+| `Value` | `Variant` | read/write | consumed | Returns/sets the value of a column in the current row -- buffered until the row is left. |
 | `IconIndex` | `Integer` | read/write | consumed | Returns/sets the index of the JSGridImage that is linked to the value. |
 | `Visible` | `Boolean` | read/write | consumed | Determines whether a JSValueItem is visible or hidden in a drop-down list. |
 

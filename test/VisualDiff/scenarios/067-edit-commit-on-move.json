@@ -1,0 +1,26 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "edit-commit-on-move",
+    "width": 400,
+    "height": 200,
+    "apply": "before-show",
+    "props": {
+        "GroupByBoxVisible": false,
+        "AllowEdit": true,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500, "EditType": 1 },
+            { "Caption": "Beta", "Width": 1500, "EditType": 1 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "a1", "b1" ],
+            [ "a2", "b2" ]
+        ]
+    },
+    "input": [
+        { "click": [ 40, 32 ] },
+        { "text": "Xy" },
+        { "click": [ 160, 32 ] }
+    ]
+}

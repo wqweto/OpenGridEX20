@@ -1,0 +1,23 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "value-commit-on-row-move",
+    "width": 400,
+    "height": 200,
+    "apply": "before-show",
+    "props": {
+        "GroupByBoxVisible": false,
+        "AllowEdit": true,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500, "EditType": 1 },
+            { "Caption": "Beta", "Width": 1500, "EditType": 1 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "a1", "b1" ],
+            [ "a2", "b2" ]
+        ]
+    },
+    "calls": [ { "name": "Value", "args": [ 1 ], "value": "zz" } ],
+    "input": [ { "click": [ 40, 52 ] } ]
+}
