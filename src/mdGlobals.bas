@@ -282,30 +282,6 @@ Public Function FontTextMetrics(pFont As IFont, Optional ByVal hDC As Long) As T
     End If
 End Function
 
-Public Sub LogError(sMessage As String, Optional ByVal lLine As Long)
-    Static bDisabled    As Boolean
-    Dim nFile           As Integer
-
-    '--- an unhandled error in an event surfaces as a modal dialog that wedges
-    '--- an automated run, so every handler reports here instead. Logging can
-    '--- never take the control down: a failure disables it for the session
-    If lLine <> 0 Then
-        sMessage = sMessage & " at line " & lLine
-    End If
-    Debug.Print sMessage
-    If bDisabled Then
-        Exit Sub
-    End If
-    On Error GoTo EH
-    nFile = FreeFile
-    Open Environ$("TEMP") & "\OpenGridEX20.log" For Append As #nFile
-    Print #nFile, Format$(Now, "yyyy-mm-dd hh:nn:ss ") & sMessage
-    Close #nFile
-    Exit Sub
-EH:
-    bDisabled = True
-End Sub
-
 Public Function NewStdFont() As StdFont
     Dim oFont           As New StdFont
 
@@ -358,7 +334,7 @@ Public Sub PopRaiseError(LocalErr As Variant, sModule As String, sFunction As St
 End Sub
 
 Public Sub PopPrintError(LocalErr As Variant, sModule As String, sFunction As String)
-    Debug.Print "Critical error: " & LocalErr(2) & " &H" & Hex$(LocalErr(0)) & " [" & GetErrorSource(sModule, sFunction, LocalErr(2)) & "]"
+    LogError "Critical error: " & LocalErr(2) & " &H" & Hex$(LocalErr(0)) & " [" & GetErrorSource(sModule, sFunction, LocalErr(3)) & "]"
 End Sub
 
 Public Function GetErrorSource(sModule As String, sFunction As String, Optional ByVal ErrLine As Long) As String
@@ -366,3 +342,27 @@ Public Function GetErrorSource(sModule As String, sFunction As String, Optional 
         & IIf(LenB(sFunction) <> 0, "." & sFunction, vbNullString) _
         & IIf(ErrLine = 0, vbNullString, "(" & ErrLine & ")")
 End Function
+
+Public Sub LogError(sMessage As String, Optional ByVal lLine As Long)
+    Static bDisabled    As Boolean
+    Dim nFile           As Integer
+
+    '--- an unhandled error in an event surfaces as a modal dialog that wedges
+    '--- an automated run, so every handler reports here instead. Logging can
+    '--- never take the control down: a failure disables it for the session
+    If lLine <> 0 Then
+        sMessage = sMessage & " at line " & lLine
+    End If
+    Debug.Print sMessage
+    If bDisabled Then
+        Exit Sub
+    End If
+    On Error GoTo EH
+    nFile = FreeFile
+    Open Environ$("TEMP") & "\OpenGridEX20.log" For Append As #nFile
+    Print #nFile, Format$(Now, "yyyy-mm-dd hh:nn:ss ") & sMessage
+    Close #nFile
+    Exit Sub
+EH:
+    bDisabled = True
+End Sub

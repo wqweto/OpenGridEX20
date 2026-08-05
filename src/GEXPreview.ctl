@@ -21,6 +21,7 @@ Attribute VB_Description = "Janus GridEX 2000 Print Preview Control (DAO 3.6 & A
 '=========================================================================
 Option Explicit
 DefObj A-Z
+Private Const MODULE_NAME As String = "GEXPreview"
 
 Implements IObjectSafety
 
@@ -53,6 +54,14 @@ Private m_sPageSetupText            As String
 Private m_sPrintText                As String
 Private m_sCloseButtonText          As String
 Private m_clrBackColor              As OLE_COLOR
+
+'=========================================================================
+' Error management
+'=========================================================================
+
+Private Sub PrintError(sFunction As String)
+    PopPrintError PushError, MODULE_NAME, sFunction
+End Sub
 
 '=========================================================================
 ' Properties
@@ -180,7 +189,7 @@ Private Sub pvInheritAmbientFont()
     Set m_oToolbarFont = CloneFont(Ambient.Font)
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 '=========================================================================

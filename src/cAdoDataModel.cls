@@ -454,6 +454,10 @@ Private Property Let IDataModel_RowExpanded(ByVal lRowPosition As Long, ByVal bV
     End If
 End Property
 
+Private Sub IDataModel_Terminate()
+    frTerminate
+End Sub
+
 Private Sub IDataModel_RefreshGroups()
     m_bOrderDirty = True
 End Sub

@@ -861,3 +861,35 @@ rather than a runtime-created control the way `VisualDiff` does it.
 
 - `CLAUDE.md`: order local variable declarations by how early each is used in
   the procedure, and never pass `Source` to `Err.Raise`
+- Every procedure in the `Control events` section of `GridEX.ctl` now traps and
+  reports through `PrintError` instead of letting the error out. An unhandled
+  error in an event crosses the ActiveX boundary into the container, where VB6
+  and the IDE both show it as the *host's* error and can take the host down
+  with it; the base class events (`Initialize`, `Terminate`) are left alone, as
+  a failure there is a failure to construct or tear down and must not be
+  swallowed
+- `PopPrintError` passed `LocalErr(2)`, the description, where `GetErrorSource`
+  takes `ErrLine As Long`, so reporting any error whose description was not
+  numeric raised type mismatch *inside the reporter* and threw the original
+  error back out of the handler that was trying to contain it. It now passes
+  `LocalErr(3)`, the `Erl` that `PushError` was already capturing and dropping,
+  and reports through `LogError` so a compiled run -- where `Debug.Print` goes
+  nowhere -- still leaves a trace
+- Every `LogError` callsite across the OCX, both preview controls, all four
+  test harnesses and the export add-in now goes through a per-module
+  `PrintError(sFunction)` helper, which each module carries in its own
+  `Error management` section beside a `MODULE_NAME` const -- the shape
+  `GridEX.ctl` and `mdJson.bas` already used. A handler is one line again, and
+  the message it produces gained the module name and the error number the
+  hand-built strings mostly lacked
+- `tools\common\mdUtils.bas` gained `PushError`, `PopPrintError` and
+  `GetErrorSource` so the test and tool projects report the same way the OCX
+  does. The split matters: `PushError` is passed as an *argument*, so `Erl` is
+  read in the frame that failed -- read inside the reporter it would be the
+  reporter's own line, which is what the `#Else` branch of `mdJson.bas`
+  quietly loses
+- Nine handlers read `Err.Number`/`Err.Description` *after* reporting, to build
+  an assert message, a `.err` file or an error summary. Executing any
+  `On Error` statement clears `Err` and the reporter has one, so every one of
+  those had been logging `&H0` with an empty description since it was written.
+  They now capture into a local first and report second

@@ -7,6 +7,7 @@ Attribute VB_Name = "mdCapture"
 '=========================================================================
 Option Explicit
 DefObj A-Z
+Private Const MODULE_NAME As String = "mdCapture"
 
 '=========================================================================
 ' API
@@ -124,6 +125,14 @@ Private Type BITMAP
 End Type
 
 '=========================================================================
+' Error management
+'=========================================================================
+
+Private Sub PrintError(sFunction As String)
+    PopPrintError PushError, MODULE_NAME, sFunction
+End Sub
+
+'=========================================================================
 ' Functions
 '=========================================================================
 
@@ -176,7 +185,7 @@ Public Sub DisableWindowTransitions(ByVal hWnd As Long)
     Call DwmSetWindowAttribute(hWnd, DWMWA_TRANSITIONS_FORCEDISABLED, lValue, 4)
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Public Function CaptureWindowFull(ByVal hWnd As Long, lWidth As Long, lHeight As Long, baBits() As Byte) As Boolean

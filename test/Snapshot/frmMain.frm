@@ -41,9 +41,23 @@ Attribute VB_Exposed = False
 '
 '=========================================================================
 Option Explicit
+Private Const MODULE_NAME As String = "frmMain"
+
+'=========================================================================
+' Error management
+'=========================================================================
+
+Private Sub PrintError(sFunction As String)
+    PopPrintError PushError, MODULE_NAME, sFunction
+End Sub
+
+'=========================================================================
+' Control events
+'=========================================================================
 
 Private Sub Form_Load()
     Const FUNC_NAME     As String = "Form_Load"
+    Dim sError          As String
 
     On Error GoTo EH
     WriteTextFile App.Path & "\GridEX.json", SnapshotToJson(GridEX1.Object, "GridEX", False)
@@ -52,7 +66,9 @@ QH:
     Unload Me
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
-    WriteTextFile App.Path & "\SnapshotError.txt", "Error &H" & Hex$(Err.Number) & " " & Err.Description
+    '--- PrintError resets Err, so the report file has to read it first
+    sError = "Error &H" & Hex$(Err.Number) & " " & Err.Description
+    PrintError FUNC_NAME
+    WriteTextFile App.Path & "\SnapshotError.txt", sError
     GoTo QH
 End Sub

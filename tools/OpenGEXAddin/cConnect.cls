@@ -20,6 +20,7 @@ Attribute VB_Exposed = True
 '=========================================================================
 Option Explicit
 DefObj A-Z
+Private Const MODULE_NAME As String = "cConnect"
 
 Implements AddInDesignerObjects.IDTExtensibility2
 
@@ -28,6 +29,14 @@ Implements AddInDesignerObjects.IDTExtensibility2
 '=========================================================================
 
 Private m_oVBE                      As VBIDE.VBE
+
+'=========================================================================
+' Error management
+'=========================================================================
+
+Private Sub PrintError(sFunction As String)
+    PopPrintError PushError, MODULE_NAME, sFunction
+End Sub
 
 '=========================================================================
 ' Interface IDTExtensibility2
@@ -43,7 +52,7 @@ Private Sub IDTExtensibility2_OnConnection(ByVal Application As Object, ByVal Co
     End If
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub IDTExtensibility2_OnStartupComplete(custom() As Variant)
@@ -53,7 +62,7 @@ Private Sub IDTExtensibility2_OnStartupComplete(custom() As Variant)
     ExportActiveProject m_oVBE
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub IDTExtensibility2_OnDisconnection(ByVal RemoveMode As AddInDesignerObjects.ext_DisconnectMode, custom() As Variant)
@@ -63,7 +72,7 @@ Private Sub IDTExtensibility2_OnDisconnection(ByVal RemoveMode As AddInDesignerO
     Set m_oVBE = Nothing
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub IDTExtensibility2_OnAddInsUpdate(custom() As Variant)

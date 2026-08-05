@@ -109,6 +109,24 @@ Public Function OutputFile(sName As String) As String
     OutputFile = sPath & "\" & sName
 End Function
 
+'--- the pair every handler goes through, PushError at the callsite and
+'--- PopPrintError behind it. Splitting them is what keeps Erl usable: read
+'--- inside the reporter it would be the reporter's own line, so it has to
+'--- be captured in the frame that failed, which an argument does
+Public Function PushError() As Variant
+    PushError = Array(Err.Number, Err.Source, Err.Description, Erl)
+End Function
+
+Public Sub PopPrintError(LocalErr As Variant, sModule As String, sFunction As String)
+    LogError "Critical error: " & LocalErr(2) & " &H" & Hex$(LocalErr(0)) & " [" & GetErrorSource(sModule, sFunction, LocalErr(3)) & "]"
+End Sub
+
+Public Function GetErrorSource(sModule As String, sFunction As String, Optional ByVal ErrLine As Long) As String
+    GetErrorSource = sModule _
+        & IIf(LenB(sFunction) <> 0, "." & sFunction, vbNullString) _
+        & IIf(ErrLine = 0, vbNullString, "(" & ErrLine & ")")
+End Function
+
 Public Sub LogError(sMessage As String, Optional ByVal lLine As Long)
     Static bDisabled    As Boolean
     Dim lFile           As Long

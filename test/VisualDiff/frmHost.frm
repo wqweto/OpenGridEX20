@@ -37,6 +37,7 @@ Attribute VB_Exposed = False
 '=========================================================================
 Option Explicit
 DefObj A-Z
+Private Const MODULE_NAME As String = "frmHost"
 
 '=========================================================================
 ' Constants and member variables
@@ -48,6 +49,14 @@ Private m_oUnboundRows              As Object
 Private m_sClass                    As String
 Private m_sEventLog                 As String
 Private m_bLogEvents                As Boolean
+
+'=========================================================================
+' Error management
+'=========================================================================
+
+Private Sub PrintError(sFunction As String)
+    PopPrintError PushError, MODULE_NAME, sFunction
+End Sub
 
 '=========================================================================
 ' Properties
@@ -131,7 +140,7 @@ Public Function RunScenario(sProgId As String, oScenario As Object, baBits() As 
     RunScenario = pvCaptureStable(hWnd, lWidth, lHeight, baBits)
     Exit Function
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Function
 
 Public Function ControlHwnd() As Long
@@ -152,7 +161,7 @@ Private Function pvControlHwnd() As Long
     pvControlHwnd = C2Lng(CallByName(m_oExt.Object, "hWnd", VbGet))
     Exit Function
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Function
 
 Private Sub pvSettle(ByVal lRetries As Long)
@@ -224,7 +233,7 @@ Private Sub pvSetDefaultFonts()
     CallByName m_oExt.Object, "ColumnHeaderFont", VbSet, pvNewFont()
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Function pvNewFont() As StdFont
@@ -289,7 +298,7 @@ Private Sub pvFeedAdoRows()
     CallByName m_oExt.Object, "ADORecordset", VbSet, oRs
     Exit Sub
 EH:
-    LogError "adofeed: &H" & Hex$(Err.Number) & " " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub pvApplyProps(oProps As Object)
@@ -301,7 +310,7 @@ Private Sub pvApplyProps(oProps As Object)
 EH:
     '--- surface import errors in the runner log (Debug.Print is invisible
     '--- in the compiled exe)
-    LogError "import: &H" & Hex$(Err.Number) & " " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub pvSelectRows(oList As Object)
@@ -324,7 +333,7 @@ Private Sub pvSelectRows(oList As Object)
     oGrid.Refresh
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Function pvFormatEvent(Info As EventInfo) As String
@@ -411,7 +420,7 @@ Private Sub pvRunInput(oList As Object)
     Next
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Function pvFocusHwnd() As Long
@@ -510,7 +519,7 @@ Private Sub pvRunCalls(oList As Object)
     oGrid.Refresh
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub pvTrySet(sProp As String, ByVal vValue As Variant)
@@ -520,7 +529,7 @@ Private Sub pvTrySet(sProp As String, ByVal vValue As Variant)
     CallByName m_oExt.Object, sProp, VbLet, vValue
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub pvTryCall(sMethod As String)
@@ -530,7 +539,7 @@ Private Sub pvTryCall(sMethod As String)
     CallByName m_oExt.Object, sMethod, VbMethod
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 '=========================================================================
@@ -546,7 +555,7 @@ Private Sub Form_Load()
     DisableWindowTransitions hWnd
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub m_oExt_ObjectEvent(Info As EventInfo)
@@ -574,5 +583,5 @@ Private Sub m_oExt_ObjectEvent(Info As EventInfo)
     End If
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub

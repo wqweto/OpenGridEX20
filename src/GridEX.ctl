@@ -649,6 +649,7 @@ Private m_bAllowRowSizing           As Boolean
 Private m_pSubclassPic              As IUnknown
 Private m_pSubclassCtl              As IUnknown
 Private m_lSelAnchor                As Long
+Private m_pDataModel                As IDataModel
 Private m_aRows()                   As UcsRowData
 Private m_lRowsUBound               As Long
 Private m_aOrder()                  As Long
@@ -1074,7 +1075,10 @@ Attribute DataMode.VB_Description = "Returns/sets a value representing the data 
 End Property
 
 Public Property Let DataMode(ByVal eValue As jgexDataModeConstants)
-    m_eDataMode = eValue
+    If m_eDataMode <> eValue Then
+        m_eDataMode = eValue
+        pvCreateDataModel
+    End If
 End Property
 
 Public Property Get LeftCol() As Integer
@@ -2394,6 +2398,29 @@ End Function
 '=========================================================================
 ' Methods
 '=========================================================================
+
+Private Sub pvCreateDataModel()
+    Dim oUnbound        As cUnboundDataModel
+    Dim oAdo            As cAdoDataModel
+
+    If Not m_pDataModel Is Nothing Then
+        m_pDataModel.Terminate
+        Set m_pDataModel = Nothing
+    End If
+    '--- jgexDAO gets the unbound model too: DAO binding is out of scope, and
+    '--- a control in that mode with no recordset behaves as an empty unbound
+    '--- one rather than raising
+    Select Case m_eDataMode
+    Case jgexADO
+        Set oAdo = New cAdoDataModel
+        oAdo.frInit Me
+        Set m_pDataModel = oAdo
+    Case Else
+        Set oUnbound = New cUnboundDataModel
+        oUnbound.frInit Me
+        Set m_pDataModel = oUnbound
+    End Select
+End Sub
 
 Friend Sub frSortChanged(Optional ByVal bInvalidate As Boolean)
     m_bSortDirty = True
@@ -4144,7 +4171,7 @@ Private Sub pvInvalidate()
     End If
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Function pvTopHeight() As Long
@@ -4971,7 +4998,7 @@ Private Sub pvInheritAmbientFont()
     m_oColumnHeaderFont_FontChanged vbNullString
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub pvSubclass()
@@ -5883,6 +5910,30 @@ Private Sub pvOnVScroll(ByVal lCode As Long, ByVal lPos As Long)
     End Select
 End Sub
 
+Private Sub pvOnHScroll(ByVal bTracking As Boolean)
+    Dim uSi             As SCROLLINFO
+
+    If m_bScrollUpdating Then
+        Exit Sub
+    End If
+    '--- the bar carries the column numbers pvSetHScrollInfo put on the window
+    '--- itself, over VB6's Min..Max mapping, so VB6's own Value knows nothing
+    '--- about them and reading it lands on the first column every time. The
+    '--- position comes back off the window for the same reason it went on.
+    '--- A drag reports where it is in nTrackPos, nPos still holding where it
+    '--- started; anything else has already moved nPos
+    uSi.cbSize = Len(uSi)
+    uSi.fMask = SIF_POS Or SIF_TRACKPOS
+    If GetScrollInfo(hsbGrid.hWnd, SB_CTL, uSi) = 0 Then
+        Exit Sub
+    End If
+    If bTracking Then
+        LeftCol = pvClampCol(uSi.nTrackPos)
+    Else
+        LeftCol = pvClampCol(uSi.nPos)
+    End If
+End Sub
+
 '=========================================================================
 ' Interface IObjectSafety
 '=========================================================================
@@ -5893,6 +5944,121 @@ Private Sub IObjectSafety_GetInterfaceSafetyOptions(ByVal riid As Long, pdwSuppo
 End Sub
 
 Private Sub IObjectSafety_SetInterfaceSafetyOptions(ByVal riid As Long, ByVal dwOptionsSetMask As Long, ByVal dwEnabledOptions As Long)
+End Sub
+
+'=========================================================================
+' Control events
+'=========================================================================
+
+Private Sub UserControl_InitProperties()
+    Const FUNC_NAME     As String = "UserControl_InitProperties"
+
+    '--- a freshly placed control starts with two default empty columns
+    On Error GoTo EH
+    pvInheritAmbientFont
+    m_oColumns.Add(vbNullString).Width = ToTwips(m_lDefaultColumnWidth)
+    m_oColumns.Add(vbNullString).Width = ToTwips(m_lDefaultColumnWidth)
+    pvCreateDataModel
+    pvSubclass
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
+Private Sub UserControl_ReadProperties(PropBag As PropertyBag)
+    Const FUNC_NAME     As String = "UserControl_ReadProperties"
+
+    On Error GoTo EH
+    pvInheritAmbientFont
+    pvCreateDataModel
+    pvSubclass
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
+Private Sub hsbGrid_Change()
+    Const FUNC_NAME     As String = "hsbGrid_Change"
+
+    On Error GoTo EH
+    pvOnHScroll bTracking:=False
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
+Private Sub hsbGrid_Scroll()
+    Const FUNC_NAME     As String = "hsbGrid_Scroll"
+
+    On Error GoTo EH
+    pvOnHScroll bTracking:=True
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
+Private Sub m_oFont_FontChanged(ByVal PropertyName As String)
+    Const FUNC_NAME     As String = "m_oFont_FontChanged"
+
+    '--- default row height follows the data font unless explicitly set
+    On Error GoTo EH
+    If Not m_bRowHeightSet Then
+        m_lRowHeight = FontTextMetrics(m_oFont).tmHeight + 3
+        If m_lRowHeight < 19 Then
+            m_lRowHeight = 19
+        End If
+    End If
+    pvInvalidate
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
+Private Sub m_oColumnHeaderFont_FontChanged(ByVal PropertyName As String)
+    Const FUNC_NAME     As String = "m_oColumnHeaderFont_FontChanged"
+
+    '--- header height always follows the header font
+    On Error GoTo EH
+    m_lColumnHeaderHeight = FontTextMetrics(m_oColumnHeaderFont).tmHeight + 6
+    pvInvalidate
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
+Private Sub UserControl_Paint()
+    Const FUNC_NAME     As String = "UserControl_Paint"
+
+    '--- the navigator lives in the band, which is the outer control's own
+    '--- client area -- picGrid covers everything above it
+    On Error GoTo EH
+    If m_bRecordNavigator Then
+        pvPaintNavigator UserControl.hDC
+    End If
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
+Private Sub picGrid_Paint()
+    Const FUNC_NAME     As String = "picGrid_Paint"
+
+    On Error GoTo EH
+    pvPaint picGrid.hDC
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
+Private Sub UserControl_Resize()
+    Const FUNC_NAME     As String = "UserControl_Resize"
+
+    On Error GoTo EH
+    pvLayoutGrid
+    pvInvalidate
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
 End Sub
 
 '=========================================================================
@@ -5965,106 +6131,25 @@ Private Sub UserControl_Initialize()
     m_sRecordNavigatorString = "Record:|of"
 End Sub
 
-Private Sub UserControl_InitProperties()
-    '--- a freshly placed control starts with two default empty columns
-    pvInheritAmbientFont
-    m_oColumns.Add(vbNullString).Width = ToTwips(m_lDefaultColumnWidth)
-    m_oColumns.Add(vbNullString).Width = ToTwips(m_lDefaultColumnWidth)
-    pvSubclass
-End Sub
-
-Private Sub UserControl_ReadProperties(PropBag As PropertyBag)
-    pvInheritAmbientFont
-    pvSubclass
-End Sub
-
-Private Sub hsbGrid_Change()
-    pvOnHScroll bTracking:=False
-End Sub
-
-Private Sub hsbGrid_Scroll()
-    pvOnHScroll bTracking:=True
-End Sub
-
-Private Sub pvOnHScroll(ByVal bTracking As Boolean)
-    Dim uSi             As SCROLLINFO
-
-    If m_bScrollUpdating Then
-        Exit Sub
-    End If
-    '--- the bar carries the column numbers pvSetHScrollInfo put on the window
-    '--- itself, over VB6's Min..Max mapping, so VB6's own Value knows nothing
-    '--- about them and reading it lands on the first column every time. The
-    '--- position comes back off the window for the same reason it went on.
-    '--- A drag reports where it is in nTrackPos, nPos still holding where it
-    '--- started; anything else has already moved nPos
-    uSi.cbSize = Len(uSi)
-    uSi.fMask = SIF_POS Or SIF_TRACKPOS
-    If GetScrollInfo(hsbGrid.hWnd, SB_CTL, uSi) = 0 Then
-        Exit Sub
-    End If
-    If bTracking Then
-        LeftCol = pvClampCol(uSi.nTrackPos)
-    Else
-        LeftCol = pvClampCol(uSi.nPos)
-    End If
-End Sub
-
-Private Sub m_oFont_FontChanged(ByVal PropertyName As String)
-    '--- default row height follows the data font unless explicitly set
-    If Not m_bRowHeightSet Then
-        m_lRowHeight = FontTextMetrics(m_oFont).tmHeight + 3
-        If m_lRowHeight < 19 Then
-            m_lRowHeight = 19
-        End If
-    End If
-    pvInvalidate
-End Sub
-
-Private Sub m_oColumnHeaderFont_FontChanged(ByVal PropertyName As String)
-    '--- header height always follows the header font
-    m_lColumnHeaderHeight = FontTextMetrics(m_oColumnHeaderFont).tmHeight + 6
-    pvInvalidate
-End Sub
-
-Private Sub UserControl_Paint()
-    Const FUNC_NAME     As String = "UserControl_Paint"
-
-    '--- the navigator lives in the band, which is the outer control's own
-    '--- client area -- picGrid covers everything above it
-    On Error GoTo EH
-    If m_bRecordNavigator Then
-        pvPaintNavigator UserControl.hDC
-    End If
-    Exit Sub
-EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
-End Sub
-
-Private Sub picGrid_Paint()
-    Const FUNC_NAME     As String = "picGrid_Paint"
-
-    On Error GoTo EH
-    pvPaint picGrid.hDC
-    Exit Sub
-EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
-End Sub
-
-Private Sub UserControl_Resize()
-    pvLayoutGrid
-    pvInvalidate
-End Sub
-
 Private Sub UserControl_Terminate()
     pvDestroyEditor
     pvUnsubclass
-    '--- detach outstanding JSRowData wrappers, of both kinds, so their weak
-    '--- owner pointers cannot dangle past the control lifetime
     pvEraseDataRows
     pvEraseGroupRows
-    '--- and the collections that point back for their change notifications
-    m_oGroups.frTerminate
-    m_oSortKeys.frTerminate
-    m_oColumns.frTerminate
+    If Not m_oGroups Is Nothing Then
+        m_oGroups.frTerminate
+        Set m_oGroups = Nothing
+    End If
+    If Not m_oSortKeys Is Nothing Then
+        m_oSortKeys.frTerminate
+        Set m_oSortKeys = Nothing
+    End If
+    If Not m_oColumns Is Nothing Then
+        m_oColumns.frTerminate
+        Set m_oColumns = Nothing
+    End If
+    If Not m_pDataModel Is Nothing Then
+        m_pDataModel.Terminate
+        Set m_pDataModel = Nothing
+    End If
 End Sub

@@ -8,6 +8,7 @@ Attribute VB_Name = "mdMain"
 '=========================================================================
 Option Explicit
 DefObj A-Z
+Private Const MODULE_NAME As String = "mdMain"
 
 '=========================================================================
 ' API
@@ -16,11 +17,20 @@ DefObj A-Z
 Private Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
 
 '=========================================================================
+' Error management
+'=========================================================================
+
+Private Sub PrintError(sFunction As String)
+    PopPrintError PushError, MODULE_NAME, sFunction
+End Sub
+
+'=========================================================================
 ' Functions
 '=========================================================================
 
 Public Sub Main()
     Const FUNC_NAME     As String = "Main"
+    Dim sError          As String
 
     On Error GoTo EH
     TestInit OutputFile("Samples.out.txt")
@@ -38,8 +48,10 @@ QH:
     pvUnloadAll
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
-    Assert "Unhandled error &H" & Hex$(Err.Number) & " " & Err.Description, False
+    '--- PrintError resets Err, so the assert has to read it first
+    sError = "&H" & Hex$(Err.Number) & " " & Err.Description
+    PrintError FUNC_NAME
+    Assert "Unhandled error " & sError, False
     GoTo QH
 End Sub
 
@@ -59,7 +71,7 @@ Private Sub pvRunSample(oForm As Form, sName As String, ByVal lRows As Long, ByV
     Unload oForm
     Exit Sub
 EH:
-    LogError "Critical error in " & sName & ": " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
     Assert sName & " loads", False
 End Sub
 

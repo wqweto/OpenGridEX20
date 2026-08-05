@@ -97,6 +97,15 @@ End Property
 ' Methods
 '=========================================================================
 
+'--- Detaches the model from the control, and is called before the control
+'--- releases it. Not the same as letting Class_Terminate do it: a JSRowData
+'--- buffer holds its model strongly, so a wrapper a client kept can outlive
+'--- the control and keep the model with it. Without this the model's weak
+'--- owner pointer would dangle and the next call through that wrapper would
+'--- dereference a dead control; after it, the model raises instead
+Public Sub Terminate()
+End Sub
+
 '--- Everything the model is told, in the shape the control's own methods
 '--- come in. Refresh re-reads Columns, SortKeys, Groups and ItemCount off
 '--- the owner and rebuilds records and group rows from nothing, which is

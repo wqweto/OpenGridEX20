@@ -14,6 +14,15 @@ Attribute VB_Name = "mdExport"
 '=========================================================================
 Option Explicit
 DefObj A-Z
+Private Const MODULE_NAME As String = "mdExport"
+
+'=========================================================================
+' Error management
+'=========================================================================
+
+Private Sub PrintError(sFunction As String)
+    PopPrintError PushError, MODULE_NAME, sFunction
+End Sub
 
 '=========================================================================
 ' Methods
@@ -27,6 +36,7 @@ Public Sub ExportActiveProject(oVBE As VBIDE.VBE)
     Dim lCount          As Long
     Dim sErrors         As String
     Dim sSummary        As String
+    Dim sError          As String
 
     On Error GoTo EH
     sOutDir = Environ$("OPENGEX_SNAPSHOT_DIR")
@@ -52,8 +62,10 @@ Public Sub ExportActiveProject(oVBE As VBIDE.VBE)
     WriteTextFile sOutDir & "\" & sSample & ".done", sSummary
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
-    WriteTextFile sOutDir & "\" & sSample & ".err", "Error &H" & Hex$(Err.Number) & " " & Err.Description & " [" & FUNC_NAME & "]"
+    '--- PrintError resets Err, so the report file has to read it first
+    sError = "Error &H" & Hex$(Err.Number) & " " & Err.Description & " [" & FUNC_NAME & "]"
+    PrintError FUNC_NAME
+    WriteTextFile sOutDir & "\" & sSample & ".err", sError
 End Sub
 
 '=========================================================================
@@ -72,7 +84,7 @@ Private Function pvExportForm(oComp As VBIDE.VBComponent, sOutDir As String, sSa
     Next
     Exit Function
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
     '--- damaged forms (e.g. missing .frx) cannot open a designer; salvage
     '--- the textual propbag keys from the .frm instead
     pvExportForm = pvExportFormRaw(oComp, sOutDir, sSample, sErrors)
@@ -93,6 +105,7 @@ Private Function pvExportFormRaw(oComp As VBIDE.VBComponent, sOutDir As String, 
     Dim sClass          As String
     Dim sCtlName        As String
     Dim oJson           As Object
+    Dim sError          As String
 
     On Error GoTo EH
     aLines = Split(ReadTextFile(oComp.FileNames(1)), vbCrLf)
@@ -121,8 +134,10 @@ Private Function pvExportFormRaw(oComp As VBIDE.VBComponent, sOutDir As String, 
     Next
     Exit Function
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
-    sErrors = sErrors & " " & oComp.Name & ": &H" & Hex$(Err.Number) & " " & Err.Description
+    '--- PrintError resets Err, so the summary has to read it first
+    sError = " " & oComp.Name & ": &H" & Hex$(Err.Number) & " " & Err.Description
+    PrintError FUNC_NAME
+    sErrors = sErrors & sError
 End Function
 
 Private Function pvExportControl(oCtl As VBIDE.VBControl, oComp As VBIDE.VBComponent, sOutDir As String, sSample As String, sErrors As String) As Long
@@ -132,6 +147,7 @@ Private Function pvExportControl(oCtl As VBIDE.VBControl, oComp As VBIDE.VBCompo
     Dim sCtlName        As String
     Dim oJson           As Object
     Dim oRaw            As Object
+    Dim sError          As String
 
     On Error GoTo EH
     aParts = Split(oCtl.ProgId, ".")
@@ -158,8 +174,10 @@ Private Function pvExportControl(oCtl As VBIDE.VBControl, oComp As VBIDE.VBCompo
     End If
     Exit Function
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
-    sErrors = sErrors & " " & oComp.Name & "!" & sCtlName & ": &H" & Hex$(Err.Number) & " " & Err.Description
+    '--- PrintError resets Err, so the summary has to read it first
+    sError = " " & oComp.Name & "!" & sCtlName & ": &H" & Hex$(Err.Number) & " " & Err.Description
+    PrintError FUNC_NAME
+    sErrors = sErrors & sError
 End Function
 
 Private Function pvParseRawKeys(sFrmFile As String, sCtlName As String) As Object

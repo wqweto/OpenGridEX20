@@ -44,12 +44,21 @@ Attribute VB_Exposed = False
 '=========================================================================
 Option Explicit
 DefObj A-Z
+Private Const MODULE_NAME As String = "frmWeak"
 
 '=========================================================================
 ' Constants and member variables
 '=========================================================================
 
 Public EventLog                     As String
+
+'=========================================================================
+' Error management
+'=========================================================================
+
+Private Sub PrintError(sFunction As String)
+    PopPrintError PushError, MODULE_NAME, sFunction
+End Sub
 
 '=========================================================================
 ' Control events
@@ -66,7 +75,7 @@ Private Sub GridEX1_UnboundReadData(ByVal RowIndex As Long, ByVal Bookmark As Va
     Next
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub GridEX1_RowColChange(ByVal LastRow As Long, ByVal LastCol As Integer)
@@ -76,7 +85,7 @@ Private Sub GridEX1_RowColChange(ByVal LastRow As Long, ByVal LastCol As Integer
     EventLog = EventLog & "RowCol(" & LastRow & "," & LastCol & ");"
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub GridEX1_FirstItemChange()
@@ -86,7 +95,7 @@ Private Sub GridEX1_FirstItemChange()
     EventLog = EventLog & "First;"
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub GridEX1_Click()
@@ -96,7 +105,7 @@ Private Sub GridEX1_Click()
     EventLog = EventLog & "Click;"
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub GridEX1_ColumnHeaderClick(ByVal Column As JSColumn)
@@ -106,7 +115,7 @@ Private Sub GridEX1_ColumnHeaderClick(ByVal Column As JSColumn)
     EventLog = EventLog & "HdrClick(" & Column.Caption & ");"
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub GridEX1_GroupByBoxHeaderClick(ByVal Group As JSGroup)
@@ -116,7 +125,7 @@ Private Sub GridEX1_GroupByBoxHeaderClick(ByVal Group As JSGroup)
     EventLog = EventLog & "GBoxClick(" & Group.ColIndex & ");"
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub GridEX1_SelectionChange()
@@ -126,7 +135,7 @@ Private Sub GridEX1_SelectionChange()
     EventLog = EventLog & "Sel;"
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub
 
 Private Sub GridEX1_KeyPress(KeyAscii As Integer)
@@ -136,5 +145,5 @@ Private Sub GridEX1_KeyPress(KeyAscii As Integer)
     EventLog = EventLog & "Press(" & KeyAscii & ");"
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
 End Sub

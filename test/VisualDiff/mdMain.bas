@@ -9,6 +9,7 @@ Attribute VB_Name = "mdMain"
 '=========================================================================
 Option Explicit
 DefObj A-Z
+Private Const MODULE_NAME As String = "mdMain"
 
 '=========================================================================
 ' API
@@ -73,6 +74,14 @@ Private Const STR_PROGID_ORIGINAL           As String = "GridEX20.GridEX"
 Private Const STR_PROGID_OURS               As String = "OpenGridEX20.GridEX"
 
 '=========================================================================
+' Error management
+'=========================================================================
+
+Private Sub PrintError(sFunction As String)
+    PopPrintError PushError, MODULE_NAME, sFunction
+End Sub
+
+'=========================================================================
 ' Functions
 '=========================================================================
 
@@ -98,6 +107,7 @@ Public Sub Main()
     Dim sEvents         As String
     Dim lDpi            As Long
     Dim sDpi            As String
+    Dim sError          As String
 
     On Error GoTo EH
     '--- goldens are per DPI: the embedded manifest makes the harness run at
@@ -227,8 +237,10 @@ Public Sub Main()
     TestsDone
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
-    Assert "Unhandled error &H" & Hex$(Err.Number) & " " & Err.Description & " in " & sName, False
+    '--- PrintError resets Err, so the assert has to read it first
+    sError = "&H" & Hex$(Err.Number) & " " & Err.Description
+    PrintError FUNC_NAME
+    Assert "Unhandled error " & sError & " in " & sName, False
     TestsDone
 End Sub
 
@@ -363,6 +375,6 @@ QH:
     End If
     Exit Function
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
     GoTo QH
 End Function

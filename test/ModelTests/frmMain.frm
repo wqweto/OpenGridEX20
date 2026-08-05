@@ -60,6 +60,7 @@ Attribute VB_Exposed = False
 '=========================================================================
 Option Explicit
 DefObj A-Z
+Private Const MODULE_NAME As String = "frmMain"
 
 '=========================================================================
 ' API
@@ -101,12 +102,21 @@ End Type
 Private m_oCanonFont                As New StdFont
 
 '=========================================================================
+' Error management
+'=========================================================================
+
+Private Sub PrintError(sFunction As String)
+    PopPrintError PushError, MODULE_NAME, sFunction
+End Sub
+
+'=========================================================================
 ' Control events
 '=========================================================================
 
 Private Sub Form_Load()
     Const FUNC_NAME     As String = "Form_Load"
     Dim lIdx            As Long
+    Dim sError          As String
 
     On Error GoTo EH
     TestInit OutputFile("ModelTests.out.txt")
@@ -149,8 +159,10 @@ QH:
     Unload Me
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
-    Assert "Unhandled error &H" & Hex$(Err.Number) & " " & Err.Description, False
+    '--- PrintError resets Err, so the assert has to read it first
+    sError = "&H" & Hex$(Err.Number) & " " & Err.Description
+    PrintError FUNC_NAME
+    Assert "Unhandled error " & sError, False
     GoTo QH
 End Sub
 
@@ -1046,9 +1058,9 @@ QH:
     End If
     Exit Sub
 EH:
-    '--- LogError resets Err, so the assert has to read it first
+    '--- PrintError resets Err, so the assert has to read it first
     sError = "&H" & Hex$(Err.Number) & " " & Err.Description
-    LogError "Critical error: " & sError & " [" & FUNC_NAME & "]", Erl
+    PrintError FUNC_NAME
     Assert "generated setup error in " & sName & ": " & sError, False
     GoTo QH
 End Sub
@@ -1272,6 +1284,7 @@ Private Sub pvTestSnapshotCorpus()
     Dim sJson1          As String
     Dim sJson2          As String
     Dim lCount          As Long
+    Dim sError          As String
 
     On Error GoTo EH
     For Each vFile In EnumFiles(App.Path & "\..\snapshots", "*.json")
@@ -1306,8 +1319,10 @@ Private Sub pvTestSnapshotCorpus()
     Assert "corpus contains snapshots", lCount > 0
     Exit Sub
 EH:
-    LogError "Critical error: " & Err.Description & " [" & FUNC_NAME & "]", Erl
-    Assert "corpus error in " & sName & ": &H" & Hex$(Err.Number) & " " & Err.Description, False
+    '--- PrintError resets Err, so the assert has to read it first
+    sError = "&H" & Hex$(Err.Number) & " " & Err.Description
+    PrintError FUNC_NAME
+    Assert "corpus error in " & sName & ": " & sError, False
 End Sub
 
 Private Sub pvCanonTwips(oExp As Object, sKey As String)
