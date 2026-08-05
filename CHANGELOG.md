@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -744,3 +744,120 @@ a half away from zero would have given 67.
 - `ROADMAP.md`: new **M6 -- Paint property matrix** gating the milestone formerly numbered M6 (ADO binding, now M7; persistence M8, styling M9, printing M10, long tail M11), so binding is built on a verified renderer. It also records a two gaps the audit exposed: card view (`View`, `CardBorders`, `CardCaptionPrefix`, `CardWidth`, `CardSpacing` and the `JSColumn` card members) plus the drag/resize affordances have no owning milestone at all (17 properties), and M9 carries 38 unimplemented paint properties behind a one-line roadmap entry
 - README refreshed to current M2 state: milestone status, source-compatibility scope note, layout table covering `tools`/`test`/`doc/Help` and a Testing section for `test\ModelTests\make.bat`
 - First clean VB6 build of the stub OCX; regenerated `OpenGridEX20.cmp` binary-compatibility baseline from the complete stubbed API surface (26 coclasses, 44 enums, 58 + 6 events, dispids and enum values verified against `doc/GridEX20.idl`)
+
+### Added (data model -- `IDataModel` and the unbound and ADO implementations)
+
+The grid's rows, its sort, its group rows and its aggregates move behind one
+interface, so the same renderer can be fed by client-supplied rows, an ADO
+recordset or -- later -- a SQLite table that does the sorting, grouping and
+counting itself. **Nothing is wired into `GridEX.ctl` yet**: the control still
+owns its own storage and projection, and the classes below compile, verify
+against the corpus and are reached by nothing. Cutting the control over is the
+next piece of work.
+
+- `src/IDataModel.cls`, `Instancing = Private` so it never reaches the typelib
+  (`DumpSurface` still reports 26 coclasses). Three address spaces meet on it
+  and are kept apart deliberately: **RowPosition** `1..RowCount`, rows on show
+  with group headers and footers in and collapsed records out; **RowIndex**
+  `1..ItemCount`, the source's own order, where identity lives and which only a
+  `Delete` renumbers; and **Bookmark**, resolving into RowIndex space. The
+  original only ever *answers* in one direction -- `RowIndex(RowPosition)` and
+  `RowBookmark(RowIndex)`, both running from the derived space toward identity
+  -- and exposes the two reverses solely as actions (`MoveToRowIndex`,
+  `MoveToBookmark`, `SelectedItems.AddBookmark`); a private interface can
+  afford to make them callable
+- `src/cUnboundDataModel.cls`: records indexed by RowIndex itself, no holes and
+  no slot map, so a `Delete` compacts the array and renumbers above it. Values
+  arrive through `UnboundReadData` once per record; writes go back out through
+  `UnboundUpdate`, `UnboundAddNew` and `UnboundDelete`
+- `src/cAdoDataModel.cls`: the recordset **is** the cache -- no cell value is
+  copied. Per record it keeps only the ADO bookmark from the binding walk, and
+  a cell read positions the cursor there and asks a `Field` object cached from
+  `JSColumn.DataField`. A recordset that does not support bookmarks is refused
+  at bind rather than failing in a paint, and the key pass walks the cursor
+  with `MoveNext` since RowIndex order *is* the recordset's order
+- `src/mdDataModel.bas`: the projection engine both share -- `UcsRowSet`,
+  `DataReadSortKeys`, `DataProject` (seed, stable merge sort, group-row
+  emission, visible map, position write-back), `DataBuildVisible` and
+  `DataWritePositions` as the collapse path on their own, plus
+  `DataCompareValues`, `DataBookmarkKey` and `DataAggregate`. The one step that
+  cannot move is filling `uRowSet.Key`, the only part needing a cell value
+- `JSRowData` gains a **buffer mode** beside its existing view mode: the
+  wrapper carries the row itself rather than viewing control storage. Every
+  member opens with an `If m_bView Then ... Exit` prologue and nothing else, so
+  removing view mode is deleting those prologues, `frInit`, `m_bView` and
+  `m_lRowIndex`. One signed index addresses both kinds of row -- positive a
+  record, negative a group row -- matching what view mode already did
+- `GridEX.ctl` gains six `Friend` raisers so a model can reach the events the
+  typelib puts on the control: `frRaiseUnboundReadData`, `frRaiseUnboundAddNew`,
+  `frRaiseUnboundUpdate`, `frRaiseUnboundDelete`, and `frFireFetchData` /
+  `frFireFetchIcon`, which mint the `JSRet*` carrier and return the plain value
+  so the carrier never leaves the control
+- `JSColumn.FetchData` outranks whatever else a column could be read from --
+  its `DataField` in a bound grid, `UnboundReadData`'s values in an unbound one
+  -- identically in both models, and every consumer goes through the same cell
+  accessor so sorting, grouping, totals and painting see the same value. The
+  cache is per cell and fills on demand; the only thing that sweeps a whole
+  column is a sort, which genuinely needs every key and leaves a warm cache
+  behind. An edit refetches that record's fetch columns and marks the order
+  stale only if a value actually moved; a delete shifts the rows above it down
+- `mdGlobals.bas`: `C2Str` and `C2Lng` (the `C2Dbl` shape, `VariantChangeType`
+  with `VARIANT_ALPHABOOL`, empty rather than raising), an `ArrPtr` declare, and
+  `ToHex` fixed to work from `LBound` and to answer `""` for an unallocated
+  array instead of raising on `UBound`
+- `ARCHITECTURE.md`: the data model written up in full, with stubs for the
+  window/subclassing, painting, DPI, input, object model, persistence, printing,
+  build and testing sections
+
+### Added (probe findings -- recorded from the original control)
+
+Twelve probe passes drove the design above; the harness is a reduced copy of
+the original *Unbound Collection* sample, kept outside the repo. The original
+refuses a runtime `DataMode` change, so a design-time control is the only way
+to drive an unbound grid at all -- which is why the probe is a sample form
+rather than a runtime-created control the way `VisualDiff` does it.
+
+- **Bookmarks** come from exactly one place, `GridEX.RowBookmark(RowIndex) = v`
+  -- `JSRowData.Bookmark` is propget-only, and `Values.Bookmark` inside an event
+  is the same value surfaced twice. They **survive both `Refetch` and `Rebind`**
+  (our `pvResetRow(bFullReset:=True)` clears them, which is a live divergence),
+  the store is sized to `ItemCount` and raises past the end, and a `Delete`
+  **compacts** it: deleting the record holding `"bk-3"` leaves the next read of
+  RowIndex 3 carrying `"bk-4"`
+- **Duplicates are legal** and every resolver -- `MoveToBookmark`,
+  `AddBookmark`, `RefreshRowBookmark` -- answers with the lowest RowIndex. An
+  unknown bookmark raises `vbObjectError + 119`, *"Not a valid Bookmark."*,
+  leaving the current row alone
+- **Type is part of a bookmark's identity, width is not**: numeric widths
+  resolve against each other, `Boolean` and `Date` resolve against their numeric
+  value, a string never matches a number. Hence `DataBookmarkKey` keying `"S" &`
+  for strings and `"#" & C2Dbl` for the rest
+- **RowIndex is stable across a re-sort** -- positions permute while
+  `RowIndex(pos)` reports the original supply order and `RowBookmark(1)` still
+  answers for the record that was first
+- **`JSRowData` instances are minted per population, never cached or pooled**:
+  95 `RowFormat` fires produced 95 distinct instances with zero reuse, held
+  alive in a collection so address recycling could not explain it.
+  `GetRowData(pos)` hands back the current population's wrapper, and a wrapper a
+  client keeps goes on reading the row it was filled with
+- **`RowFormat` fires per population, not per paint**: a bare `WM_PAINT` fires
+  none, while `Refresh` and a scroll away-and-back each re-fire for every
+  visible row. What the handler writes does not survive the round trip
+- **A held group header is invalidated by an order rebuild, not by a
+  reprojection**: `Delete`, `RefreshGroups`, `RefreshSort` and `Rebind` each make
+  `RecordCount`, `GetSubTotal`, `GetBookmarks` and `GetRowIndexes` raise
+  `vbObjectError + 129`, *"JSRowData object may have changed. The object is no
+  longer valid."*, while a collapse and expand leaves all four answering
+  normally. `RowType`, `GroupLevel` and `GroupCaption` keep answering either
+  way. Reproduced by a generation counter bumped in `DataProject` alone, which a
+  wrapper captures and passes back -- a model that cannot lose a span this way
+  may leave `Version` at 0, which never mismatches
+- **`SelectedItems` raises** `vbObjectError + 123` unless `MultiSelect` is True;
+  ours returns the collection unconditionally, a second live divergence
+- **The control decrements `ItemCount` itself** on `Delete`, so neither the
+  model nor client code may write it on that path
+
+### Changed
+
+- `CLAUDE.md`: order local variable declarations by how early each is used in
+  the procedure, and never pass `Source` to `Err.Raise`

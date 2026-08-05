@@ -15,16 +15,17 @@ Begin VB.UserControl GridEX
       ForeColor       =   &H80000008&
       Height          =   2415
       Left            =   0
-      ScaleHeight     =   161
+      ScaleHeight     =   201
       ScaleMode       =   3  'Pixel
-      ScaleWidth      =   256
+      ScaleWidth      =   320
       TabIndex        =   0
       Top             =   0
       Width           =   3840
    End
-   Begin VB.HScrollBar hsbGrid
+   Begin VB.HScrollBar hsbGrid 
       Height          =   255
       Left            =   0
+      TabIndex        =   1
       TabStop         =   0   'False
       Top             =   2520
       Visible         =   0   'False
@@ -45,6 +46,7 @@ Attribute VB_Description = "Janus GridEX 2000 Control (DAO 3.6 & ADO 2.x)"
 '=========================================================================
 Option Explicit
 DefObj A-Z
+Private Const MODULE_NAME As String = "GridEX"
 
 Implements IObjectSafety
 
@@ -730,6 +732,18 @@ Private Type UcsNavLayout
 End Type
 
 '=========================================================================
+' Error handling
+'=========================================================================
+
+Private Sub RaiseError(sFunction As String)
+    PopRaiseError PushError, MODULE_NAME, sFunction
+End Sub
+
+Private Sub PrintError(sFunction As String)
+    PopPrintError PushError, MODULE_NAME, sFunction
+End Sub
+
+'=========================================================================
 ' Properties
 '=========================================================================
 
@@ -1192,7 +1206,6 @@ End Property
 
 Public Property Get Row() As Long
     pvEnsureOrder
-Attribute Row.VB_Description = "Returns/sets the current row/card position."
     Row = m_lRow
 End Property
 
@@ -1516,7 +1529,6 @@ End Property
 
 Public Property Get SelectedItems() As JSSelectedItems
     pvEnsureOrder
-Attribute SelectedItems.VB_Description = "Returns the JSSelectedItems collection in the control."
     Set SelectedItems = m_oSelectedItems
 End Property
 
@@ -2412,6 +2424,47 @@ Friend Function frColIsGrouped(ByVal nColIndex As Integer) As Boolean
             Exit For
         End If
     Next
+End Function
+
+'--- the four unbound events belong to the control, since that is where the
+'--- typelib declares them, but the data model is what knows when to raise
+'--- them: these exist so an IDataModel implementation can reach them
+'--- through its weak owner reference without being a control itself
+
+Friend Sub frRaiseUnboundReadData(ByVal lRowIndex As Long, vBookmark As Variant, oValues As JSRowData)
+    RaiseEvent UnboundReadData(lRowIndex, vBookmark, oValues)
+End Sub
+
+Friend Sub frRaiseUnboundAddNew(oNewRowBookmark As JSRetVariant, oValues As JSRowData)
+    RaiseEvent UnboundAddNew(oNewRowBookmark, oValues)
+End Sub
+
+Friend Sub frRaiseUnboundUpdate(ByVal lRowIndex As Long, vBookmark As Variant, oValues As JSRowData)
+    RaiseEvent UnboundUpdate(lRowIndex, vBookmark, oValues)
+End Sub
+
+Friend Sub frRaiseUnboundDelete(ByVal lRowIndex As Long, vBookmark As Variant)
+    RaiseEvent UnboundDelete(lRowIndex, vBookmark)
+End Sub
+
+'--- the per-cell fetch pair, for a column carrying no DataField in a bound
+'--- grid: the JSRet* carrier never leaves the control, so a model asks for
+'--- a value and gets a value
+
+Friend Function frFireFetchData(ByVal lRowIndex As Long, ByVal nColIndex As Integer, vBookmark As Variant) As Variant
+    Dim oValue          As JSRetVariant
+
+    Set oValue = New JSRetVariant
+    RaiseEvent FetchData(lRowIndex, nColIndex, vBookmark, oValue)
+    AssignVariant frFireFetchData, oValue.Value
+End Function
+
+Friend Function frFireFetchIcon(ByVal lRowIndex As Long, ByVal nColIndex As Integer, vBookmark As Variant) As Integer
+    Dim oIconIndex      As JSRetInteger
+
+    Set oIconIndex = New JSRetInteger
+    RaiseEvent FetchIcon(lRowIndex, nColIndex, vBookmark, oIconIndex)
+    frFireFetchIcon = oIconIndex.Value
 End Function
 
 Private Function pvSlot(ByVal lPos As Long) As Long

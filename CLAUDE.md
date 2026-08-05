@@ -12,6 +12,7 @@
 
 - Declare all helper procedures `Private`
 - Use `On Error GoTo EH` where needed; in the handler `Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"`
+- Never pass `Source` to `Err.Raise` i.e. `Err.Raise ERR_NUMBER, , ERR_DESCRIPTION`
 - One blank line between procedures
 - One blank line between the `Dim` block and the first executable line inside a procedure; no other blank lines inside a procedure body
 - Use hungarian notation: `s` - String, `l` - Long, `n` - Integer, `b` - Boolean, `o` - Object, `c` - Collection, `d` - Date, `dbl` - Double, `sng` - Single, `byt` - Byte, `u` - UDTs, `h` - Handles (incl. hResult), `cy` - Currency, `e` - Enums, `clr` - OLE_COLOR
@@ -24,6 +25,7 @@
 - For UDT members stop using hungarian notation i.e. `uRow.Values(1)` not `aValues`
 - Declare all variables at the beginning of the procedure, separated from the code by a blank line
 - One local variable declaration per line, data-type aligned at column 25
+- Order local variable declarations by how early each is used in the procedure
 - Align API consts data-types at column 45
 - Align module variables data-types at column 37
 - Declare API consts local to a routine if not used in any other routine

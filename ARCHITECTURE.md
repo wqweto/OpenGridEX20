@@ -1,0 +1,353 @@
+# Architecture
+
+How the pieces of Open GridEX 2000 fit together, and why they are shaped the
+way they are. `ROADMAP.md` says what is built and in what order; `CHANGELOG.md`
+records what changed; this file explains the standing structure.
+
+Sections other than **Data model** are stubs -- the shape of the thing is
+already in the code, the writing-down has not happened yet.
+
+## Overview
+
+*Stub.* The control is a VB6 `UserControl` (`GridEX.ctl`) plus a preview
+control (`GEXPreview.ctl`) and 23 `JS*` object-model classes, all reproducing
+the public surface of the original Janus GridEX 2000 in
+`doc/GridEX20.idl`. Compatibility is **source**-level: same member names,
+signatures, enum values and event contracts, own GUIDs and ProgIDs.
+
+Worth covering here: the split between the public surface (fixed by the
+original) and the private implementation (free), and the rule that anything
+private stays off the typelib.
+
+## Data model
+
+### The problem it solves
+
+Until this layer existed, `GridEX.ctl` owned everything: the row cache, the
+sort, the group rows, the collapse projection, the aggregates and the
+painting. That works for one data source. It does not survive three -- unbound
+rows supplied by the client, an ADO recordset, and eventually a SQLite table
+where sorting, grouping and counting are the database's job rather than ours.
+
+`IDataModel` is the seam. Below it, an implementation answers questions about
+records. Above it, the control lays out pixels and never learns where a value
+came from.
+
+### Three address spaces
+
+Everything in this layer hangs on keeping three ways of naming a row apart.
+Confusing them is the single most likely source of bugs here.
+
+| | range | survives | who speaks it |
+|---|---|---|---|
+| **RowPosition** | `1..RowCount` | nothing | the renderer, the scrollbar, every public `*Position` member |
+| **RowIndex** | `1..ItemCount` | re-sorting, grouping, collapse | the current cell, the selection, bookmarks, `UnboundReadData` |
+| **Bookmark** | opaque | a requery | `MoveToBookmark`, `GetBookmarks`, the unbound events |
+
+RowPosition counts rows *on show* -- group headers and footers included, rows
+inside a collapsed group excluded -- so it changes whenever anything is sorted,
+grouped or collapsed. RowIndex is where identity lives: it is the order the
+source supplied its records in, and **only a delete renumbers it**, by
+compaction.
+
+The original works the same way, which is verifiable: sorting a five-record
+grid descending permutes the positions while `RowIndex(pos)` reports 5, 4, 3,
+2, 1 and `RowBookmark(1)` still answers for the record that was first.
+
+The original also only ever *answers* questions in one direction --
+`RowIndex(RowPosition)` and `RowBookmark(RowIndex)`, both running from the
+derived space toward identity. The two reverses exist there only as actions
+(`MoveToRowIndex`, `MoveToBookmark`, `SelectedItems.AddBookmark`). `IDataModel`
+makes them callable, because a private interface can afford to answer what a
+public one only performed.
+
+### The contract
+
+`IDataModel` (`src/IDataModel.cls`, `Instancing = Private`, so it never reaches
+the typelib):
+
+```
+Property Get  RowCount                         rows on show -- scrollbar range
+Property Get  ItemCount                        records of the source
+Property Get  RowIndex(RowPosition)            0 for a group row
+Property Get/Let RowBookmark(RowIndex)
+Property Get/Let RowExpanded(RowPosition)
+Property Get/Let GroupFooterStyle
+
+Sub  Refresh(Optional RowIndex)                everything, or one record
+Function GetRowData(RowPosition) As JSRowData   mint and fill a wrapper
+Sub  UpdateRowData(oData)                      write back; RowIndex < 0 inserts
+Sub  Delete(RowPosition)
+
+Function GetRowPosition(RowIndex)              collapsed -> the group row hiding it
+Function GetRowIndex(Bookmark)                 0 when unresolved
+Function GetSubTotal(RowPosition, ColIndex, Func)
+Function GetBookmarks(RowPosition)
+Function GetRowIndexes(RowPosition)
+```
+
+Two shaping decisions:
+
+- **Nothing is fed in.** Each implementation takes a weak reference to the
+  control in its own `frInit` and reads `Columns`, `SortKeys`, `Groups` and
+  `ItemCount` from there when it rebuilds. Feeding them would mean a
+  notification path per collection and a second copy that can go stale.
+  `GroupFooterStyle` is the one exception, pushed rather than pulled, because
+  changing it has to invalidate the projection and nothing else -- pulling it
+  lazily would leave the model unaware.
+- **`GetRowIndex` answers a RowIndex, not a position.** A record inside a
+  collapsed group has no position of its own, so resolving a bookmark straight
+  to one would lose the record. Callers that want a position compose
+  `GetRowPosition` over it.
+
+### Implementations
+
+| | source | identity | cell value |
+|---|---|---|---|
+| `cUnboundDataModel` | `UnboundReadData`, once per record | client-assigned bookmark | cached in `m_aRecord(i).Values` |
+| `cAdoDataModel` | an ADO `Recordset` | the cursor's own bookmark | read live off a cached `Field` |
+| *(future)* SQL | a SQLite table | primary key | `SELECT` |
+
+`cUnboundDataModel` caches because the client is only asked once per record.
+`cAdoDataModel` does not cache at all -- the recordset **is** the cache. What it
+keeps per record is the bookmark it was handed on the binding walk; reading a
+cell means positioning the cursor on that bookmark and asking a `Field`. Which
+is why it refuses a recordset that does not support bookmarks: without them
+there is no identity to return to and no RowIndex worth the name.
+
+A SQL model would use almost none of the shared machinery below -- `RowCount`,
+the projection and the aggregates all come from `ORDER BY`, `GROUP BY` and
+`COUNT(*)` instead. That is the reason the seam is where it is.
+
+### The shared projection engine
+
+`mdDataModel.bas` holds the work that is identical whatever holds the records:
+
+- `UcsRowSet` -- the projection state: the sort metadata, the key array, the
+  order, the group rows, the visible map and the position write-back
+- `DataReadSortKeys` -- reads `Groups` then `SortKeys` off the control, group
+  columns leading, since grouping sorts too
+- `DataProject` -- seed in RowIndex order, stable merge sort, emit group rows,
+  build the visible map, write positions
+- `DataBuildVisible` / `DataWritePositions` -- the collapse path on their own,
+  because expand/collapse **reprojects without re-sorting**
+- `DataCompareValues`, `DataIsBlank`, `DataBookmarkKey`, `DataAggregate`
+
+The one step that cannot move is filling `uRowSet.Key`, because that is the
+only part of the pass that needs a cell value. Each implementation does it its
+own way -- the unbound model forces its lazy fetch, the ADO model walks the
+cursor with `MoveNext` since RowIndex order *is* the recordset's order.
+
+Group rows carry their span in order space (`FirstSlot`/`LastSlot`), which is
+what the aggregates are computed over, and a footer inherits its header's span
+so both total the same records. Captions are **not** stored: a group row keeps
+the `RowIndex` that opened it, and the caption is formatted on demand from
+`GroupPrefix`, `GroupFormat` and `GroupEmptyStringCaption`. `GroupFormat`
+labels a caption without regrouping -- the original breaks groups on the raw
+value, so two dates in one month give two identically-captioned groups.
+
+### The window
+
+The grid does not read the model cell by cell while painting. It keeps a
+window of `JSRowData` wrappers, one per visible position, minted by
+`GetRowData`.
+`RowFormat` is raised **once per population**, which is what lets the client
+write `DisplayValue`, `CellStyle` and `CellPicture` and have every subsequent
+repaint use them without the event firing again.
+
+Buffers are **not reused across populations**: repopulating a position mints a
+fresh wrapper. A client holding a `GetRowData` result across a scroll is then
+left with a read-only snapshot of the row that used to be there, rather than a
+wrapper that silently repoints at a different record.
+
+They are deliberately **not** detached. The orphaning discipline elsewhere in
+the object model exists because those classes reach the control through a raw,
+un-AddRef-ed pointer, and dereferencing one after the control dies takes the
+process down. A buffer carries its own data and never dereferences its owner;
+the only reference it uses is the model, which is strong. So there is nothing
+to protect against, and a stale buffer is harmless.
+
+A buffer is only meaningful in the context it was handed out for. Per-row
+presentation members -- `RowHeight`, `RowStyle`, `PreviewRowVisible` -- are
+window state, re-established by `RowFormat` on each population; setting one
+outside that event is not something the model preserves.
+
+`JSRowData` therefore has two modes and is meant to end up with one:
+
+- **buffer mode** (`frInitBuffer`) -- the wrapper carries the row itself
+- **view mode** (`frInit`) -- a window onto storage the control owns,
+  transitional, still what `GetRowData` hands out
+
+Every member opens with an `If m_bView Then ... Exit` prologue and nothing
+else, so removing view mode is deleting those prologues, `frInit`, `m_bView`
+and `m_lRowIndex`.
+
+Because `Bookmark`, `RowType`, `GroupLevel` and `RowIndex` are publicly
+read-only, a model fills them through a `Friend` surface -- `frInitBuffer`,
+`frReset`, `frSetRow`, `frRowBookmark`, `frSetValue`. The last exists because
+the public `Value` Let cannot carry an object and a cell can hold one.
+`RecordCount` is not filled at all: it forwards to the model, because the
+original raises on it once the order has been rebuilt.
+
+`frSetRow` also stamps the wrapper with the projection generation it was
+filled under. `RecordCount`, `GetSubTotal`, `GetBookmarks` and
+`GetRowIndexes` pass that stamp back, and a group row whose order has since
+been rebuilt raises `vbObjectError + 129`, *"JSRowData object may have
+changed. The object is no longer valid."* -- the original's own number and
+message. Record wrappers never check, and go on reading the row they were
+filled with. `UcsRowSet.Version` is bumped by `DataProject` alone, so a
+collapse leaves a held header working, which is what the original does.
+
+### FetchData
+
+A column with `JSColumn.FetchData` set is supplied by the client through the
+`FetchData` event, and that **outranks whatever else the column could have been
+read from** -- its `DataField` in a bound grid, the values `UnboundReadData`
+wrote in an unbound one. Both models treat it identically, and every consumer
+goes through the same cell accessor, so sorting, grouping, totals and painting
+all see the same value.
+
+The cache is per cell and fills on demand: a repaint asks for the screenful it
+is painting. The only thing that ever sweeps a whole column is a sort, because
+a sort genuinely needs every record's key -- and what it leaves behind is a
+warm cache rather than a second pass. Everything narrower invalidates by the
+row: an edit or an insert refetches that record's fetch columns and marks the
+order stale only if a value actually moved; a delete shifts the rows above it
+down; only a rebind or a column change throws the lot away.
+
+### Bookmarks
+
+Bookmarks are keyed by RowIndex and sized to `ItemCount`. Behaviour recorded
+from the original rather than assumed:
+
+- **duplicates are legal.** Assigning a bookmark another record already holds
+  raises nothing, and every resolver -- `MoveToBookmark`, `AddBookmark`,
+  `RefreshRowBookmark` -- answers with the **lowest** RowIndex.
+- **an unknown bookmark raises** `vbObjectError + 119`, *"Not a valid
+  Bookmark."*, leaving the current row alone. So `GetRowIndex` answering 0 is
+  the model's way of saying that.
+- **they survive both `Refetch` and `Rebind`.** Nothing but a delete or an
+  explicit assignment drops one.
+- **a delete compacts the store.** Deleting the record holding `"bk-3"` leaves
+  the next read of RowIndex 3 carrying `"bk-4"`.
+- **type is part of identity, width is not.** Numeric widths resolve against
+  each other, and `Boolean` and `Date` resolve against their numeric value, but
+  a string never matches a number. Hence `DataBookmarkKey`: `"S" & value` for
+  strings, `"#" & C2Dbl(value)` for everything else, and the hex of the bytes
+  for the byte-array bookmarks a client-side ADO cursor hands out.
+
+The map is a `VBA.Collection` rebuilt lazily rather than patched, because a
+delete renumbers every record above it and there is no cheap way to find the
+affected entries.
+
+### Weak references
+
+The control holds its model; the model holds the control **weakly**, as a raw
+pointer written with `CopyMemory` and zeroed in `Class_Terminate`. Every class
+in the object model that points back at the control does the same -- releasing
+a control that was never `AddRef`-ed takes the process down, and `Groups.Clear`
+is enough to reach it.
+
+The corollary for buffers: a buffer the *grid* owns may hold a model
+reference, but a buffer the *model* owns must not, or the two keep each other
+alive. `cUnboundDataModel`'s shared fetch buffer is passed `Nothing` for
+exactly this reason.
+
+### Status
+
+**The models are written, compile and are on nothing's critical path.** The
+control still owns its own row storage, projection and aggregates; nothing
+constructs a `cUnboundDataModel` or a `cAdoDataModel` yet. Cutting the control
+over is the next piece of work, and it is what will first exercise any of this.
+
+Known gaps at the time of writing:
+
+- `UpdateRowData` writes every bound column rather than only edited ones, because
+  `JSRowData` carries no per-cell dirty flag
+- `cAdoDataModel` has no test coverage of any kind
+
+## Window structure and subclassing
+
+*Stub.* The control is an outer `UserControl` holding an inner `picGrid`
+PictureBox and a band carrying `hsbGrid` and the painted record navigator --
+mirroring the original's own window tree. Two windows are subclassed through
+the Modern Subclassing Thunk: the grid surface for painting, input and
+`WM_VSCROLL`, and the outer control because it is the band's parent.
+
+Worth covering: why `hWnd` returns `picGrid.hWnd`, why the horizontal
+scrollbar is a child control while the vertical one is a non-client style, and
+the `InitAddressOfMethod` hidden-member trick that keeps the callback off the
+typelib.
+
+## Painting
+
+*Stub.* Direct-to-DC GDI drawing, no double buffer. Bands from the top: the
+group-by box with its chip staircase, the column headers, the rows block, the
+scrollbar band.
+
+Worth covering: the paint order and why it is that order, the pixel-exactness
+rules discovered by golden diffing (asymmetric text insets, the XOR marquee's
+per-column checkerboard anchoring, dotted and dashed gridline phase), and the
+`IntersectClipRect` + `DT_NOCLIP` idiom that makes ClearType fringes match.
+
+## Metrics and DPI
+
+*Stub.* Twips-facing properties stored internally in pixels and snapped on
+set, exactly as the original does. Heights derived from font metrics rather
+than literals, so they hold at 96, 120 and 144 dpi.
+
+Worth covering: the `tmHeight + 3` / `tmHeight + 6` rules, the OLE font-size
+snapping that makes a requested 8.25 realize as 8 at 144dpi, and the handful of
+metrics that are genuinely fixed pixel counts at every scale.
+
+## Input and editing
+
+*Stub.* Keyboard, mouse and scrolling arrive through the subclass. Editing
+runs an in-place native `EDIT` created per session, with a pending row buffer
+between the editor and storage.
+
+Worth covering: the event contracts recorded from the original (the update
+trio, two-level Escape, where `SelectionChange` sits relative to
+`RowColChange`), and why the pending buffer stays in the control rather than
+moving into the data model.
+
+## Object model
+
+*Stub.* 23 `JS*` classes reproducing the original's collections and value
+objects, with `Friend` wiring and weak owner references throughout.
+
+Worth covering: the collection idiom (keyed, reindexing, lazy-created owned
+objects), the protected built-in `FormatStyles`, and the `JSRet*` carriers.
+
+## Persistence and property pages
+
+*Stub.* Not implemented. `WriteProperties`/`ReadProperties` routed through the
+same friend setters as the runtime path, plus `.pag` property pages.
+
+## Printing
+
+*Stub.* Not implemented. `JSPrinterProperties`, pagination, `PrintGrid`, and
+the `PrintPreview` handshake with `GEXPreview`.
+
+## Build and compatibility
+
+*Stub.* `src/make.bat` builds the OCX under `CompatibleMode=2` against
+`OpenGridEX20.cmp`. `tools/CompareIdl.ps1` diffs an OleView dump of the built
+control against `doc/GridEX20.idl` and must report zero differences;
+`tools/DumpSurface.vbs` does the same job through TLI.
+
+Worth covering: why private classes and `Friend` members are free, why
+`Public Enum` in a `.bas` is not, and the append-only rule on public members.
+
+## Testing
+
+*Stub.* Three harnesses:
+
+- `test/ModelTests` -- object model, collections, events, snapshot round-trips
+- `test/VisualDiff` -- pixel and event-log diffing against goldens recorded
+  from the original control, at 96, 120 and 144 dpi
+- `test/Samples` -- the ported original samples under a smoke runner
+
+Worth covering: the record/verify/selftest cycle, why goldens live per dpi,
+what the `.events.txt` logs deliberately leave out, and the practice of probing
+the original for behaviour rather than guessing it.

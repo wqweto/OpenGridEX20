@@ -115,6 +115,7 @@ Public Declare Function CreateWindowEx Lib "user32" Alias "CreateWindowExW" (ByV
 Public Declare Function DestroyWindow Lib "user32" (ByVal hWnd As Long) As Long
 Public Declare Function SetFocusApi Lib "user32" Alias "SetFocus" (ByVal hWnd As Long) As Long
 Public Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (Destination As Any, Source As Any, ByVal Length As Long)
+Public Declare Function ArrPtr Lib "msvbvm60" Alias "VarPtr" (Ptr() As Any) As LongPtr
 Public Declare Function OleTranslateColor Lib "olepro32" (ByVal clrOle As OLE_COLOR, ByVal hPal As Long, clrRef As Long) As Long
 Public Declare Function CreateSolidBrush Lib "gdi32" (ByVal crColor As Long) As Long
 Public Declare Function CreatePen Lib "gdi32" (ByVal nPenStyle As Long, ByVal nWidth As Long, ByVal crColor As Long) As Long
@@ -200,6 +201,8 @@ Public Type TEXTMETRICW
     tmCharSet               As Byte
 End Type
 
+Public Const LIB_NAME               As String = "OpenGridEX20"
+
 '=========================================================================
 ' Functions
 '=========================================================================
@@ -216,6 +219,30 @@ Public Function C2Dbl(vValue As Variant) As Double
         C2Dbl = vValue
     ElseIf VariantChangeType(vDest, vValue, VARIANT_ALPHABOOL, vbDouble) = 0 Then
         C2Dbl = vDest
+    End If
+End Function
+
+Public Function C2Str(vValue As Variant) As String
+    Const VARIANT_ALPHABOOL As Long = 2
+    Dim vDest           As Variant
+
+    '--- the same leniency as C2Dbl, for the comparisons and the keys that
+    '--- want text: anything that cannot be read as one comes back empty
+    If VarType(vValue) = vbString Then
+        C2Str = vValue
+    ElseIf VariantChangeType(vDest, vValue, VARIANT_ALPHABOOL, vbString) = 0 Then
+        C2Str = vDest
+    End If
+End Function
+
+Public Function C2Lng(vValue As Variant) As Long
+    Const VARIANT_ALPHABOOL As Long = 2
+    Dim vDest           As Variant
+
+    If VarType(vValue) = vbLong Then
+        C2Lng = vValue
+    ElseIf VariantChangeType(vDest, vValue, VARIANT_ALPHABOOL, vbLong) = 0 Then
+        C2Lng = vDest
     End If
 End Function
 
@@ -301,4 +328,41 @@ Public Function SearchCollection(ByVal pCol As IVBCollection, Index As Variant, 
     If Not pCol Is Nothing Then
         SearchCollection = (pCol.Item(Index, RetVal) >= 0)
     End If
+End Function
+
+Public Function ToHex(baData() As Byte) As String
+    Dim lPtr            As LongPtr
+    Dim lFirst          As Long
+    Dim lIdx            As Long
+    Dim sByte           As String
+
+    Call CopyMemory(lPtr, ByVal ArrPtr(baData), PTR_SIZE)
+    If lPtr <> 0 Then
+        lFirst = LBound(baData)
+        ToHex = String$((UBound(baData) - lFirst + 1) * 2, 48)
+        For lIdx = 0 To UBound(baData) - lFirst
+            sByte = LCase$(Hex$(baData(lIdx + lFirst)))
+            Mid$(ToHex, lIdx * 2 + 3 - Len(sByte)) = sByte
+        Next
+    End If
+End Function
+
+'= error handling ========================================================
+
+Public Function PushError() As Variant
+    PushError = Array(Err.Number, Err.Source, Err.Description, Erl)
+End Function
+
+Public Sub PopRaiseError(LocalErr As Variant, sModule As String, sFunction As String)
+    Err.Raise LocalErr(0), GetErrorSource(sModule, sFunction, LocalErr(2)) & vbCrLf & LocalErr(1), LocalErr(2)
+End Sub
+
+Public Sub PopPrintError(LocalErr As Variant, sModule As String, sFunction As String)
+    Debug.Print "Critical error: " & LocalErr(2) & " &H" & Hex$(LocalErr(0)) & " [" & GetErrorSource(sModule, sFunction, LocalErr(2)) & "]"
+End Sub
+
+Public Function GetErrorSource(sModule As String, sFunction As String, Optional ByVal ErrLine As Long) As String
+    GetErrorSource = LIB_NAME & "." & sModule _
+        & IIf(LenB(sFunction) <> 0, "." & sFunction, vbNullString) _
+        & IIf(ErrLine = 0, vbNullString, "(" & ErrLine & ")")
 End Function
