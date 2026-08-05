@@ -893,3 +893,80 @@ rather than a runtime-created control the way `VisualDiff` does it.
   `On Error` statement clears `Err` and the reporter has one, so every one of
   those had been logging `&H0` with an empty description since it was written.
   They now capture into a local first and report second
+
+### Changed (the grid draws from the data model)
+
+`GridEX.ctl` no longer owns rows, order, group rows or aggregates. It asks an
+`IDataModel` for a page of `JSRowData` and paints from that, which is what the
+data model was written for. The control lost ~810 lines.
+
+- **Gone from the control**: `m_aRows`, `m_aOrder`, `m_aGroupRow`, `m_aVisible`
+  and the sort-key decoration arrays; `pvBuildOrder`, `pvBuildGroupRows`,
+  `pvCloseGroups`, `pvBuildVisible`, `pvDecorate`, `pvMergeSort`,
+  `pvInsertionSort`, `pvCompareRows`, `pvCompareValues`, `pvSlot`, `pvSlotPos`,
+  `pvDataRow`, `pvDataRowPos`, `pvGroupSlot`, `pvEnsureRow`, `pvFetchRow`,
+  `pvResetRow(s)`, `pvAggregate`, `pvGroupCaption`, and all 26 `frRow*`
+  accessors. `UcsCellData`, `UcsRowData` and `UcsGroupRow` went with them
+- **The page buffer**: `pvPopulateWindow` mints one wrapper per visible
+  position and raises `RowFormat` on each, once. Repaints walk the buffers, so
+  a bare `WM_PAINT` raises nothing -- which is what the original does
+- **`JSRowData` lost view mode**: 29 `If m_bView Then ... Exit` prologues,
+  `frInit`, `frInitBuffer`, `m_bView`, `m_lRowIndex` and the weak owner
+  reference are gone. A wrapper is now a snapshot that never reads back
+  through the control, so one a client keeps cannot be orphaned by the grid
+  going away -- it answers for the row it was filled with, as the original's
+  does
+- **The current row and the selection** follow their records across a
+  reprojection by holding a RowIndex -- the one address space a reprojection
+  cannot move -- and resolving it back through `GetRowPosition` when the
+  model's `Version` moves. A collapse deliberately does not bump `Version`
+  (held group wrappers must survive one), so it remaps directly instead
+- **Divergence closed**: bookmarks now survive `Rebind`, as probed on the
+  original. The test that asserted the old behaviour was inverted
+
+### Fixed
+
+- `JSRowData.Value` is read-only outside the fill the control asks for, and
+  raises `vbObjectError` with *"'Value' property can not be change in this
+  context."* -- the original's own wording, including the grammar slip. Probed:
+  the original refuses the write on a record, on a fresh wrapper and on a group
+  row alike, while `Values.Value(n) = ...` inside `UnboundReadData` still works
+- An edit commit no longer reprojects when there are no sort keys. It used to
+  mark the order stale unconditionally -- a `TODO` in the model admitted this
+  was unprobed -- which bumped `Version` and made the grid repopulate its page,
+  re-raising `RowFormat` for every visible row where the original raises it
+  once for the edited row. The event goldens of 058, 068 and 071 pin it
+- An edit commit no longer raises `UnboundUpdate`. The original puts the row in
+  its own store and reports only `AfterUpdate`
+- `pvCreateDataModel` moved to `UserControl_Initialize`. It ran from
+  `InitProperties`/`ReadProperties`, but `Initialize` already invalidates
+  through the font handlers, so every paint before it raised error 91 into a
+  handler that swallowed it -- 408 times in one test run -- and the grid
+  silently stopped updating its scrollbars
+- The checkbox column paints the pending buffer, so a toggle shows immediately
+  rather than one commit behind
+
+### Changed (Integer -> Long internally)
+
+Every internal column index, count and loop counter is a `Long`. The public
+surface keeps the original's `Integer` signatures to the letter -- events,
+properties and methods are what a client compiles against -- so the change
+stops at the boundary and the typelib is untouched.
+
+- **Converted**: the projection's `UcsGroupRow.Level`/`.ColIndex`,
+  `UcsRowSet.SortCol`, `UcsFetchCache.ColCount`, `UcsRecord.CellCount` and its
+  icon array, `JSRowData`'s cell store and its `fr*` fillers, both models'
+  `pvCellValue`/`pvGroupCaption`/`pvGroupValues`/`IDataModel.GetSubTotal`, and
+  the control's `m_nCol`, `m_nLeftCol`, `m_nFrozenColumns`,
+  `m_nPreviewRowLines`, `m_nEditCol` with every private and friend procedure
+  they reach. Renamed with the type: `nIdx` -> `lIdx`, `nColIndex` ->
+  `lColIndex`, `m_nCol` -> `m_lCol`
+- **Left as `Integer` on purpose**: everything the public interface fixes (a
+  `Public Event` parameter is passed `ByRef`, so the local feeding
+  `RaiseEvent KeyDown` has to match); `pvShiftState`, `pvMouseShift` and
+  `pvMouseButton`, which exist to fill those parameters; `pvLoWord`/`pvHiWord`,
+  whose `nWord` is a two-byte `CopyMemory` target; the `JS*` members backing an
+  `Integer` property; and the API-mandated ones in `mdGlobals.bas`
+  (`GetKeyState`'s `SHORT`, `TEXTMETRIC`'s char fields, the `FreeFile` number)
+- Five `Dim nIdx As Integer` declarations left unused by the data-model move
+  went with the sweep

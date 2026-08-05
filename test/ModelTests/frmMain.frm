@@ -362,73 +362,71 @@ End Sub
 Private Sub pvTestRowData()
     Dim oRD             As JSRowData
     Dim oRD2            As JSRowData
+    Dim lErr            As Long
 
     GridEX2.Columns.Clear
     GridEX2.Columns.Add "Alpha"
     GridEX2.Columns.Add "Beta"
     Set oRD = GridEX2.GetRowData(3)
     Set oRD2 = GridEX2.GetRowData(3)
-    Assert "RowData: cached instance", oRD Is oRD2
+    '--- a fresh wrapper every call, which is what the original does: probed
+    '--- over 95 populations it handed out 95 distinct instances and reused
+    '--- none. The one a client keeps goes on reading the row it was filled
+    '--- with rather than following the position
+    Assert "RowData: distinct instance per call", Not oRD Is oRD2
     Assert "RowData: distinct rows distinct wrappers", Not oRD Is GridEX2.GetRowData(2)
-    AssertEquals "RowData: RowIndex", 3, oRD.RowIndex
     AssertEquals "RowData: ColCount", 2, oRD.ColCount
     AssertEquals "RowData: PreviewRowVisible default", True, oRD.PreviewRowVisible
     AssertEquals "RowData: RowType default", jgexRowTypeRecord, oRD.RowType
-    '--- writes through one wrapper ref must be visible through the other
-    '--- because all state lives in the control internal arrays
+    '--- Value is read-only outside the fill the control asks for. Probed on
+    '--- the original: it raises vbObjectError with "'Value' property can not
+    '--- be change in this context." -- the grammar slip is the original's
+    On Error Resume Next
+    Err.Clear
     oRD.Value(1) = "abc"
+    lErr = Err.Number
+    On Error GoTo 0
+    AssertEquals "RowData: Value write raises", vbObjectError, lErr
+    '--- what RowFormat decorates a row with is writable, and lands on that
+    '--- wrapper alone: two wrappers for a position are separate snapshots
     oRD.IconIndex(2) = 5
     oRD.DisplayValue(1) = "shown"
     oRD.CellStyle(2) = "cellstyle"
     oRD.RowStyle = "rowstyle"
     oRD.GroupCaption = "caption"
     oRD.RowHeight = 400
-    AssertEquals "RowData: Value via twin ref", "abc", oRD2.Value(1)
-    AssertEquals "RowData: IconIndex via twin ref", 5, oRD2.IconIndex(2)
-    AssertEquals "RowData: DisplayValue via twin ref", "shown", oRD2.DisplayValue(1)
-    AssertEquals "RowData: CellStyle via twin ref", "cellstyle", oRD2.CellStyle(2)
-    AssertEquals "RowData: RowStyle via twin ref", "rowstyle", oRD2.RowStyle
-    AssertEquals "RowData: GroupCaption via twin ref", "caption", oRD2.GroupCaption
-    AssertEquals "RowData: RowHeight via twin ref", 400, oRD2.RowHeight
-    '--- cell storage grows when columns are added after the fact
-    GridEX2.Columns.Add "Gamma"
-    AssertEquals "RowData: ColCount after Columns.Add", 3, oRD.ColCount
-    oRD.Value(3) = 42
-    AssertEquals "RowData: Value in new column", 42, oRD2.Value(3)
-    AssertEquals "RowData: value kept in older column", "abc", GridEX2.GetRowData(3).Value(1)
+    AssertEquals "RowData: IconIndex on the wrapper", 5, oRD.IconIndex(2)
+    AssertEquals "RowData: DisplayValue on the wrapper", "shown", oRD.DisplayValue(1)
+    AssertEquals "RowData: CellStyle on the wrapper", "cellstyle", oRD.CellStyle(2)
+    AssertEquals "RowData: RowStyle on the wrapper", "rowstyle", oRD.RowStyle
+    AssertEquals "RowData: GroupCaption on the wrapper", "caption", oRD.GroupCaption
+    AssertEquals "RowData: RowHeight on the wrapper", 400, oRD.RowHeight
+    AssertEquals "RowData: the twin saw none of it", "", oRD2.DisplayValue(1)
 End Sub
 
 Private Sub pvTestRowDataWeakRef()
     Dim oForm           As frmWeak
     Dim oRD             As JSRowData
-    Dim vValue          As Variant
-    Dim lErr            As Long
+    Dim sBefore         As String
 
     Set oForm = New frmWeak
     Load oForm
-    oForm.GridEX1.Columns.Add "Alpha"
-    Set oRD = oForm.GridEX1.GetRowData(1)
-    oRD.Value(1) = "before unload"
-    AssertEquals "WeakRef: Value before unload", "before unload", oRD.Value(1)
+    With oForm.GridEX1
+        .Columns.Add "Alpha"
+        .DataMode = jgexUnbound
+        .ItemCount = 2
+        .Rebind
+        Set oRD = .GetRowData(1)
+    End With
+    sBefore = oRD.Value(1)
+    AssertEquals "WeakRef: the wrapper carries its row", "R1C1", sBefore
     Unload oForm
     Set oForm = Nothing
-    '--- the wrapper holds no refcount on the control, so the unload must
-    '--- have terminated the control which detached the wrapper (frTerm);
-    '--- a strong reference would keep the control alive and this access
-    '--- would still succeed instead of raising error 91
-    On Error Resume Next
-    vValue = oRD.Value(1)
-    lErr = Err.Number
-    On Error GoTo 0
-    AssertEquals "WeakRef: orphaned access raises 91", 91, lErr
-    '--- every member reaching the owner answers the same way, not just the
-    '--- default one, so no orphaned access can dereference a zeroed pointer
-    On Error Resume Next
-    Err.Clear
-    lErr = oRD.RowIndex
-    lErr = Err.Number
-    On Error GoTo 0
-    AssertEquals "WeakRef: orphaned RowIndex raises 91", 91, lErr
+    '--- a buffer holds the row itself and never reads back through the
+    '--- control, so losing the grid cannot orphan it: it goes on answering
+    '--- for the row it was filled with, which is what the original does
+    AssertEquals "WeakRef: it still answers after the grid is gone", sBefore, oRD.Value(1)
+    AssertEquals "WeakRef: and still knows its row index", 1, oRD.RowIndex
 End Sub
 
 Private Sub pvTestUnbound()
@@ -480,7 +478,10 @@ Private Sub pvTestUnbound()
         AssertEquals "Unbound: Rebind True holds sort", 1, .SortKeys.Count
         .Rebind
         AssertEquals "Unbound: Rebind clears sort by default", 0, .SortKeys.Count
-        Assert "Unbound: Rebind clears bookmark", IsEmpty(.RowBookmark(3))
+        '--- bookmarks outlive a Rebind, which the original does too: probed,
+        '--- the store survives both Refetch and Rebind. It used to be cleared
+        '--- here, which was a divergence the data model closes
+        AssertEquals "Unbound: Rebind keeps the bookmark", "bk3", .RowBookmark(3)
         '--- navigation state events with previous row/col in the args
         oForm.EventLog = vbNullString
         .Row = 2
@@ -721,13 +722,13 @@ Private Sub pvTestGrouping()
         .Columns.Add "Alpha"
         .Columns.Add "Beta"
         .DataMode = jgexUnbound
+        '--- the feed numbers every cell, so the column to group by is seeded
+        '--- with a value that repeats: two groups of two
+        For lIdx = 1 To 4
+            oForm.SetSeed lIdx, 1, IIf(lIdx <= 2, "north", "south")
+        Next
         .ItemCount = 4
         .Rebind
-        '--- the unbound feed numbers every cell, so the column to group by is
-        '--- overwritten with a value that repeats: two groups of two
-        For lIdx = 1 To 4
-            .GetRowData(lIdx).Value(1) = IIf(lIdx <= 2, "north", "south")
-        Next
         .Groups.Add 1, jgexSortAscending
         .Refresh
         AssertEquals "Group: RowCount counts the group rows", 6, .RowCount
@@ -739,6 +740,8 @@ Private Sub pvTestGrouping()
         AssertEquals "Group: the group counts its records", 2, .GetRowData(1).RecordCount
         AssertEquals "Group: group row type", jgexRowTypeGroupHeader, .GetRowData(1).RowType
         AssertEquals "Group: a record keeps its own row type", jgexRowTypeRecord, .GetRowData(2).RowType
+        AssertEquals "DBG: RowIndex(2)", 1, .RowIndex(2)
+        AssertEquals "DBG: RowIndex(3)", 2, .RowIndex(3)
         AssertEquals "Group: current row is the first record", 2, .Row
         '--- collapsing takes the records under it off the display
         .RowExpanded(1) = False
@@ -774,11 +777,11 @@ Private Sub pvTestGroupCaption()
         .Columns.Add "Alpha"
         .Columns.Add "Beta"
         .DataMode = jgexUnbound
+        For lIdx = 1 To 4
+            oForm.SetSeed lIdx, 1, IIf(lIdx <= 2, "north", "south")
+        Next
         .ItemCount = 4
         .Rebind
-        For lIdx = 1 To 4
-            .GetRowData(lIdx).Value(1) = IIf(lIdx <= 2, "north", "south")
-        Next
         .Groups.Add 1, jgexSortAscending
         .Refresh
         AssertEquals "GroupCaption: plain value by default", "north", .GetRowData(1).GroupCaption
@@ -790,8 +793,12 @@ Private Sub pvTestGroupCaption()
         .RefreshGroups
         AssertEquals "GroupCaption: prefix leads the value", "Region: north", .GetRowData(1).GroupCaption
         '--- an empty value gives way to the empty caption, prefix and all
-        .GetRowData(1).Value(1) = vbNullString
-        .GetRowData(2).Value(1) = vbNullString
+        oForm.SetSeed 1, 1, vbNullString
+        oForm.SetSeed 2, 1, vbNullString
+        '--- per row: a bare Refetch would clear the grouping along with the
+        '--- sort, which is what HoldSortSettings is for
+        .RefreshRowIndex 1
+        .RefreshRowIndex 2
         .RefreshGroups
         AssertEquals "GroupCaption: empty value takes the empty caption", "Region: (none)", .GetRowData(1).GroupCaption
         .Columns.Item(1).GroupEmptyStringCaption = "<blank>"
@@ -807,10 +814,10 @@ Private Sub pvTestGroupCaption()
     With oForm.GridEX1
         .Columns.Add "When"
         .DataMode = jgexUnbound
+        oForm.SetSeed 1, 1, DateSerial(2026, 8, 1)
+        oForm.SetSeed 2, 1, DateSerial(2026, 8, 20)
         .ItemCount = 2
         .Rebind
-        .GetRowData(1).Value(1) = DateSerial(2026, 8, 1)
-        .GetRowData(2).Value(1) = DateSerial(2026, 8, 20)
         '--- month names are localized, so the assertion sticks to digits
         .Columns.Item(1).GroupFormat = "yyyy\-mm"
         .Groups.Add 1, jgexSortAscending
@@ -835,13 +842,13 @@ Private Sub pvTestGroupFooter()
         .Columns.Add "Alpha"
         .Columns.Add "Beta"
         .DataMode = jgexUnbound
-        .ItemCount = 3
-        .Rebind
         '--- north: 10 and 20, south: 5
         For lIdx = 1 To 3
-            .GetRowData(lIdx).Value(1) = IIf(lIdx <= 2, "north", "south")
-            .GetRowData(lIdx).Value(2) = Array(10, 20, 5)(lIdx - 1)
+            oForm.SetSeed lIdx, 1, IIf(lIdx <= 2, "north", "south")
+            oForm.SetSeed lIdx, 2, Array(10, 20, 5)(lIdx - 1)
         Next
+        .ItemCount = 3
+        .Rebind
         .Groups.Add 1, jgexSortAscending
         .Refresh
         AssertEquals "Footer: none by default", 5, .RowCount
@@ -904,13 +911,13 @@ Private Sub pvTestAdvancedSampleParts()
         .Columns.Add("Rep").Tag = "Rep"
         .Columns.Add("Amount").Tag = "Amount"
         .DataMode = jgexUnbound
+        For lIdx = 1 To 4
+            oForm.SetSeed lIdx, 1, IIf(lIdx <= 2, "north", "south")
+            oForm.SetSeed lIdx, 2, Array("bea", "abe", "dee", "cy")(lIdx - 1)
+            oForm.SetSeed lIdx, 3, Array(10, 20, 5, 7)(lIdx - 1)
+        Next
         .ItemCount = 4
         .Rebind
-        For lIdx = 1 To 4
-            .GetRowData(lIdx).Value(1) = IIf(lIdx <= 2, "north", "south")
-            .GetRowData(lIdx).Value(2) = Array("bea", "abe", "dee", "cy")(lIdx - 1)
-            .GetRowData(lIdx).Value(3) = Array(10, 20, 5, 7)(lIdx - 1)
-        Next
         '--- frmSort: clear, re-add from the combos, RefreshSort
         Set oKeys = .SortKeys
         oKeys.Clear

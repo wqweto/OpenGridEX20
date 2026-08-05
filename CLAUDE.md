@@ -45,6 +45,7 @@
 - Within properties/methods order by visibility: public, friend, private
 - Use `pv` prefix for private procedures and `fr` for friend ones
 - Use `lIdx`, `lJdx`, etc. instead of single-letter index variable `i`, `j`, etc.
+- Prefer `Long` to `Integer` i.e. don't use `Integer` indexers
 - ReDim uses explicit data-type i.e. `ReDim aName(0 To 100) As String`
 - Write code which works with `Break on All Errors` setting in the IDE i.e. don't depend on `On Error Resume Next` for normal workflow
 - Put `DefObj A-Z` on all modules so untyped vars/params do not remain of Variant type

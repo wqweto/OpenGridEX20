@@ -23,14 +23,16 @@ DefObj A-Z
 
 Public Const ERR_ROWDATA_INVALID    As String = "JSRowData object may have changed. The object is no longer valid."
 Public Const ERR_ROWDATA_NUMBER     As Long = vbObjectError + 129
+Public Const ERR_VALUE_READONLY     As String = "'Value' property can not be change in this context."
+Public Const ERR_VALUE_NUMBER       As Long = vbObjectError
 
 '=========================================================================
 ' Public types
 '=========================================================================
 
 Public Type UcsGroupRow
-    Level                   As Integer
-    ColIndex                As Integer
+    Level                   As Long
+    ColIndex                As Long
     '--- the record whose key opened the group: the caption is formatted
     '--- from it on demand rather than stored, since GroupPrefix, GroupFormat
     '--- and GroupEmptyStringCaption are the control's business and can
@@ -58,7 +60,7 @@ Public Type UcsRowSet
     '--- sort metadata, read off the control once per projection
     SortKeyCount            As Long
     GroupColCount           As Long
-    SortCol()               As Integer
+    SortCol()               As Long
     SortDir()               As Long
     SortType()              As Long
     '--- every key of every record, by (key, RowIndex). Filled by the caller,
@@ -91,8 +93,22 @@ End Type
 '--- or an insert refetches that record's fetch columns, a delete shifts the
 '--- rows above it down, and only a rebind or a column change throws the lot
 '--- away
+'--- the state every implementation carries whatever it reads rows from:
+'--- the bookmark store and the map over it. Kept flat on purpose -- simple
+'--- types and arrays of them, no nested UDTs -- so the VC6 translation is a
+'--- struct copy rather than a graph walk. UcsRowSet and UcsFetchCache stay
+'--- separate parameters for the same reason
+Public Type UcsDataState
+    ItemCount               As Long
+    Bookmark()              As Variant
+    BookmarkUBound          As Long
+    Bookmarks               As VBA.Collection
+    BookmarksDirty          As Boolean
+    OrderDirty              As Boolean
+End Type
+
 Public Type UcsFetchCache
-    ColCount                As Integer
+    ColCount                As Long
     RowCount                As Long
     IsFetchData()           As Boolean
     IsFetchIcon()           As Boolean
@@ -105,7 +121,7 @@ End Type
 '=========================================================================
 
 Public Sub DataInitFetch(uFetch As UcsFetchCache, oCtl As GridEX)
-    Dim nIdx            As Integer
+    Dim lIdx            As Long
 
     '--- the whole cache goes: only a rebind or a change to the columns
     '--- themselves gets to be this expensive
@@ -122,9 +138,9 @@ Public Sub DataInitFetch(uFetch As UcsFetchCache, oCtl As GridEX)
         ReDim .IsFetchData(1 To .ColCount) As Boolean
         ReDim .IsFetchIcon(1 To .ColCount) As Boolean
         '--- asked once here, not once per cell on every paint
-        For nIdx = 1 To .ColCount
-            .IsFetchData(nIdx) = oCtl.Columns.Item(nIdx).FetchData
-            .IsFetchIcon(nIdx) = oCtl.Columns.Item(nIdx).FetchIcon
+        For lIdx = 1 To .ColCount
+            .IsFetchData(lIdx) = oCtl.Columns.Item(lIdx).FetchData
+            .IsFetchIcon(lIdx) = oCtl.Columns.Item(lIdx).FetchIcon
         Next
     End With
 End Sub
@@ -144,14 +160,14 @@ End Sub
 
 '--- one record's fetch columns go stale -- an edit, or a Refresh of it
 Public Sub DataInvalidateFetchRow(uFetch As UcsFetchCache, ByVal lRowIndex As Long)
-    Dim nIdx            As Integer
+    Dim lIdx            As Long
 
     With uFetch
         If lRowIndex < 1 Or lRowIndex > .RowCount Then
             Exit Sub
         End If
-        For nIdx = 1 To .ColCount
-            .Valid(nIdx, lRowIndex) = False
+        For lIdx = 1 To .ColCount
+            .Valid(lIdx, lRowIndex) = False
         Next
     End With
 End Sub
@@ -159,8 +175,8 @@ End Sub
 '--- a delete renumbers every record above it, so the cache follows rather
 '--- than being thrown away and refetched
 Public Sub DataDeleteFetchRow(uFetch As UcsFetchCache, ByVal lRowIndex As Long, ByVal lItemCount As Long)
-    Dim nIdx            As Integer
     Dim lIdx            As Long
+    Dim lJdx            As Long
 
     With uFetch
         If lRowIndex < 1 Or lRowIndex > .RowCount Then
@@ -168,16 +184,16 @@ Public Sub DataDeleteFetchRow(uFetch As UcsFetchCache, ByVal lRowIndex As Long, 
         End If
         For lIdx = lRowIndex To lItemCount - 1
             If lIdx + 1 <= .RowCount Then
-                For nIdx = 1 To .ColCount
-                    AssignVariant .Value(nIdx, lIdx), .Value(nIdx, lIdx + 1)
-                    .Valid(nIdx, lIdx) = .Valid(nIdx, lIdx + 1)
+                For lJdx = 1 To .ColCount
+                    AssignVariant .Value(lJdx, lIdx), .Value(lJdx, lIdx + 1)
+                    .Valid(lJdx, lIdx) = .Valid(lJdx, lIdx + 1)
                 Next
             End If
         Next
         If lItemCount >= 1 And lItemCount <= .RowCount Then
-            For nIdx = 1 To .ColCount
-                .Value(nIdx, lItemCount) = Empty
-                .Valid(nIdx, lItemCount) = False
+            For lJdx = 1 To .ColCount
+                .Value(lJdx, lItemCount) = Empty
+                .Valid(lJdx, lItemCount) = False
             Next
         End If
     End With
@@ -185,8 +201,8 @@ End Sub
 
 Public Sub DataReadSortKeys(uRowSet As UcsRowSet, oCtl As GridEX)
     Dim lIdx            As Long
-    Dim nCol            As Integer
-    Dim nOrder          As Integer
+    Dim lCol            As Long
+    Dim lOrder          As Long
 
     '--- grouping sorts too: the group columns lead, in order, and the sort
     '--- keys refine within a group
@@ -196,24 +212,24 @@ Public Sub DataReadSortKeys(uRowSet As UcsRowSet, oCtl As GridEX)
         If .SortKeyCount = 0 Then
             Exit Sub
         End If
-        ReDim .SortCol(1 To .SortKeyCount) As Integer
+        ReDim .SortCol(1 To .SortKeyCount) As Long
         ReDim .SortDir(1 To .SortKeyCount) As Long
         ReDim .SortType(1 To .SortKeyCount) As Long
         For lIdx = 1 To .SortKeyCount
             If lIdx <= .GroupColCount Then
-                nCol = oCtl.Groups.Item(lIdx).ColIndex
-                nOrder = oCtl.Groups.Item(lIdx).SortOrder
+                lCol = oCtl.Groups.Item(lIdx).ColIndex
+                lOrder = oCtl.Groups.Item(lIdx).SortOrder
             Else
-                nCol = oCtl.SortKeys.Item(lIdx - .GroupColCount).ColIndex
-                nOrder = oCtl.SortKeys.Item(lIdx - .GroupColCount).SortOrder
+                lCol = oCtl.SortKeys.Item(lIdx - .GroupColCount).ColIndex
+                lOrder = oCtl.SortKeys.Item(lIdx - .GroupColCount).SortOrder
             End If
-            If nCol >= 1 And nCol <= oCtl.Columns.Count Then
-                .SortCol(lIdx) = nCol
-                .SortType(lIdx) = oCtl.Columns.Item(nCol).SortType
+            If lCol >= 1 And lCol <= oCtl.Columns.Count Then
+                .SortCol(lIdx) = lCol
+                .SortType(lIdx) = oCtl.Columns.Item(lCol).SortType
             End If
             '--- the enum is +1/-1 already, so the direction multiplies
             '--- straight into the comparison result
-            .SortDir(lIdx) = IIf(nOrder = jgexSortDescending, -1, 1)
+            .SortDir(lIdx) = IIf(lOrder = jgexSortDescending, -1, 1)
         Next
         If .ItemCount > 0 Then
             ReDim .Key(1 To .SortKeyCount, 1 To .ItemCount) As Variant
@@ -331,10 +347,230 @@ Public Sub DataWritePositions(uRowSet As UcsRowSet)
 End Sub
 
 '--- the order entry a display position holds: +n a RowIndex, -n a group row
-Public Function DataEntryAt(uRowSet As UcsRowSet, ByVal lRowPosition As Long) As Long
+'--- room for one more record, growing in blocks so an append is not a copy
+Public Sub DataEnsureBookmarkRoom(uState As UcsDataState, ByVal lItemCount As Long)
+    Dim lNeeded         As Long
+
+    If lItemCount <= uState.BookmarkUBound Then
+        Exit Sub
+    End If
+    lNeeded = uState.BookmarkUBound
+    If lNeeded < 16 Then
+        lNeeded = 16
+    End If
+    Do While lNeeded < lItemCount
+        lNeeded = lNeeded * 2
+    Loop
+    ReDim Preserve uState.Bookmark(1 To lNeeded) As Variant
+    uState.BookmarkUBound = lNeeded
+End Sub
+
+'--- the record a position holds, 0 for a group row
+Public Function DataRowIndexAt(uRowSet As UcsRowSet, ByVal lRowPosition As Long) As Long
+    Dim lRowIndex       As Long
+
+    lRowIndex = DataRecordIndexAt(uRowSet, lRowPosition)
+    If lRowIndex > 0 Then
+        DataRowIndexAt = lRowIndex
+    End If
+End Function
+
+'--- the original sizes its bookmark store to ItemCount and raises past the
+'--- end rather than answering Empty
+Public Function DataRowBookmark(uState As UcsDataState, ByVal lRowIndex As Long) As Variant
+    If lRowIndex < 1 Or lRowIndex > uState.ItemCount Then
+        Err.Raise vbObjectError, , "Subscript out of range"
+    End If
+    AssignVariant DataRowBookmark, uState.Bookmark(lRowIndex)
+End Function
+
+Public Sub DataSetRowBookmark(uState As UcsDataState, ByVal lRowIndex As Long, vValue As Variant)
+    If lRowIndex < 1 Or lRowIndex > uState.ItemCount Then
+        Err.Raise vbObjectError, , "Subscript out of range"
+    End If
+    AssignVariant uState.Bookmark(lRowIndex), vValue
+    '--- duplicates are legal, and which record answers depends on every other
+    '--- bookmark, so the map is rebuilt rather than patched
+    uState.BookmarksDirty = True
+End Sub
+
+Public Function DataRowExpanded(uRowSet As UcsRowSet, ByVal lRowPosition As Long) As Boolean
+    Dim lRowIndex       As Long
+
+    lRowIndex = DataRecordIndexAt(uRowSet, lRowPosition)
+    If lRowIndex < 0 Then
+        DataRowExpanded = Not uRowSet.GroupRow(-lRowIndex).Collapsed
+    End If
+End Function
+
+Public Sub DataSetRowExpanded(uRowSet As UcsRowSet, ByVal lRowPosition As Long, ByVal bValue As Boolean)
+    Dim lRowIndex       As Long
+
+    lRowIndex = DataRecordIndexAt(uRowSet, lRowPosition)
+    If lRowIndex < 0 Then
+        '--- a footer closes a group rather than opening one, so it has no
+        '--- expand box and nothing to toggle. Nested rather than And-ed, since
+        '--- VB6 evaluates both operands and the subscript is only valid on the
+        '--- negative branch
+        If Not uRowSet.GroupRow(-lRowIndex).Footer Then
+            If uRowSet.GroupRow(-lRowIndex).Collapsed = bValue Then
+                '--- an expand or a collapse only reprojects: the sort order
+                '--- underneath stays exactly as it was
+                uRowSet.GroupRow(-lRowIndex).Collapsed = Not bValue
+                DataBuildVisible uRowSet
+                DataWritePositions uRowSet
+            End If
+        End If
+    End If
+End Sub
+
+Public Sub DataSetAllExpanded(uRowSet As UcsRowSet, ByVal bValue As Boolean)
+    Dim lIdx            As Long
+
+    For lIdx = 1 To uRowSet.GroupRowCount
+        uRowSet.GroupRow(lIdx).Collapsed = Not bValue
+    Next
+    '--- reprojects without re-sorting, so Version stays put and a held group
+    '--- wrapper survives a collapse -- which is what the original does
+    DataBuildVisible uRowSet
+    DataWritePositions uRowSet
+End Sub
+
+Public Function DataGetRowPosition(uState As UcsDataState, uRowSet As UcsRowSet, ByVal lRowIndex As Long) As Long
+    If lRowIndex >= 1 And lRowIndex <= uState.ItemCount Then
+        DataGetRowPosition = uRowSet.RowPosition(lRowIndex)
+    End If
+End Function
+
+Public Function DataGetRowIndex(uState As UcsDataState, vBookmark As Variant) As Long
+    Dim vRetVal         As Variant
+
+    If DataIsBlank(vBookmark) Then
+        Exit Function
+    End If
+    DataEnsureBookmarks uState
+    If SearchCollection(uState.Bookmarks, DataBookmarkKey(vBookmark), RetVal:=vRetVal) Then
+        DataGetRowIndex = C2Lng(vRetVal)
+    End If
+End Function
+
+Public Function DataGetRecordCount(uRowSet As UcsRowSet, ByVal lRowIndex As Long) As Long
+    If lRowIndex < 0 Then
+        DataGetRecordCount = uRowSet.GroupRow(-lRowIndex).RecordCount
+    End If
+End Function
+
+Public Function DataGetBookmarks(uState As UcsDataState, uRowSet As UcsRowSet, ByVal lRowIndex As Long) As Variant
+    Dim lIdx            As Long
+    Dim lCount          As Long
+    Dim aRetVal()       As Variant
+
+    If lRowIndex >= 0 Then
+        Exit Function
+    End If
+    With uRowSet.GroupRow(-lRowIndex)
+        ReDim aRetVal(0 To .RecordCount - 1) As Variant
+        For lIdx = .FirstSlot To .LastSlot
+            If uRowSet.Order(lIdx) > 0 Then
+                AssignVariant aRetVal(lCount), uState.Bookmark(uRowSet.Order(lIdx))
+                lCount = lCount + 1
+            End If
+        Next
+    End With
+    DataGetBookmarks = aRetVal
+End Function
+
+Public Function DataGetRowIndexes(uRowSet As UcsRowSet, ByVal lRowIndex As Long) As Variant
+    Dim lIdx            As Long
+    Dim lCount          As Long
+    Dim aRetVal()       As Long
+
+    If lRowIndex >= 0 Then
+        Exit Function
+    End If
+    With uRowSet.GroupRow(-lRowIndex)
+        ReDim aRetVal(0 To .RecordCount - 1) As Long
+        For lIdx = .FirstSlot To .LastSlot
+            If uRowSet.Order(lIdx) > 0 Then
+                aRetVal(lCount) = uRowSet.Order(lIdx)
+                lCount = lCount + 1
+            End If
+        Next
+    End With
+    DataGetRowIndexes = aRetVal
+End Function
+
+Public Sub DataEnsureBookmarks(uState As UcsDataState)
+    Dim lIdx            As Long
+    Dim sKey            As String
+
+    If Not uState.BookmarksDirty Then
+        Exit Sub
+    End If
+    uState.BookmarksDirty = False
+    Set uState.Bookmarks = New VBA.Collection
+    '--- walked upwards so the lowest RowIndex wins a duplicate, which is what
+    '--- the original resolves to: with "bk-1" on records 1 and 3, all of
+    '--- MoveToBookmark, AddBookmark and RefreshRowBookmark answer 1
+    For lIdx = 1 To uState.ItemCount
+        If Not DataIsBlank(uState.Bookmark(lIdx)) Then
+            sKey = DataBookmarkKey(uState.Bookmark(lIdx))
+            If Not SearchCollection(uState.Bookmarks, sKey) Then
+                uState.Bookmarks.Add lIdx, sKey
+            End If
+        End If
+    Next
+End Sub
+
+'--- one FetchData cell, on demand. A sort is the only thing that ever asks
+'--- for all of them, and what it leaves behind is a warm cache rather than a
+'--- separate whole-column pass
+Public Function DataFetchValue(uState As UcsDataState, uFetch As UcsFetchCache, oCtl As GridEX, _
+            ByVal lRowIndex As Long, ByVal lColIndex As Long) As Variant
+    DataEnsureFetchRoom uFetch, uState.ItemCount
+    If lRowIndex < 1 Or lRowIndex > uFetch.RowCount Then
+        Exit Function
+    End If
+    If Not uFetch.Valid(lColIndex, lRowIndex) Then
+        '--- marked valid first so a read from inside the client's handler does
+        '--- not re-enter the same cell
+        uFetch.Valid(lColIndex, lRowIndex) = True
+        AssignVariant uFetch.Value(lColIndex, lRowIndex), _
+            oCtl.frFireFetchData(lRowIndex, lColIndex, uState.Bookmark(lRowIndex))
+    End If
+    AssignVariant DataFetchValue, uFetch.Value(lColIndex, lRowIndex)
+End Function
+
+'--- a record that changed is asked for again column by column, rather than
+'--- the cache being thrown away and the whole grid refetched
+Public Sub DataRefetchRow(uState As UcsDataState, uFetch As UcsFetchCache, oCtl As GridEX, _
+            ByVal lRowIndex As Long)
+    Dim lIdx            As Long
+    Dim vOld            As Variant
+
+    DataEnsureFetchRoom uFetch, uState.ItemCount
+    If lRowIndex < 1 Or lRowIndex > uFetch.RowCount Then
+        Exit Sub
+    End If
+    For lIdx = 1 To uFetch.ColCount
+        If uFetch.IsFetchData(lIdx) Then
+            AssignVariant vOld, uFetch.Value(lIdx, lRowIndex)
+            uFetch.Valid(lIdx, lRowIndex) = True
+            AssignVariant uFetch.Value(lIdx, lRowIndex), _
+                oCtl.frFireFetchData(lRowIndex, lIdx, uState.Bookmark(lRowIndex))
+            '--- a fetch column can be a sort or a group key, but only a value
+            '--- that actually moved can move the record
+            If DataCompareValues(vOld, uFetch.Value(lIdx, lRowIndex), jgexSortTypeString) <> 0 Then
+                uState.OrderDirty = True
+            End If
+        End If
+    Next
+End Sub
+
+Public Function DataRecordIndexAt(uRowSet As UcsRowSet, ByVal lRowPosition As Long) As Long
     With uRowSet
         If lRowPosition >= 1 And lRowPosition <= .VisibleCount Then
-            DataEntryAt = .Order(.Visible(lRowPosition))
+            DataRecordIndexAt = .Order(.Visible(lRowPosition))
         End If
     End With
 End Function

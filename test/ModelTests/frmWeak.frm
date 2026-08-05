@@ -51,6 +51,24 @@ Private Const MODULE_NAME As String = "frmWeak"
 '=========================================================================
 
 Public EventLog                     As String
+'--- what the feed should hand out, by row and column. The original refuses
+'--- a write through JSRowData.Value outside UnboundReadData -- probed: it
+'--- raises &H80040000 "'Value' property can not be change in this context."
+'--- -- so a test wanting particular data seeds it here and lets the feed
+'--- deliver it. An entry left Empty falls back to the generated "RnCn"
+Private m_aSeed(1 To 64, 1 To 8)    As Variant
+
+'=========================================================================
+' Methods
+'=========================================================================
+
+'--- assigning into a Public array through an object reference writes to a
+'--- copy in VB6, silently, so the seed goes in through a Sub
+Public Sub SetSeed(ByVal lRow As Long, ByVal nCol As Integer, vValue As Variant)
+    If lRow >= 1 And lRow <= UBound(m_aSeed, 1) And nCol >= 1 And nCol <= UBound(m_aSeed, 2) Then
+        m_aSeed(lRow, nCol) = vValue
+    End If
+End Sub
 
 '=========================================================================
 ' Error management
@@ -71,7 +89,15 @@ Private Sub GridEX1_UnboundReadData(ByVal RowIndex As Long, ByVal Bookmark As Va
     On Error GoTo EH
     EventLog = EventLog & "Read(" & RowIndex & ")" & C2Str(Bookmark) & ";"
     For nIdx = 1 To Values.ColCount
-        Values(nIdx) = "R" & RowIndex & "C" & nIdx
+        If RowIndex >= 1 And RowIndex <= UBound(m_aSeed, 1) And nIdx <= UBound(m_aSeed, 2) Then
+            If Not IsEmpty(m_aSeed(RowIndex, nIdx)) Then
+                Values(nIdx) = m_aSeed(RowIndex, nIdx)
+            Else
+                Values(nIdx) = "R" & RowIndex & "C" & nIdx
+            End If
+        Else
+            Values(nIdx) = "R" & RowIndex & "C" & nIdx
+        End If
     Next
     Exit Sub
 EH:

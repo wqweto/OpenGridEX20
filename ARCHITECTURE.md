@@ -69,36 +69,49 @@ the typelib):
 ```
 Property Get  RowCount                         rows on show -- scrollbar range
 Property Get  ItemCount                        records of the source
+Property Get  Version                          bumped by a reprojection alone
 Property Get  RowIndex(RowPosition)            0 for a group row
 Property Get/Let RowBookmark(RowIndex)
 Property Get/Let RowExpanded(RowPosition)
-Property Get/Let GroupFooterStyle
+Sub  SetAllExpanded(bValue)                    every group row at once
 
-Sub  Refresh(Optional RowIndex)                everything, or one record
+Sub  Terminate                                 detach before release
+Sub  Refresh                                   re-read everything
+Sub  RefreshGroups                             regroup, records untouched
+Sub  RefreshSort
+Sub  RefreshRowIndex(RowIndex)                 one record re-read
 Function GetRowData(RowPosition) As JSRowData   mint and fill a wrapper
 Sub  UpdateRowData(oData)                      write back; RowIndex < 0 inserts
 Sub  Delete(RowPosition)
 
 Function GetRowPosition(RowIndex)              collapsed -> the group row hiding it
 Function GetRowIndex(Bookmark)                 0 when unresolved
-Function GetSubTotal(RowPosition, ColIndex, Func)
-Function GetBookmarks(RowPosition)
-Function GetRowIndexes(RowPosition)
+Function GetRecordCount(RowIndex)              signed: negative is a group row
+Function GetSubTotal(RowIndex, ColIndex, Func)
+Function GetBookmarks(RowIndex)
+Function GetRowIndexes(RowIndex)
 ```
 
-Two shaping decisions:
+Four shaping decisions:
 
 - **Nothing is fed in.** Each implementation takes a weak reference to the
   control in its own `frInit` and reads `Columns`, `SortKeys`, `Groups` and
   `ItemCount` from there when it rebuilds. Feeding them would mean a
   notification path per collection and a second copy that can go stale.
-  `GroupFooterStyle` is the one exception, pushed rather than pulled, because
-  changing it has to invalidate the projection and nothing else -- pulling it
-  lazily would leave the model unaware.
+  `GroupFooterStyle` and `DefaultGroupMode` are read the same way, when the
+  projection rebuilds.
 - **`GetRowIndex` answers a RowIndex, not a position.** A record inside a
   collapsed group has no position of its own, so resolving a bookmark straight
   to one would lose the record. Callers that want a position compose
   `GetRowPosition` over it.
+- **The forwards take a signed RowIndex, not a position.** `GetSubTotal` and
+  its siblings are asked of a group row, and a position would be re-resolved
+  against whatever the projection currently says. Positive is a record,
+  negative a group row -- the projection's own addressing.
+- **`SetAllExpanded` exists because the by-position setter cannot express it.**
+  A group nested inside a collapsed one has no position, so a walk over
+  positions never reaches it and has to keep re-walking as it uncovers more.
+  The model has the group rows in hand and touches each exactly once.
 
 ### Implementations
 
@@ -172,24 +185,30 @@ presentation members -- `RowHeight`, `RowStyle`, `PreviewRowVisible` -- are
 window state, re-established by `RowFormat` on each population; setting one
 outside that event is not something the model preserves.
 
-`JSRowData` therefore has two modes and is meant to end up with one:
+`JSRowData` carries the row itself and nothing else. It holds no reference to
+the control at all, which is what makes an orphaned wrapper harmless rather
+than a crash waiting to happen.
 
-- **buffer mode** (`frInitBuffer`) -- the wrapper carries the row itself
-- **view mode** (`frInit`) -- a window onto storage the control owns,
-  transitional, still what `GetRowData` hands out
-
-Every member opens with an `If m_bView Then ... Exit` prologue and nothing
-else, so removing view mode is deleting those prologues, `frInit`, `m_bView`
-and `m_lRowIndex`.
+`Value` is read-only on it. The one place a write is legal is the buffer the
+control hands out to be filled during `UnboundReadData`; anywhere else -- a
+wrapper from `GetRowData`, a record or a group row alike -- it raises
+`vbObjectError` with *"'Value' property can not be change in this context."*,
+which is the original's message including its grammar slip. Editing goes
+through `GridEX.Value`, which buffers on the current row and commits through
+`UpdateRowData` when the row is left. `DisplayValue`, `CellStyle`, `RowStyle`
+and the rest stay writable: decorating the row is what `RowFormat` is for.
 
 Because `Bookmark`, `RowType`, `GroupLevel` and `RowIndex` are publicly
-read-only, a model fills them through a `Friend` surface -- `frInitBuffer`,
-`frReset`, `frSetRow`, `frRowBookmark`, `frSetValue`. The last exists because
-the public `Value` Let cannot carry an object and a cell can hold one.
+read-only, a model fills them through a `Friend` surface -- `frReset`,
+`frInitModel`, `frRowBookmark`, `frSetValue`, `frAllowUpdate`. `frSetValue` exists
+because the public `Value` Let cannot carry an object and a cell can hold one,
+and `frAllowUpdate` is what opens that Let on the one buffer meant to be filled.
 `RecordCount` is not filled at all: it forwards to the model, because the
-original raises on it once the order has been rebuilt.
+original raises on it once the order has been rebuilt. `frGroupPrefixed` is
+filled beside the caption, so the renderer can indent a prefixed group caption
+one space less without re-deriving which column the group is on.
 
-`frSetRow` also stamps the wrapper with the projection generation it was
+`frInitModel` also stamps the wrapper with the projection generation it was
 filled under. `RecordCount`, `GetSubTotal`, `GetBookmarks` and
 `GetRowIndexes` pass that stamp back, and a group row whose order has since
 been rebuilt raises `vbObjectError + 129`, *"JSRowData object may have
@@ -248,23 +267,57 @@ in the object model that points back at the control does the same -- releasing
 a control that was never `AddRef`-ed takes the process down, and `Groups.Clear`
 is enough to reach it.
 
+`JSRowData` is the exception that needs none of this: it holds no pointer to
+the control, weak or otherwise, so there is nothing to zero and nothing to
+dangle. Its only reference is to the model, and that one is strong -- which is
+why the control calls `IDataModel.Terminate` before releasing a model rather
+than leaving it to `Class_Terminate`. A wrapper a client kept can outlive the
+grid and would otherwise keep a model pointing at a dead control.
+
 The corollary for buffers: a buffer the *grid* owns may hold a model
 reference, but a buffer the *model* owns must not, or the two keep each other
 alive. `cUnboundDataModel`'s shared fetch buffer is passed `Nothing` for
 exactly this reason.
 
+### How the grid follows a reprojection
+
+The current row and the selection stay on their *records*, not their positions,
+because a re-sort or a collapse moves every position. The control holds the
+current row's RowIndex -- the one address space a reprojection cannot move --
+and resolves it back through `GetRowPosition`.
+
+Knowing *when* to do that is what `Version` is for. The model bumps it in
+`DataProject` and nowhere else, so the control compares it on entry to the
+paths that matter and remaps when it moves. A collapse is the exception: it
+reprojects through `DataBuildVisible`/`DataWritePositions` without re-sorting,
+and deliberately leaves `Version` alone because a held group wrapper has to
+survive one. The collapse paths therefore remap directly rather than waiting
+for the version watch.
+
+A bind is the other exception. `Rebind` places the marquee itself, so it drops
+the held index first -- otherwise the sync that follows would put the row back
+on whatever record it was on before the bind.
+
 ### Status
 
-**The models are written, compile and are on nothing's critical path.** The
-control still owns its own row storage, projection and aggregates; nothing
-constructs a `cUnboundDataModel` or a `cAdoDataModel` yet. Cutting the control
-over is the next piece of work, and it is what will first exercise any of this.
+**The control draws from the model.** `GridEX.ctl` owns no rows, no order, no
+group rows and no aggregates: it asks for a page of `JSRowData` and paints from
+that. The projection, the row storage, the sort, `pvAggregate` and all 26
+`frRow*` accessors are gone, along with `JSRowData`'s view mode -- about 810
+lines out of the control.
 
 Known gaps at the time of writing:
 
 - `UpdateRowData` writes every bound column rather than only edited ones, because
   `JSRowData` carries no per-cell dirty flag
-- `cAdoDataModel` has no test coverage of any kind
+- an edit commit suppresses `UnboundUpdate` through a flag on the control
+  rather than an argument on `UpdateRowData`. The original reports only
+  `AfterUpdate` for a commit, and the interface has no way to say "write this
+  without notifying"
+- `cAdoDataModel` has no test coverage of any kind: every model test runs
+  against the unbound implementation
+- `SelectedItems` answers when `MultiSelect` is False where the original raises
+  `vbObjectError + 123` -- a divergence predating the data model
 
 ## Window structure and subclassing
 

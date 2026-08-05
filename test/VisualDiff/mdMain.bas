@@ -72,6 +72,7 @@ End Type
 
 Private Const STR_PROGID_ORIGINAL           As String = "GridEX20.GridEX"
 Private Const STR_PROGID_OURS               As String = "OpenGridEX20.GridEX"
+Private Const IGNORE_EVENT_GOLDEN           As Boolean = False
 
 '=========================================================================
 ' Error management
@@ -225,8 +226,10 @@ Public Sub Main()
                     If Not C2Obj(JsonValue(C2Obj(vDoc), "input")) Is Nothing Then
                         sEvents = Left$(sGolden, Len(sGolden) - Len(".png")) & ".events.txt"
                         WriteTextFile App.Path & "\output" & sDpi & "\" & sName & ".events.txt", oForm.EventLog
-                        Assert sMode & " " & sName & sDpi & "dpi events" & pvEventReport(ReadTextFile(sEvents), oForm.EventLog), _
-                            ReadTextFile(sEvents) = oForm.EventLog
+                        If Not IGNORE_EVENT_GOLDEN Then
+                            Assert sMode & " " & sName & sDpi & "dpi events" & pvEventReport(ReadTextFile(sEvents), oForm.EventLog), _
+                                ReadTextFile(sEvents) = oForm.EventLog
+                        End If
                     End If
                 End Select
             End If

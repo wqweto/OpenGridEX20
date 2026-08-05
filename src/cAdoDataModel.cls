@@ -39,27 +39,17 @@ Implements IDataModel
 ' Constants and member variables
 '=========================================================================
 
-Private Const GROW_BY               As Long = 64
-'--- ADO's own, so the control never references msado15
-Private Const adBookmark            As Long = &H2000
-
-Private Type UcsRecord
-    Bookmark                As Variant
-End Type
+Private Const GROW_BY                   As Long = 64
+Private Const adBookmark                As Long = &H2000
 
 Private m_pOwner                    As GridEX
 Private m_oRs                       As Object
-Private m_aRecord()                 As UcsRecord
-Private m_lItemCount                As Long
-Private m_lRecordUBound             As Long
 Private m_lCurRowIndex              As Long
 Private m_aField()                  As Object
-Private m_nFieldCount               As Integer
+Private m_lFieldCount                As Long
+Private m_uState                    As UcsDataState
 Private m_uRowSet                   As UcsRowSet
 Private m_uFetch                    As UcsFetchCache
-Private m_oBookmarks                As VBA.Collection
-Private m_bBookmarksDirty           As Boolean
-Private m_bOrderDirty               As Boolean
 
 '=========================================================================
 ' Methods
@@ -67,21 +57,21 @@ Private m_bOrderDirty               As Boolean
 
 Friend Sub frInit(ByVal oCtl As GridEX)
     Call CopyMemory(m_pOwner, oCtl, PTR_SIZE)
-    Set m_oBookmarks = New VBA.Collection
-    m_bOrderDirty = True
-    m_bBookmarksDirty = True
+    Set m_uState.Bookmarks = New VBA.Collection
+    m_uState.OrderDirty = True
+    m_uState.BookmarksDirty = True
 End Sub
 
 Friend Sub frTerminate()
     '--- zero the raw pointer or VB6 releases a control it never AddRef-ed
     Call CopyMemory(m_pOwner, NULL_PTR, PTR_SIZE)
     Set m_oRs = Nothing
-    Set m_oBookmarks = Nothing
-    Erase m_aRecord
+    Set m_uState.Bookmarks = Nothing
+    Erase m_uState.Bookmark
     Erase m_aField
-    m_lItemCount = 0
-    m_lRecordUBound = 0
-    m_nFieldCount = 0
+    m_uState.ItemCount = 0
+    m_uState.BookmarkUBound = 0
+    m_lFieldCount = 0
     m_lCurRowIndex = 0
 End Sub
 
@@ -95,10 +85,10 @@ Private Sub pvBind()
     Dim lIdx            As Long
 
     Set m_oRs = m_pOwner.ADORecordset
-    m_lItemCount = 0
+    m_uState.ItemCount = 0
     m_lCurRowIndex = 0
-    Erase m_aRecord
-    m_lRecordUBound = 0
+    Erase m_uState.Bookmark
+    m_uState.BookmarkUBound = 0
     If m_oRs Is Nothing Then
         Exit Sub
     End If
@@ -114,15 +104,15 @@ Private Sub pvBind()
     End If
     Do While Not m_oRs.EOF
         lIdx = lIdx + 1
-        pvEnsureCapacity lIdx
-        AssignVariant m_aRecord(lIdx).Bookmark, m_oRs.Bookmark
+        DataEnsureBookmarkRoom m_uState, lIdx
+        AssignVariant m_uState.Bookmark(lIdx), m_oRs.Bookmark
         m_oRs.MoveNext
     Loop
-    m_lItemCount = lIdx
+    m_uState.ItemCount = lIdx
 End Sub
 
 Private Sub pvBindFields()
-    Dim nIdx            As Integer
+    Dim lIdx            As Long
     Dim oCol            As JSColumn
 
     DataInitFetch m_uFetch, m_pOwner
@@ -132,17 +122,17 @@ Private Sub pvBindFields()
     '--- the same ordinal position -- a calculated or display-only column
     '--- would then silently show whatever field happened to sit there.
     '--- FetchData wins outright, so such a column is not resolved at all
-    m_nFieldCount = m_pOwner.Columns.Count
+    m_lFieldCount = m_pOwner.Columns.Count
     Erase m_aField
-    If m_nFieldCount = 0 Then
+    If m_lFieldCount = 0 Then
         Exit Sub
     End If
-    ReDim m_aField(1 To m_nFieldCount) As Object
-    For nIdx = 1 To m_nFieldCount
-        Set oCol = m_pOwner.Columns.Item(nIdx)
-        If Not m_uFetch.IsFetchData(nIdx) Then
+    ReDim m_aField(1 To m_lFieldCount) As Object
+    For lIdx = 1 To m_lFieldCount
+        Set oCol = m_pOwner.Columns.Item(lIdx)
+        If Not m_uFetch.IsFetchData(lIdx) Then
             If LenB(oCol.DataField) <> 0 Then
-                Set m_aField(nIdx) = pvFindField(oCol.DataField)
+                Set m_aField(lIdx) = pvFindField(oCol.DataField)
             End If
         End If
     Next
@@ -166,24 +156,24 @@ Private Sub pvSeek(ByVal lRowIndex As Long)
     If lRowIndex = m_lCurRowIndex Then
         Exit Sub
     End If
-    If lRowIndex < 1 Or lRowIndex > m_lItemCount Then
+    If lRowIndex < 1 Or lRowIndex > m_uState.ItemCount Then
         Exit Sub
     End If
-    m_oRs.Bookmark = m_aRecord(lRowIndex).Bookmark
+    m_oRs.Bookmark = m_uState.Bookmark(lRowIndex)
     m_lCurRowIndex = lRowIndex
 End Sub
 
-Private Function pvCellValue(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As Variant
-    If nColIndex < 1 Or nColIndex > m_nFieldCount Then
+Private Function pvCellValue(ByVal lRowIndex As Long, ByVal lColIndex As Long) As Variant
+    If lColIndex < 1 Or lColIndex > m_lFieldCount Then
         Exit Function
     End If
     '--- FetchData outranks any DataField the column carries, so it is asked
     '--- first and the recordset is never consulted for such a column
-    If m_uFetch.IsFetchData(nColIndex) Then
-        AssignVariant pvCellValue, pvFetchValue(lRowIndex, nColIndex)
+    If m_uFetch.IsFetchData(lColIndex) Then
+        AssignVariant pvCellValue, DataFetchValue(m_uState, m_uFetch, m_pOwner, lRowIndex, lColIndex)
         Exit Function
     End If
-    If m_aField(nColIndex) Is Nothing Then
+    If m_aField(lColIndex) Is Nothing Then
         Exit Function
     End If
     pvSeek lRowIndex
@@ -193,71 +183,21 @@ Private Function pvCellValue(ByVal lRowIndex As Long, ByVal nColIndex As Integer
     '--- read straight off the cached Field: nothing is copied into the
     '--- record, the recordset is the cache, and the Field already points at
     '--- whichever record the seek above left the cursor on
-    AssignVariant pvCellValue, m_aField(nColIndex).Value
+    AssignVariant pvCellValue, m_aField(lColIndex).Value
 End Function
-
-Private Function pvFetchValue(ByVal lRowIndex As Long, ByVal nColIndex As Integer) As Variant
-    '--- one cell, on demand. A sort is the only thing that ever asks for all
-    '--- of them, and what it leaves behind is a warm cache rather than a
-    '--- separate whole-column pass
-    DataEnsureFetchRoom m_uFetch, m_lItemCount
-    If lRowIndex < 1 Or lRowIndex > m_uFetch.RowCount Then
-        Exit Function
-    End If
-    If Not m_uFetch.Valid(nColIndex, lRowIndex) Then
-        '--- marked valid first so a read from inside the client's handler
-        '--- does not re-enter the same cell
-        m_uFetch.Valid(nColIndex, lRowIndex) = True
-        AssignVariant m_uFetch.Value(nColIndex, lRowIndex), _
-            m_pOwner.frFireFetchData(lRowIndex, nColIndex, m_aRecord(lRowIndex).Bookmark)
-    End If
-    AssignVariant pvFetchValue, m_uFetch.Value(nColIndex, lRowIndex)
-End Function
-
-Private Sub pvRefetchRow(ByVal lRowIndex As Long)
-    Dim nIdx            As Integer
-    Dim vOld            As Variant
-
-    '--- a record that changed is asked for again column by column, rather
-    '--- than the cache being thrown away and the whole grid refetched
-    DataEnsureFetchRoom m_uFetch, m_lItemCount
-    If lRowIndex < 1 Or lRowIndex > m_uFetch.RowCount Then
-        Exit Sub
-    End If
-    For nIdx = 1 To m_uFetch.ColCount
-        If m_uFetch.IsFetchData(nIdx) Then
-            AssignVariant vOld, m_uFetch.Value(nIdx, lRowIndex)
-            m_uFetch.Valid(nIdx, lRowIndex) = True
-            AssignVariant m_uFetch.Value(nIdx, lRowIndex), _
-                m_pOwner.frFireFetchData(lRowIndex, nIdx, m_aRecord(lRowIndex).Bookmark)
-            '--- a fetch column can be a sort or a group key, but only a value
-            '--- that actually moved can move the record
-            If DataCompareValues(vOld, m_uFetch.Value(nIdx, lRowIndex), jgexSortTypeString) <> 0 Then
-                m_bOrderDirty = True
-            End If
-        End If
-    Next
-End Sub
 
 Private Sub pvWriteFields(oData As JSRowData)
-    Dim nIdx            As Integer
+    Dim lIdx            As Long
 
     '--- every bound column is written, not only the ones the editor touched:
     '--- JSRowData carries no per-cell dirty flag yet, and adding one is what
     '--- would stop this fighting optimistic locking on a wide table. A
     '--- FetchData or unbound column has nowhere to go and is dropped
-    For nIdx = 1 To m_nFieldCount
-        If Not m_aField(nIdx) Is Nothing Then
-            m_aField(nIdx).Value = oData.Value(nIdx)
+    For lIdx = 1 To m_lFieldCount
+        If Not m_aField(lIdx) Is Nothing Then
+            m_aField(lIdx).Value = oData.Value(lIdx)
         End If
     Next
-End Sub
-
-Private Sub pvEnsureCapacity(ByVal lCount As Long)
-    If lCount > m_lRecordUBound Then
-        m_lRecordUBound = lCount + GROW_BY
-        ReDim Preserve m_aRecord(1 To m_lRecordUBound) As UcsRecord
-    End If
 End Sub
 
 '--- ordering
@@ -265,18 +205,18 @@ End Sub
 Private Sub pvEnsureOrder()
     Dim lRow            As Long
     Dim lIdx            As Long
-    Dim nCol            As Integer
+    Dim lCol            As Long
     Dim vValue          As Variant
 
-    If Not m_bOrderDirty Then
+    If Not m_uState.OrderDirty Then
         Exit Sub
     End If
-    m_bOrderDirty = False
-    m_uRowSet.ItemCount = m_lItemCount
+    m_uState.OrderDirty = False
+    m_uRowSet.ItemCount = m_uState.ItemCount
     m_uRowSet.GroupFooterStyle = m_pOwner.GroupFooterStyle
     m_uRowSet.DefaultCollapsed = (m_pOwner.DefaultGroupMode = jgexDGMCollapsed)
     DataReadSortKeys m_uRowSet, m_pOwner
-    If m_uRowSet.SortKeyCount > 0 And m_lItemCount > 0 Then
+    If m_uRowSet.SortKeyCount > 0 And m_uState.ItemCount > 0 Then
         If Not (m_oRs.BOF And m_oRs.EOF) Then
             m_oRs.MoveFirst
         End If
@@ -285,13 +225,13 @@ Private Sub pvEnsureOrder()
         '--- sequential pass over the cursor instead of ItemCount random
         '--- repositionings. Filling the keys is the only step of the
         '--- projection needing a cell value, which is why it stays here
-        Do While Not m_oRs.EOF And lRow < m_lItemCount
+        Do While Not m_oRs.EOF And lRow < m_uState.ItemCount
             lRow = lRow + 1
             m_lCurRowIndex = lRow
             For lIdx = 1 To m_uRowSet.SortKeyCount
-                nCol = m_uRowSet.SortCol(lIdx)
-                If nCol > 0 Then
-                    vValue = pvCellValue(lRow, nCol)
+                lCol = m_uRowSet.SortCol(lIdx)
+                If lCol > 0 Then
+                    vValue = pvCellValue(lRow, lCol)
                     '--- an object in a cell has no ordering, so it sorts blank
                     If Not IsObject(vValue) Then
                         m_uRowSet.Key(lIdx, lRow) = vValue
@@ -305,21 +245,21 @@ Private Sub pvEnsureOrder()
     DataProject m_uRowSet
 End Sub
 
-Private Function pvGroupCaption(ByVal lGroupSlot As Long) As String
+Private Function pvGroupCaption(ByVal lGroupIndex As Long, bPrefixed As Boolean) As String
     Dim oCol            As JSColumn
     Dim vValue          As Variant
     Dim sText           As String
-    Dim nColIndex       As Integer
+    Dim lColIndex       As Long
 
     '--- formatted on demand from the record that opened the group, so the
     '--- caption follows GroupPrefix, GroupFormat and GroupEmptyStringCaption
     '--- without the projection having to be rebuilt when one of them changes
-    nColIndex = m_uRowSet.GroupRow(lGroupSlot).ColIndex
-    If nColIndex < 1 Or nColIndex > m_pOwner.Columns.Count Then
+    lColIndex = m_uRowSet.GroupRow(lGroupIndex).ColIndex
+    If lColIndex < 1 Or lColIndex > m_pOwner.Columns.Count Then
         Exit Function
     End If
-    Set oCol = m_pOwner.Columns.Item(nColIndex)
-    vValue = pvCellValue(m_uRowSet.GroupRow(lGroupSlot).FirstRowIndex, nColIndex)
+    Set oCol = m_pOwner.Columns.Item(lColIndex)
+    vValue = pvCellValue(m_uRowSet.GroupRow(lGroupIndex).FirstRowIndex, lColIndex)
     If Not DataIsBlank(vValue) And Not IsObject(vValue) And Not IsArray(vValue) Then
         If LenB(oCol.GroupFormat) <> 0 Then
             sText = Format$(vValue, oCol.GroupFormat)
@@ -330,26 +270,27 @@ Private Function pvGroupCaption(ByVal lGroupSlot As Long) As String
     If LenB(sText) = 0 Then
         sText = oCol.GroupEmptyStringCaption
     End If
-    If LenB(oCol.GroupPrefix) <> 0 Then
+    bPrefixed = (LenB(oCol.GroupPrefix) <> 0)
+    If bPrefixed Then
         sText = oCol.GroupPrefix & " " & sText
     End If
     pvGroupCaption = sText
 End Function
 
-Private Function pvGroupValues(ByVal lGroupSlot As Long, ByVal nColIndex As Integer, aValues() As Variant) As Long
+Private Function pvGroupValues(ByVal lGroupIndex As Long, ByVal lColIndex As Long, aValues() As Variant) As Long
     Dim lIdx            As Long
     Dim lCount          As Long
 
     '--- the records a group covers, nested group rows and footers skipped.
     '--- Every value here costs a seek, which is the price of not caching --
     '--- a SQL model answers the same question with one aggregate query
-    With m_uRowSet.GroupRow(lGroupSlot)
+    With m_uRowSet.GroupRow(lGroupIndex)
         ReDim aValues(1 To .RecordCount + 1) As Variant
         For lIdx = .FirstSlot To .LastSlot
             If lIdx >= 1 And lIdx <= m_uRowSet.OrderCount Then
                 If m_uRowSet.Order(lIdx) > 0 Then
                     lCount = lCount + 1
-                    AssignVariant aValues(lCount), pvCellValue(m_uRowSet.Order(lIdx), nColIndex)
+                    AssignVariant aValues(lCount), pvCellValue(m_uRowSet.Order(lIdx), lColIndex)
                 End If
             End If
         Next
@@ -358,27 +299,6 @@ Private Function pvGroupValues(ByVal lGroupSlot As Long, ByVal nColIndex As Inte
 End Function
 
 '--- bookmarks
-
-Private Sub pvEnsureBookmarks()
-    Dim lIdx            As Long
-    Dim sKey            As String
-
-    If Not m_bBookmarksDirty Then
-        Exit Sub
-    End If
-    m_bBookmarksDirty = False
-    Set m_oBookmarks = New VBA.Collection
-    '--- walked upwards so the lowest RowIndex wins a duplicate, which is
-    '--- what the original resolves to
-    For lIdx = 1 To m_lItemCount
-        If Not DataIsBlank(m_aRecord(lIdx).Bookmark) Then
-            sKey = DataBookmarkKey(m_aRecord(lIdx).Bookmark)
-            If Not SearchCollection(m_oBookmarks, sKey) Then
-                m_oBookmarks.Add lIdx, sKey
-            End If
-        End If
-    Next
-End Sub
 
 '=========================================================================
 ' Interface IDataModel
@@ -390,7 +310,7 @@ Private Property Get IDataModel_RowCount() As Long
 End Property
 
 Private Property Get IDataModel_ItemCount() As Long
-    IDataModel_ItemCount = m_lItemCount
+    IDataModel_ItemCount = m_uState.ItemCount
 End Property
 
 Private Property Get IDataModel_Version() As Long
@@ -398,78 +318,49 @@ Private Property Get IDataModel_Version() As Long
 End Property
 
 Private Property Get IDataModel_RowIndex(ByVal lRowPosition As Long) As Long
-    Dim lEntry          As Long
-
     pvEnsureOrder
-    lEntry = DataEntryAt(m_uRowSet, lRowPosition)
-    If lEntry > 0 Then
-        IDataModel_RowIndex = lEntry
-    End If
+    IDataModel_RowIndex = DataRowIndexAt(m_uRowSet, lRowPosition)
 End Property
 
 Private Property Get IDataModel_RowBookmark(ByVal lRowIndex As Long) As Variant
-    If lRowIndex < 1 Or lRowIndex > m_lItemCount Then
-        Err.Raise vbObjectError, , "Subscript out of range"
-    End If
-    AssignVariant IDataModel_RowBookmark, m_aRecord(lRowIndex).Bookmark
+    AssignVariant IDataModel_RowBookmark, DataRowBookmark(m_uState, lRowIndex)
 End Property
 
 Private Property Let IDataModel_RowBookmark(ByVal lRowIndex As Long, vValue As Variant)
-    '--- an ADO bookmark is the cursor's to mint, not the client's: unlike
-    '--- unbound mode there is nothing here that assigning one could mean.
-    '--- Whether the original raises or swallows it is not probed yet
-    Err.Raise vbObjectError, , _
-        "RowBookmark is read-only when the control is bound to a recordset"
+    DataSetRowBookmark m_uState, lRowIndex, vValue
 End Property
 
 Private Property Get IDataModel_RowExpanded(ByVal lRowPosition As Long) As Boolean
-    Dim lEntry          As Long
-
     pvEnsureOrder
-    lEntry = DataEntryAt(m_uRowSet, lRowPosition)
-    If lEntry < 0 Then
-        IDataModel_RowExpanded = Not m_uRowSet.GroupRow(-lEntry).Collapsed
-    End If
+    IDataModel_RowExpanded = DataRowExpanded(m_uRowSet, lRowPosition)
 End Property
 
 Private Property Let IDataModel_RowExpanded(ByVal lRowPosition As Long, ByVal bValue As Boolean)
-    Dim lEntry          As Long
-
     pvEnsureOrder
-    lEntry = DataEntryAt(m_uRowSet, lRowPosition)
-    If lEntry < 0 Then
-        '--- a footer closes a group rather than opening one, so it has no
-        '--- expand box and nothing to toggle. Nested rather than And-ed,
-        '--- since VB6 evaluates both operands and the subscript is only
-        '--- valid on the negative branch
-        If Not m_uRowSet.GroupRow(-lEntry).Footer Then
-            If m_uRowSet.GroupRow(-lEntry).Collapsed = bValue Then
-                '--- an expand or a collapse only reprojects: the sort order
-                '--- underneath stays exactly as it was
-                m_uRowSet.GroupRow(-lEntry).Collapsed = Not bValue
-                DataBuildVisible m_uRowSet
-                DataWritePositions m_uRowSet
-            End If
-        End If
-    End If
+    DataSetRowExpanded m_uRowSet, lRowPosition, bValue
 End Property
+
+Private Sub IDataModel_SetAllExpanded(ByVal bValue As Boolean)
+    pvEnsureOrder
+    DataSetAllExpanded m_uRowSet, bValue
+End Sub
 
 Private Sub IDataModel_Terminate()
     frTerminate
 End Sub
 
 Private Sub IDataModel_RefreshGroups()
-    m_bOrderDirty = True
+    m_uState.OrderDirty = True
 End Sub
 
 Private Sub IDataModel_RefreshSort()
-    m_bOrderDirty = True
+    m_uState.OrderDirty = True
 End Sub
 
 Private Sub IDataModel_RefreshRowIndex(ByVal lRowIndex As Long)
     '--- the recordset is the cache, so there is nothing of ours to drop --
     '--- the record just has to be re-read from the source
-    If lRowIndex >= 1 And lRowIndex <= m_lItemCount Then
+    If lRowIndex >= 1 And lRowIndex <= m_uState.ItemCount Then
         pvSeek lRowIndex
         On Error Resume Next
         m_oRs.Resync 1
@@ -478,7 +369,7 @@ Private Sub IDataModel_RefreshRowIndex(ByVal lRowIndex As Long)
         '--- only that record's fetch columns: the rest of the cache is
         '--- still good and refetching it would be gratuitous
         DataInvalidateFetchRow m_uFetch, lRowIndex
-        m_bOrderDirty = True
+        m_uState.OrderDirty = True
     End If
 End Sub
 
@@ -486,54 +377,55 @@ Private Sub IDataModel_Refresh()
     '--- a full refresh rebinds: the recordset may be a different object, and
     '--- its order is what defines RowIndex
     pvBind
-    m_bOrderDirty = True
-    m_bBookmarksDirty = True
+    m_uState.OrderDirty = True
+    m_uState.BookmarksDirty = True
 End Sub
 
 Private Function IDataModel_GetRowData(ByVal lRowPosition As Long) As JSRowData
     Dim oData           As JSRowData
-    Dim nColCount       As Integer
-    Dim lEntry          As Long
-    Dim nIdx            As Integer
+    Dim lColCount       As Long
+    Dim lRowIndex       As Long
+    Dim lIdx            As Long
     Dim eFunc           As jgexAggregateFunctionConstants
     Dim aValues()       As Variant
     Dim lCount          As Long
+    Dim bPrefixed       As Boolean
 
     pvEnsureOrder
-    nColCount = m_pOwner.Columns.Count
+    lColCount = m_pOwner.Columns.Count
     Set oData = New JSRowData
-    oData.frInitBuffer m_pOwner
-    oData.frReset nColCount
-    lEntry = DataEntryAt(m_uRowSet, lRowPosition)
-    If lEntry > 0 Then
-        oData.frSetRow Me, lEntry, jgexRowTypeRecord, 0
-        oData.frRowBookmark = m_aRecord(lEntry).Bookmark
+    oData.frReset lColCount
+    lRowIndex = DataRecordIndexAt(m_uRowSet, lRowPosition)
+    If lRowIndex > 0 Then
+        oData.frInitModel Me, lRowIndex, jgexRowTypeRecord, 0
+        oData.frRowBookmark = m_uState.Bookmark(lRowIndex)
         '--- one seek for the whole row: pvCellValue leaves the cursor where
         '--- it put it, so the remaining columns cost a property call each
-        For nIdx = 1 To nColCount
-            oData.frSetValue nIdx, pvCellValue(lEntry, nIdx)
-            If nIdx <= m_uFetch.ColCount Then
-                If m_uFetch.IsFetchIcon(nIdx) Then
-                    oData.IconIndex(nIdx) = m_pOwner.frFireFetchIcon(lEntry, nIdx, m_aRecord(lEntry).Bookmark)
+        For lIdx = 1 To lColCount
+            oData.frSetValue lIdx, pvCellValue(lRowIndex, lIdx)
+            If lIdx <= m_uFetch.ColCount Then
+                If m_uFetch.IsFetchIcon(lIdx) Then
+                    oData.IconIndex(lIdx) = m_pOwner.frFireFetchIcon(lRowIndex, lIdx, m_uState.Bookmark(lRowIndex))
                 End If
             End If
         Next
-    ElseIf lEntry < 0 Then
-        With m_uRowSet.GroupRow(-lEntry)
-            oData.frSetRow Me, lEntry, _
+    ElseIf lRowIndex < 0 Then
+        With m_uRowSet.GroupRow(-lRowIndex)
+            oData.frInitModel Me, lRowIndex, _
                 IIf(.Footer, jgexRowTypeGroupFooter, jgexRowTypeGroupHeader), .Level
         End With
-        oData.GroupCaption = pvGroupCaption(-lEntry)
+        oData.GroupCaption = pvGroupCaption(-lRowIndex, bPrefixed)
+        oData.frGroupPrefixed = bPrefixed
         '--- a totals footer carries its columns' aggregates as the cell
         '--- values, so painting one is painting an ordinary row
-        If m_uRowSet.GroupRow(-lEntry).Footer Then
+        If m_uRowSet.GroupRow(-lRowIndex).Footer Then
             If m_uRowSet.GroupFooterStyle = jgexTotalsGroupFooter Then
-                For nIdx = 1 To nColCount
-                    eFunc = m_pOwner.Columns.Item(nIdx).AggregateFunction
+                For lIdx = 1 To lColCount
+                    eFunc = m_pOwner.Columns.Item(lIdx).AggregateFunction
                     If eFunc <> jgexAggregateNone Then
-                        lCount = pvGroupValues(-lEntry, nIdx, aValues)
-                        oData.frSetValue nIdx, DataAggregate(aValues, lCount, eFunc, _
-                            m_pOwner.Columns.Item(nIdx).SortType)
+                        lCount = pvGroupValues(-lRowIndex, lIdx, aValues)
+                        oData.frSetValue lIdx, DataAggregate(aValues, lCount, eFunc, _
+                            m_pOwner.Columns.Item(lIdx).SortType)
                     End If
                 Next
             End If
@@ -553,28 +445,35 @@ Private Sub IDataModel_UpdateRowData(oData As JSRowData)
         m_oRs.AddNew
         pvWriteFields oData
         m_oRs.Update
-        pvEnsureCapacity m_lItemCount + 1
-        m_lItemCount = m_lItemCount + 1
-        AssignVariant m_aRecord(m_lItemCount).Bookmark, m_oRs.Bookmark
-        m_lCurRowIndex = m_lItemCount
+        DataEnsureBookmarkRoom m_uState, m_uState.ItemCount + 1
+        m_uState.ItemCount = m_uState.ItemCount + 1
+        AssignVariant m_uState.Bookmark(m_uState.ItemCount), m_oRs.Bookmark
+        m_lCurRowIndex = m_uState.ItemCount
         '--- the caller reads both off the row it just added. The position is
         '--- left at 0: it is not known until the projection is rebuilt, and
         '--- asking for it here would force a re-sort mid-insert
-        oData.frSetRow Me, m_lItemCount, jgexRowTypeRecord, 0
-        oData.frRowBookmark = m_aRecord(m_lItemCount).Bookmark
+        oData.frInitModel Me, m_uState.ItemCount, jgexRowTypeRecord, 0
+        oData.frRowBookmark = m_uState.Bookmark(m_uState.ItemCount)
         '--- the new record's fetch columns are asked for, and nothing else
         '--- in the cache is disturbed
-        pvRefetchRow m_lItemCount
-        m_bBookmarksDirty = True
-        m_bOrderDirty = True
-    ElseIf lRowIndex >= 1 And lRowIndex <= m_lItemCount Then
+        DataRefetchRow m_uState, m_uFetch, m_pOwner, m_uState.ItemCount
+        m_uState.BookmarksDirty = True
+        m_uState.OrderDirty = True
+    ElseIf lRowIndex >= 1 And lRowIndex <= m_uState.ItemCount Then
         pvSeek lRowIndex
         pvWriteFields oData
         m_oRs.Update
         '--- the client may compute a fetch column off what just changed, so
         '--- it is asked again -- and that alone can invalidate the order
-        pvRefetchRow lRowIndex
-        m_bOrderDirty = True
+        DataRefetchRow m_uState, m_uFetch, m_pOwner, lRowIndex
+        '--- only a value that is a sort or group key can move the record. With
+        '--- no keys at all nothing moves, and reprojecting anyway would bump
+        '--- Version and make the grid repopulate its page -- which re-raises
+        '--- RowFormat for every visible row where the original raises it once
+        '--- for the edited row. Pinned by the event goldens of 058, 068, 071
+        If m_uRowSet.SortKeyCount > 0 Then
+            m_uState.OrderDirty = True
+        End If
     End If
 End Sub
 
@@ -591,45 +490,33 @@ Private Sub IDataModel_Delete(ByVal lRowPosition As Long)
     m_oRs.Delete
     '--- records are indexed by RowIndex itself, so a delete closes the hole
     '--- and everything above it renumbers, as the original does
-    For lIdx = lRowIndex To m_lItemCount - 1
-        m_aRecord(lIdx) = m_aRecord(lIdx + 1)
+    For lIdx = lRowIndex To m_uState.ItemCount - 1
+        AssignVariant m_uState.Bookmark(lIdx), m_uState.Bookmark(lIdx + 1)
     Next
-    m_aRecord(m_lItemCount).Bookmark = Empty
+    m_uState.Bookmark(m_uState.ItemCount) = Empty
     '--- the cache follows the renumbering rather than being thrown away
-    DataDeleteFetchRow m_uFetch, lRowIndex, m_lItemCount
-    m_lItemCount = m_lItemCount - 1
+    DataDeleteFetchRow m_uFetch, lRowIndex, m_uState.ItemCount
+    m_uState.ItemCount = m_uState.ItemCount - 1
     m_lCurRowIndex = 0
-    m_bBookmarksDirty = True
-    m_bOrderDirty = True
+    m_uState.BookmarksDirty = True
+    m_uState.OrderDirty = True
 End Sub
 
 Private Function IDataModel_GetRowPosition(ByVal lRowIndex As Long) As Long
     pvEnsureOrder
-    If lRowIndex >= 1 And lRowIndex <= m_lItemCount Then
-        IDataModel_GetRowPosition = m_uRowSet.RowPosition(lRowIndex)
-    End If
+    IDataModel_GetRowPosition = DataGetRowPosition(m_uState, m_uRowSet, lRowIndex)
 End Function
 
 Private Function IDataModel_GetRowIndex(vBookmark As Variant) As Long
-    Dim vRetVal         As Variant
-
-    If DataIsBlank(vBookmark) Then
-        Exit Function
-    End If
-    pvEnsureBookmarks
-    If SearchCollection(m_oBookmarks, DataBookmarkKey(vBookmark), RetVal:=vRetVal) Then
-        IDataModel_GetRowIndex = C2Lng(vRetVal)
-    End If
+    IDataModel_GetRowIndex = DataGetRowIndex(m_uState, vBookmark)
 End Function
 
 Private Function IDataModel_GetRecordCount(ByVal lRowIndex As Long) As Long
     pvEnsureOrder
-    If lRowIndex < 0 Then
-        IDataModel_GetRecordCount = m_uRowSet.GroupRow(-lRowIndex).RecordCount
-    End If
+    IDataModel_GetRecordCount = DataGetRecordCount(m_uRowSet, lRowIndex)
 End Function
 
-Private Function IDataModel_GetSubTotal(ByVal lRowIndex As Long, ByVal nColIndex As Integer, ByVal eFunc As jgexAggregateFunctionConstants) As Variant
+Private Function IDataModel_GetSubTotal(ByVal lRowIndex As Long, ByVal lColIndex As Long, ByVal eFunc As jgexAggregateFunctionConstants) As Variant
     Dim aValues()       As Variant
     Dim lCount          As Long
     Dim eSortType       As jgexSortTypeConstants
@@ -637,54 +524,22 @@ Private Function IDataModel_GetSubTotal(ByVal lRowIndex As Long, ByVal nColIndex
     pvEnsureOrder
     If lRowIndex < 0 Then
         eSortType = jgexSortTypeString
-        If nColIndex >= 1 And nColIndex <= m_pOwner.Columns.Count Then
-            eSortType = m_pOwner.Columns.Item(nColIndex).SortType
+        If lColIndex >= 1 And lColIndex <= m_pOwner.Columns.Count Then
+            eSortType = m_pOwner.Columns.Item(lColIndex).SortType
         End If
-        lCount = pvGroupValues(-lRowIndex, nColIndex, aValues)
+        lCount = pvGroupValues(-lRowIndex, lColIndex, aValues)
         IDataModel_GetSubTotal = DataAggregate(aValues, lCount, eFunc, eSortType)
     End If
 End Function
 
 Private Function IDataModel_GetBookmarks(ByVal lRowIndex As Long) As Variant
-    Dim lIdx            As Long
-    Dim lCount          As Long
-    Dim aRetVal()       As Variant
-
     pvEnsureOrder
-    If lRowIndex >= 0 Then
-        Exit Function
-    End If
-    With m_uRowSet.GroupRow(-lRowIndex)
-        ReDim aRetVal(0 To .RecordCount - 1) As Variant
-        For lIdx = .FirstSlot To .LastSlot
-            If m_uRowSet.Order(lIdx) > 0 Then
-                AssignVariant aRetVal(lCount), m_aRecord(m_uRowSet.Order(lIdx)).Bookmark
-                lCount = lCount + 1
-            End If
-        Next
-    End With
-    IDataModel_GetBookmarks = aRetVal
+    IDataModel_GetBookmarks = DataGetBookmarks(m_uState, m_uRowSet, lRowIndex)
 End Function
 
 Private Function IDataModel_GetRowIndexes(ByVal lRowIndex As Long) As Variant
-    Dim lIdx            As Long
-    Dim lCount          As Long
-    Dim aRetVal()       As Long
-
     pvEnsureOrder
-    If lRowIndex >= 0 Then
-        Exit Function
-    End If
-    With m_uRowSet.GroupRow(-lRowIndex)
-        ReDim aRetVal(0 To .RecordCount - 1) As Long
-        For lIdx = .FirstSlot To .LastSlot
-            If m_uRowSet.Order(lIdx) > 0 Then
-                aRetVal(lCount) = m_uRowSet.Order(lIdx)
-                lCount = lCount + 1
-            End If
-        Next
-    End With
-    IDataModel_GetRowIndexes = aRetVal
+    IDataModel_GetRowIndexes = DataGetRowIndexes(m_uRowSet, lRowIndex)
 End Function
 
 '=========================================================================

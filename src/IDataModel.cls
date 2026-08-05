@@ -171,6 +171,13 @@ End Function
 Public Function GetRowIndex(vBookmark As Variant) As Long
 End Function
 
+'--- every group row at once, which the setter above cannot express: a group
+'--- nested inside a collapsed one has no position of its own, so a walk over
+'--- positions never reaches it and has to keep re-walking as it uncovers
+'--- more. The model has the group rows in hand and touches each exactly once
+Public Sub SetAllExpanded(ByVal bValue As Boolean)
+End Sub
+
 '--- The JSRowData forwards. All are asked of a group row and answer over
 '--- the records it covers, nested group rows skipped. They take the signed
 '--- row index the projection itself uses -- positive a record, negative a
@@ -180,7 +187,7 @@ End Function
 Public Function GetRecordCount(ByVal lRowIndex As Long) As Long
 End Function
 
-Public Function GetSubTotal(ByVal lRowIndex As Long, ByVal nColIndex As Integer, ByVal eFunc As jgexAggregateFunctionConstants) As Variant
+Public Function GetSubTotal(ByVal lRowIndex As Long, ByVal lColIndex As Long, ByVal eFunc As jgexAggregateFunctionConstants) As Variant
 End Function
 
 Public Function GetBookmarks(ByVal lRowIndex As Long) As Variant
