@@ -41,6 +41,10 @@ Private Type UcsCell
     DisplayValue            As String
     CellStyle               As String
     CellPicture             As Picture
+    '--- set by a write through the public Value, not by the fill a model
+    '--- does through frSetValue: what it marks is a cell modified since the
+    '--- wrapper was filled, which is what the control's pending row is
+    Dirty                   As Boolean
 End Type
 
 Private m_pModel                    As IDataModel
@@ -84,6 +88,7 @@ Public Property Let Value(ByVal ColIndex As Integer, ByVal vntValue As Variant)
     pvEnsureCells ColIndex
     If ColIndex >= 1 Then
         AssignVariant m_aCell(ColIndex).Value, vntValue
+        m_aCell(ColIndex).Dirty = True
     End If
 End Property
 
@@ -287,8 +292,28 @@ Friend Sub frInitModel(pModel As IDataModel, ByVal lRowIndex As Long, _
     m_lGroupLevel = lGroupLevel
 End Sub
 
+Friend Property Get frAllowUpdate() As Boolean
+    frAllowUpdate = m_bAllowUpdate
+End Property
+
 Friend Property Let frAllowUpdate(ByVal bValue As Boolean)
+    Dim lIdx            As Long
+
     m_bAllowUpdate = bValue
+    '--- the writes stand, only the marks go: a row that has stopped being the
+    '--- pending one carries its new values like any other, and nothing about
+    '--- it is uncommitted any more
+    If Not bValue Then
+        For lIdx = 1 To m_lCellCount
+            m_aCell(lIdx).Dirty = False
+        Next
+    End If
+End Property
+
+Friend Property Get frCellDirty(ByVal lColIndex As Long) As Boolean
+    If lColIndex >= 1 And lColIndex <= m_lCellCount Then
+        frCellDirty = m_aCell(lColIndex).Dirty
+    End If
 End Property
 
 Friend Property Get frGroupPrefixed() As Boolean

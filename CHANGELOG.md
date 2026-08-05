@@ -970,3 +970,86 @@ stops at the boundary and the typelib is untouched.
   (`GetKeyState`'s `SHORT`, `TEXTMETRIC`'s char fields, the `FreeFile` number)
 - Five `Dim nIdx As Integer` declarations left unused by the data-model move
   went with the sweep
+
+### Changed (the current row's JSRowData is the pending row)
+
+The control keeps one wrapper for the current row -- `m_oRowData`, the page's
+own instance of it -- and that wrapper is also the edit buffer. It already
+carries every column, which is what `UpdateRowData` writes back from, so a
+commit hands it to the model as it stands. Four pieces of state went away with
+the `m_aPendValue`/`m_aPendDirty` pair it replaced: `m_bPendAny`, `m_lPendRow`,
+the separate buffer object, and `m_bDataChanged`.
+
+- `JSRowData` grew the per-cell dirty flag it had been missing. `UcsCell.Dirty`
+  is set by a write through the public `Value`, not by the fill a model does
+  through `frSetValue`, so what it marks is a cell modified since the wrapper
+  was filled. `frCellDirty(lColIndex)` reads it back, bounds-checked
+- `frAllowUpdate` is the pending state, not a flag beside it: the row is
+  writable for exactly as long as it is the pending row, and `DataChanged`
+  answers off it -- so a single object holds what the control paints, what the
+  client reads through `Value`, and whether any of it is uncommitted. Outside
+  its own edit the wrapper refuses a write the way the original does
+- Nothing overlays a buffer over the row any more, so `pvPendSet`/`pvPendGet`
+  are gone: `Value` reads and writes the wrapper, the checkbox paints its
+  value, and the editor's commit is a write like any other. The dirty mark is
+  what a cell being painted still asks about -- an uncommitted write shows what
+  was written rather than the `DisplayValue` the row was decorated with before
+  it -- and clearing `frAllowUpdate` clears the marks with it, since a row that
+  has stopped being the pending one has nothing uncommitted about it. The
+  values that were written stand
+- A commit keeps the wrapper it wrote from, decoration and all. A cancel cannot
+  un-write it, since what the cells were written into is the row the page
+  paints, so `pvCancelRow` re-reads the row from the model into the page's slot
+  and `RowFormat` re-decorates the one row -- which is what the goldens of the
+  two-level Escape pin
+- `pvSyncRowData` re-takes the wrapper wherever `m_lRow` is assigned and
+  wherever the page replaces an instance, and it is where a row is left, so it
+  is where the buffer goes through: it commits when the instance it is letting
+  go of is not the one it takes. That covers the paths that move the row
+  without `pvLeaveCell` -- a `Rebind`, or the remap a reprojection does
+- A page rebuilt under a pending row hands the same instance back rather than
+  re-reading that row, so a scroll mid-edit is not a leave and cannot drop what
+  the wrapper holds. `pvPendCommit` also refuses to re-enter: a client handler
+  of the events `UpdateRowData` raises can move the row, which comes back
+  through the sync with the write half-done
+- A cancel can no longer revert by dropping a buffer, since what it would drop
+  is the row the page paints. `pvRefreshWindowRow` re-reads that one slot from
+  the model and `RowFormat` re-decorates it -- one row, one event, which is
+  what the goldens of the two-level Escape pin
+- The wrapper follows the row, so moving the current row onto a record nothing
+  has read yet reads it. On screen that is invisible -- painting the row reads
+  the record anyway and the model answers the second ask from its cache -- but
+  `ModelTests` never paints, and its nav event order records the fetch now
+- The dirty flag is also what `cAdoDataModel.pvWriteFields` needs to stop
+  writing every bound column on an update -- noted there as missing since the
+  model was written, and still to do
+
+### Fixed (RowFormat went to the wrong row)
+
+The row flush raised `RowFormat` twice for the row it had just committed. The
+original raises the second one for the row being *landed on*, not a second time
+for the one being left -- which is why the corpus never caught it: the harness
+skipped object-valued event parameters, and `RowFormat`'s only parameter is the
+`JSRowData`, so every one of them logged as a bare `RowFormat()` and a repeat of
+one row read the same as a sweep of two.
+
+- `pvFormatEvent` logs `RowFormat(RowIndex=n)` -- the one carrier whose identity
+  is behaviour rather than plumbing. The six goldens carrying a `RowFormat` line
+  were re-recorded from the original at 96 and 120dpi and differ by exactly that
+  annotation, pixels untouched. **The 144dpi goldens of 058 and 059 are stale
+  until re-recorded on a 144dpi machine**
+- Scenario 075 moves the current row with no edit anywhere near it, and the
+  original still raises `RowFormat` for the row landed on, ahead of
+  `SelectionChange` and `RowColChange`. So it belongs to becoming current, not
+  to the commit: `pvNavigate` raises it when the row changes, and a column move
+  raises nothing -- 067 has no `RowFormat` at all
+- `pvCommitRow` (was `pvFlushRow`, with `pvPendCommit` folded into it) raises
+  the other one, for the row it just wrote, between `BeforeUpdate` and
+  `AfterUpdate`
+- The row half moved out of `pvEndEdit`'s "the text changed" branch to the two
+  places that leave a row. It used to be skipped when an editor was closed on
+  the same text it opened with, which lost a column edited earlier in the row
+- `pvLeaveCell` went with it: `pvEndEdit` already returns when no editor is
+  open, so what was left was the two calls its callers can make themselves.
+  `pvEndEdit` takes `Optional bCancel` now, so the four ordinary callers pass
+  nothing and only Escape says what it is

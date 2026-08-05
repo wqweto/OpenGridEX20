@@ -490,8 +490,12 @@ Private Sub pvTestUnbound()
         .FirstItem = 2
         .FirstItem = 2
         '--- Rebind selects the whole row, which is what Col = 0 means, so
-        '--- both changes report coming from there
-        AssertEquals "Unbound: nav event order", "RowCol(1,0);RowCol(2,0);First;", oForm.EventLog
+        '--- both changes report coming from there.
+        '--- The read ahead of them is the current row's wrapper following the
+        '--- row onto record 2: this form never paints, so nothing had fetched
+        '--- it yet -- on screen the record is read to paint the row and the
+        '--- model answers the second ask from its cache
+        AssertEquals "Unbound: nav event order", "Read(2);RowCol(1,0);RowCol(2,0);First;", oForm.EventLog
     End With
     Unload oForm
 End Sub

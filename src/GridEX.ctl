@@ -584,9 +584,11 @@ Private m_clrBackColorBkg           As OLE_COLOR
 Private m_lCardSpacing              As Long
 Private m_lCardWidth                As Long
 Private m_lRow                      As Long
+'--- the current row's wrapper, the page's own instance of it. Written wherever
+'--- m_lRow is, and what Value, DataChanged and the pending row read
+Private m_oRowData                  As JSRowData
 Private m_sErrorText                As String
 Private m_bAllowEdit                As Boolean
-Private m_bDataChanged              As Boolean
 Private m_bAllowDelete              As Boolean
 Private m_sGroupByBoxInfoText       As String
 Private m_clrForeColorHeader        As OLE_COLOR
@@ -666,10 +668,6 @@ Private m_sEditOldValue             As String
 Private m_bInEditSetup              As Boolean
 Private m_hWndEdit                  As Long
 Private m_pSubclassEdit             As IUnknown
-Private m_lPendRow                  As Long
-Private m_bPendAny                  As Boolean
-Private m_aPendValue()              As Variant
-Private m_aPendDirty()              As Boolean
 
 Private Type UcsNavLayout
     BandTop                 As Long
@@ -830,7 +828,7 @@ Public Property Let Col(ByVal nValue As Integer)
         nValue = 1
     End If
     If m_lCol <> nValue Then
-        pvLeaveCell bRowChanging:=False
+        pvEndEdit
         lLastCol = m_lCol
         m_lCol = nValue
         '--- the current cell is drawn out of the selected row it sits in, so
@@ -1170,7 +1168,8 @@ Public Property Let Row(ByVal lValue As Long)
     Dim lLastRow        As Long
 
     If m_lRow <> lValue Then
-        pvLeaveCell bRowChanging:=True
+        pvEndEdit
+        pvCommitRow
         pvSetRow lValue
         '--- an assignment from outside collapses the selection onto the new
         '--- row, silently: navigation and drag go through pvSetRow instead
@@ -1202,11 +1201,17 @@ End Property
 
 Public Property Get DataChanged() As Boolean
 Attribute DataChanged.VB_Description = "Returns/sets a value indicating that the data has been changed by some process other than that of retrieving data from the current record."
-    DataChanged = m_bDataChanged
+    '--- the current row's wrapper is writable for exactly as long as it is the
+    '--- pending row, so the flag the buffer already carries is the answer
+    If Not m_oRowData Is Nothing Then
+        DataChanged = m_oRowData.frAllowUpdate
+    End If
 End Property
 
 Public Property Let DataChanged(ByVal bValue As Boolean)
-    m_bDataChanged = bValue
+    If Not m_oRowData Is Nothing Then
+        m_oRowData.frAllowUpdate = bValue
+    End If
 End Property
 
 Public Property Get hWnd() As Long
@@ -1389,30 +1394,25 @@ End Property
 
 Public Property Get Value(ByVal ColIndex As Integer) As Variant
 Attribute Value.VB_Description = "Returns/sets the value of a column in the current row."
-    Dim oRowData        As JSRowData
-    Dim vValue          As Variant
-
-    Set oRowData = pvRowDataAt(m_lRow)
-    If oRowData Is Nothing Then
+    If m_oRowData Is Nothing Then
         Exit Property
     End If
-    If pvPendGet(oRowData.RowIndex, ColIndex, vValue) Then
-        AssignVariant Value, vValue
-    Else
-        AssignVariant Value, oRowData.Value(ColIndex)
-    End If
+    AssignVariant Value, m_oRowData.Value(ColIndex)
 End Property
 
 Public Property Let Value(ByVal ColIndex As Integer, ByVal vntValue As Variant)
-    Dim lRowIndex       As Long
-
-    '--- buffered on the current row rather than written through: it shows at
-    '--- once, the row moving commits it and Escape drops it
-    lRowIndex = m_pDataModel.RowIndex(m_lRow)
-    If lRowIndex <= 0 Then
+    '--- buffered on the current row rather than written through: the write
+    '--- lands in the wrapper the page paints, so it shows at once, the row
+    '--- moving commits it and Escape drops it. A group row has no record to
+    '--- write to, and a column past the last one is not one to grow
+    If m_oRowData Is Nothing Then
         Exit Property
     End If
-    pvPendSet lRowIndex, ColIndex, vntValue
+    If m_oRowData.RowIndex <= 0 Or ColIndex < 1 Or ColIndex > m_oColumns.Count Then
+        Exit Property
+    End If
+    m_oRowData.frAllowUpdate = True
+    m_oRowData.Value(ColIndex) = vntValue
     pvInvalidate
 End Property
 
@@ -1918,6 +1918,7 @@ Attribute Rebind.VB_Description = "Forces re-creation of the recordset."
         m_lFirstItem = 0
         m_lSelAnchor = 0
     End If
+    pvSyncRowData
     '--- a bind starts with the whole row selected rather than a cell in it,
     '--- which is what Col = 0 means -- the original's first RowColChange
     '--- reports LastCol=0 for exactly that reason
@@ -2141,11 +2142,6 @@ Friend Function frColIsGrouped(ByVal lColIndex As Long) As Boolean
     Next
 End Function
 
-'--- the four unbound events belong to the control, since that is where the
-'--- typelib declares them, but the data model is what knows when to raise
-'--- them: these exist so an IDataModel implementation can reach them
-'--- through its weak owner reference without being a control itself
-
 Friend Sub frRaiseUnboundReadData(ByVal lRowIndex As Long, vBookmark As Variant, oValues As JSRowData)
     RaiseEvent UnboundReadData(lRowIndex, vBookmark, oValues)
 End Sub
@@ -2168,10 +2164,6 @@ End Sub
 Friend Sub frRaiseUnboundDelete(ByVal lRowIndex As Long, vBookmark As Variant)
     RaiseEvent UnboundDelete(lRowIndex, vBookmark)
 End Sub
-
-'--- the per-cell fetch pair, for a column carrying no DataField in a bound
-'--- grid: the JSRet* carrier never leaves the control, so a model asks for
-'--- a value and gets a value
 
 Friend Function frFireFetchData(ByVal lRowIndex As Long, ByVal lColIndex As Long, vBookmark As Variant) As Variant
     Dim oValue          As JSRetVariant
@@ -2285,9 +2277,17 @@ Private Sub pvPopulateWindow()
     End If
     ReDim m_aWindow(1 To lCount) As JSRowData
     For lIdx = 1 To lCount
-        Set m_aWindow(lIdx) = m_pDataModel.GetRowData(lFirst + lIdx - 1)
+        '--- the row being edited keeps the instance it is buffered in:
+        '--- re-reading it would drop what it holds, and a scroll does not
+        '--- commit a row
+        If lFirst + lIdx - 1 = m_lRow And DataChanged Then
+            Set m_aWindow(lIdx) = m_oRowData
+        Else
+            Set m_aWindow(lIdx) = m_pDataModel.GetRowData(lFirst + lIdx - 1)
+        End If
         RaiseEvent RowFormat(m_aWindow(lIdx))
     Next
+    pvSyncRowData
 End Sub
 
 '--- the marquee and the selection stay on the records they were on, wherever
@@ -2304,6 +2304,7 @@ Private Sub pvRemapCurrent()
 
     If m_lHoldRowIndex > 0 Then
         m_lRow = m_pDataModel.GetRowPosition(m_lHoldRowIndex)
+        pvSyncRowData
     End If
     For Each oItem In m_oSelectedItems
         oItem.frSetPosition m_pDataModel.GetRowPosition(oItem.RowIndex)
@@ -2329,6 +2330,16 @@ Private Sub pvSyncProjection()
     If lRowIndex > 0 Then
         m_lHoldRowIndex = lRowIndex
     End If
+End Sub
+
+Private Sub pvSyncRowData()
+    Dim oRowData        As JSRowData
+
+    Set oRowData = pvRowDataAt(m_lRow)
+    If Not oRowData Is m_oRowData And DataChanged Then
+        Err.Raise vbObjectError, , "Internal error: DataChanged=" & DataChanged
+    End If
+    Set m_oRowData = oRowData
 End Sub
 
 Private Function pvWindowRow(ByVal lPos As Long) As JSRowData
@@ -3213,11 +3224,9 @@ Private Function pvIsChecked(oRowData As JSRowData, ByVal lColIndex As Long) As 
     If oRowData Is Nothing Then
         Exit Function
     End If
-    '--- a toggle buffers on the row like any other edit, so the box has to
-    '--- paint what the buffer holds rather than what the row still says
-    If Not pvPendGet(oRowData.RowIndex, lColIndex, vValue) Then
-        vValue = oRowData.Value(lColIndex)
-    End If
+    '--- a toggle buffers on the row like any other edit, and the buffer is the
+    '--- row, so this reads what was toggled without going anywhere else
+    vValue = oRowData.Value(lColIndex)
     If Not IsObject(vValue) And Not IsArray(vValue) Then
         If Not pvIsBlank(vValue) Then
             pvIsChecked = CBool(vValue)
@@ -3304,8 +3313,10 @@ Private Function pvCellText(oRowData As JSRowData, ByVal lColIndex As Long) As S
     If oRowData Is Nothing Then
         Exit Function
     End If
-    '--- a cell buffered on the row being edited paints from the buffer
-    If pvPendGet(oRowData.RowIndex, lColIndex, vValue) Then
+    '--- a cell with an uncommitted write paints what was written, not the
+    '--- display value the row was decorated with before it
+    If oRowData.frCellDirty(lColIndex) Then
+        AssignVariant vValue, oRowData.Value(lColIndex)
         If Not IsArray(vValue) Then
             Select Case VarType(vValue)
             Case vbEmpty, vbNull, vbObject, vbError
@@ -4223,14 +4234,15 @@ Attribute EditSubclassProc.VB_MemberFlags = "40"
         RaiseEvent KeyDown(nKeyCode, nShift)
         Select Case nKeyCode
         Case vbKeyReturn
-            '--- it steps to the next row, so the row is flushed with the cell
-            pvEndEdit bCommit:=True, bRowFlush:=True
+            '--- it steps to the next row, so the row goes through with the cell
+            pvEndEdit
+            pvCommitRow
             If m_lRow < RowCount Then
                 pvNavigate m_lRow + 1, m_lCol, 0, False
             End If
             Handled = True
         Case vbKeyEscape
-            pvEndEdit bCommit:=False, bRowFlush:=False
+            pvEndEdit bCancel:=True
             Handled = True
         End Select
     Case WM_CHAR
@@ -4606,116 +4618,60 @@ Private Sub pvDestroyEditor()
     m_hWndEdit = 0
 End Sub
 
-Private Sub pvPendSet(ByVal lRowIndex As Long, ByVal lColIndex As Long, vValue As Variant)
-    If lRowIndex <= 0 Or lColIndex < 1 Or lColIndex > m_oColumns.Count Then
-        Exit Sub
-    End If
-    '--- one row at a time: landing on another one writes the last one through
-    If m_lPendRow <> lRowIndex Then
-        pvPendCommit
-        m_lPendRow = lRowIndex
-    End If
-    If Not m_bPendAny Then
-        ReDim m_aPendValue(1 To m_oColumns.Count) As Variant
-        ReDim m_aPendDirty(1 To m_oColumns.Count) As Boolean
-        m_bPendAny = True
-    ElseIf UBound(m_aPendDirty) < m_oColumns.Count Then
-        ReDim Preserve m_aPendValue(1 To m_oColumns.Count) As Variant
-        ReDim Preserve m_aPendDirty(1 To m_oColumns.Count) As Boolean
-    End If
-    AssignVariant m_aPendValue(lColIndex), vValue
-    m_aPendDirty(lColIndex) = True
-End Sub
-
-Private Function pvPendGet(ByVal lRowIndex As Long, ByVal lColIndex As Long, vValue As Variant) As Boolean
-    If Not m_bPendAny Or lRowIndex <> m_lPendRow Then
-        Exit Function
-    End If
-    If lColIndex < 1 Or lColIndex > UBound(m_aPendDirty) Then
-        Exit Function
-    End If
-    If m_aPendDirty(lColIndex) Then
-        AssignVariant vValue, m_aPendValue(lColIndex)
-        pvPendGet = True
-    End If
-End Function
-
-Private Sub pvFlushRow()
+'--- the row half of leaving a cell, and separate from the cell's own half on
+'--- purpose: whether an editor was open, and whether what was typed in it
+'--- changed anything, says nothing about the row -- a column edited earlier
+'--- can be pending behind an editor closed on the same text
+Private Sub pvCommitRow()
     Dim oCancel         As JSRetBoolean
-    Dim oRowData        As JSRowData
-    Dim lRowIndex       As Long
 
-    '--- the row half of an update: what the buffer holds goes to storage and
-    '--- the client hears about the row rather than the cell
-    If Not m_bPendAny Then
+    '--- what the buffer holds goes to storage and the client hears about the
+    '--- row rather than the cell.
+    '--- Re-entrant only through the client: a handler of the events
+    '--- UpdateRowData raises can move the row, which comes back here with the
+    '--- write half-done
+    If Not DataChanged Or m_bInPendCommit Then
         Exit Sub
     End If
-    lRowIndex = m_lPendRow
-    pvPendCommit
-    Set oRowData = GetRowData(m_pDataModel.GetRowPosition(lRowIndex))
     Set oCancel = New JSRetBoolean
     RaiseEvent BeforeUpdate(oCancel)
-    RaiseEvent RowFormat(oRowData)
-    If Not oCancel.Value Then
-        '--- no UnboundUpdate here: the original commits the row into its own
-        '--- buffer and says only AfterUpdate about it
-        RaiseEvent AfterUpdate
+    If oCancel.Value Then
+        Exit Sub
     End If
-    RaiseEvent RowFormat(oRowData)
+    '--- the buffer is the row, so the model writes back from it directly and
+    '--- the page is already showing what was written: repopulating here would
+    '--- re-raise RowFormat for every visible row, where the original raises it
+    '--- once, for this one
+    m_bInPendCommit = True
+    m_pDataModel.UpdateRowData m_oRowData
+    m_bInPendCommit = False
+    '--- the writes are storage's now, so the wrapper keeps them and the
+    '--- decoration RowFormat gave it. Dropping the permission to write is what
+    '--- drops the marks with it, and it is read-only again the moment it stops
+    '--- being the pending row: the page hands that same wrapper to the client
+    m_oRowData.frAllowUpdate = False
+    '--- the row that was just written is handed back to be decorated before
+    '--- the client is told the update is done -- recorded from the original in
+    '--- 058, 068 and 071
+    RaiseEvent RowFormat(m_oRowData)
+    RaiseEvent AfterUpdate
 End Sub
 
 Private Sub pvCancelRow()
-    Dim lRowIndex       As Long
-
-    If Not m_bPendAny Then
+    If Not DataChanged Then
         Exit Sub
     End If
-    lRowIndex = m_lPendRow
-    pvPendDiscard
-    RaiseEvent RowFormat(GetRowData(m_pDataModel.GetRowPosition(lRowIndex)))
+    '--- the pending row is the current row: the wrapper is taken for m_lRow
+    '--- wherever the row moves, so its position is the one already in hand
+    Set m_oRowData = m_pDataModel.GetRowData(m_lRow)
+    If m_lRow >= m_lWindowFirst And m_lRow < m_lWindowFirst + m_lWindowCount Then
+        Set m_aWindow(m_lRow - m_lWindowFirst + 1) = m_oRowData
+    End If
+    RaiseEvent RowFormat(m_oRowData)
     pvInvalidate
 End Sub
 
-Private Sub pvPendCommit()
-    Dim lIdx            As Long
-    Dim oRowData        As JSRowData
-
-    If Not m_bPendAny Then
-        Exit Sub
-    End If
-    Set oRowData = pvRowDataAt(m_pDataModel.GetRowPosition(m_lPendRow))
-    If Not oRowData Is Nothing Then
-        For lIdx = 1 To UBound(m_aPendDirty)
-            If m_aPendDirty(lIdx) Then
-                oRowData.frSetValue lIdx, m_aPendValue(lIdx)
-            End If
-        Next
-        '--- the page buffer is what was just written, so it already shows the
-        '--- committed row: repopulating here would re-raise RowFormat for
-        '--- every visible row, where the original raises it once, for this one
-        m_bInPendCommit = True
-        m_pDataModel.UpdateRowData oRowData
-        m_bInPendCommit = False
-    End If
-    pvPendDiscard
-End Sub
-
-Private Sub pvPendDiscard()
-    m_lPendRow = 0
-    m_bPendAny = False
-    Erase m_aPendValue
-    Erase m_aPendDirty
-End Sub
-
-Private Sub pvLeaveCell(ByVal bRowChanging As Boolean)
-    If m_bEditing Then
-        pvEndEdit bCommit:=True, bRowFlush:=bRowChanging
-    ElseIf bRowChanging Then
-        pvFlushRow
-    End If
-End Sub
-
-Private Sub pvEndEdit(ByVal bCommit As Boolean, ByVal bRowFlush As Boolean)
+Private Sub pvEndEdit(Optional ByVal bCancel As Boolean)
     Dim oCancel         As JSRetBoolean
     Dim lCol            As Long
     Dim lRowIndex       As Long
@@ -4732,43 +4688,33 @@ Private Sub pvEndEdit(ByVal bCommit As Boolean, ByVal bRowFlush As Boolean)
     pvDestroyEditor
     '--- committing runs the update trio the original raises in this order:
     '--- the cell first, then the row, with a repaint between the two halves
-    If bCommit And sText <> m_sEditOldValue Then
+    If Not bCancel And sText <> m_sEditOldValue Then
         Set oCancel = New JSRetBoolean
         RaiseEvent BeforeColUpdate(lRowIndex, lCol, m_sEditOldValue, oCancel)
         If oCancel.Value Then
-            RaiseEvent AfterColEdit(lCol)
-            pvSetFocusBack
-            Exit Sub
+            GoTo QH
         End If
-        pvPendSet lRowIndex, lCol, sText
-        Set oRowData = GetRowData(m_pDataModel.GetRowPosition(lRowIndex))
+        If Not m_oRowData Is Nothing Then
+            m_oRowData.frAllowUpdate = True
+            m_oRowData.Value(lCol) = sText
+        End If
         RaiseEvent AfterColUpdate(lCol)
-        RaiseEvent AfterColEdit(lCol)
-        '--- the row half only when the row is being left, which is where the
-        '--- buffered cells go through to storage
-        If bRowFlush Then
-            pvFlushRow
-        End If
     Else
         '--- a cancelled edit says only that the session ended. It repaints the
         '--- cell it was covering when that cancel is the whole of the row's
         '--- edit: with other columns still buffered the row stays dirty and
         '--- keeps its RowFormat until whatever resolves it
-        Set oRowData = GetRowData(m_pDataModel.GetRowPosition(lRowIndex))
-        If sText <> m_sEditOldValue And Not m_bPendAny Then
-            RaiseEvent RowFormat(oRowData)
+        If sText <> m_sEditOldValue And Not DataChanged Then
+            RaiseEvent RowFormat(m_oRowData)
         End If
-        RaiseEvent AfterColEdit(lCol)
     End If
-    pvSetFocusBack
-    pvInvalidate
-End Sub
-
-Private Sub pvSetFocusBack()
+QH:
+    RaiseEvent AfterColEdit(lCol)
     '--- the editor window is gone by now, so the grid takes the focus back
-    '--- through the API rather than through VB, which raises when the
-    '--- control is not in a state to take it
+    '--- through the API rather than through VB, which raises when the control
+    '--- is not in a state to take it
     Call SetFocusApi(hWnd)
+    pvInvalidate
 End Sub
 
 Private Function pvGroupByBoxHeight() As Long
@@ -4954,6 +4900,7 @@ Private Sub pvSetRow(ByVal lValue As Long)
     If m_lRow <> lValue Then
         lLastRow = m_lRow
         m_lRow = lValue
+        pvSyncRowData
         '--- the record the marquee is on, so a reprojection can put it back
         If m_pDataModel.RowIndex(m_lRow) > 0 Then
             m_lHoldRowIndex = m_pDataModel.RowIndex(m_lRow)
@@ -4965,8 +4912,21 @@ End Sub
 
 '--- moves the current cell and updates the selection accordingly
 Private Sub pvNavigate(ByVal lRow As Long, ByVal lCol As Long, ByVal lShift As Long, ByVal bCtrlToggle As Boolean)
+    Dim bRowChanging    As Boolean
+
     '--- an open editor commits before any of it, ahead of SelectionChange
-    pvLeaveCell bRowChanging:=(lRow <> m_lRow And lRow >= 1 And lRow <= RowCount)
+    bRowChanging = (lRow <> m_lRow And lRow >= 1 And lRow <= RowCount)
+    pvEndEdit
+    If bRowChanging Then
+        pvCommitRow
+    End If
+    '--- the row being landed on is decorated as it becomes current, whether or
+    '--- not anything was committed on the way out: probed with 075, a plain
+    '--- row move raises it with nothing else around it. A column move does not
+    '--- -- 067 has no RowFormat at all
+    If bRowChanging Then
+        RaiseEvent RowFormat(pvRowDataAt(lRow))
+    End If
     '--- the selection lands on the new row before the move is announced,
     '--- which is the order the original raises the two events in
     If lRow >= 1 And lRow <= RowCount Then

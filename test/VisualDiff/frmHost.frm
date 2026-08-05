@@ -354,6 +354,14 @@ Private Function pvFormatEvent(Info As EventInfo) As String
         vValue = Empty
         If Info.EventParameters(lIdx).Name = "Shift" Then
             '--- environment, not behaviour
+        ElseIf Info.Name = "RowFormat" Then
+            '--- the one carrier whose identity does say something: which row
+            '--- is being decorated is behaviour, and a bare RowFormat() cannot
+            '--- tell a repeat of one row from a sweep of the page
+            If LenB(sParams) <> 0 Then
+                sParams = sParams & ", "
+            End If
+            sParams = sParams & "RowIndex=" & C2Str(CallByName(C2Obj(Info.EventParameters(lIdx).Value), "RowIndex", VbGet))
         ElseIf Not IsObject(Info.EventParameters(lIdx).Value) Then
             vValue = Info.EventParameters(lIdx).Value
             If LenB(sParams) <> 0 Then

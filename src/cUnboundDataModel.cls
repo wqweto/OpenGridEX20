@@ -277,8 +277,6 @@ Private Function pvGroupValues(ByVal lGroupIndex As Long, ByVal lColIndex As Lon
     pvGroupValues = lCount
 End Function
 
-'--- bookmarks
-
 '=========================================================================
 ' Interface IDataModel
 '=========================================================================

@@ -33,10 +33,6 @@ Public Const ERR_VALUE_NUMBER       As Long = vbObjectError
 Public Type UcsGroupRow
     Level                   As Long
     ColIndex                As Long
-    '--- the record whose key opened the group: the caption is formatted
-    '--- from it on demand rather than stored, since GroupPrefix, GroupFormat
-    '--- and GroupEmptyStringCaption are the control's business and can
-    '--- change without the projection changing
     FirstRowIndex           As Long
     RecordCount             As Long
     Collapsed               As Boolean
@@ -47,57 +43,25 @@ Public Type UcsGroupRow
 End Type
 
 Public Type UcsRowSet
-    '--- bumped by DataProject alone, so it counts order rebuilds and not
-    '--- reprojections: a wrapper filled under one order is refused once the
-    '--- order is rebuilt, and survives a collapse untouched. Probed against
-    '--- the original, which raises on RecordCount, GetSubTotal, GetBookmarks
-    '--- and GetRowIndexes after Delete, RefreshGroups, RefreshSort or Rebind
-    '--- but answers them normally across a collapse and expand
     Version                 As Long
     ItemCount               As Long
     GroupFooterStyle        As jgexGroupFooterStyleConstants
     DefaultCollapsed        As Boolean
-    '--- sort metadata, read off the control once per projection
     SortKeyCount            As Long
     GroupColCount           As Long
     SortCol()               As Long
     SortDir()               As Long
     SortType()              As Long
-    '--- every key of every record, by (key, RowIndex). Filled by the caller,
-    '--- which is the only part of the pass that needs a cell value, and
-    '--- dropped as soon as the sort is done
     Key()                   As Variant
-    '--- the sorted order: +n a RowIndex, -n an index into GroupRow
     Order()                 As Long
     OrderCount              As Long
     GroupRow()              As UcsGroupRow
     GroupRowCount           As Long
-    '--- what is on show: indices into Order, 1..VisibleCount
     Visible()               As Long
     VisibleCount            As Long
-    '--- by RowIndex: the position a record shows at, or the position of the
-    '--- group row hiding it when its group is collapsed
     RowPosition()           As Long
 End Type
 
-'--- a column with FetchData set is supplied by the client through the
-'--- FetchData event, whatever else it could have been read from: in a bound
-'--- grid that outranks its DataField, and in an unbound one it outranks
-'--- whatever UnboundReadData wrote.
-'
-'--- The cache is per cell, not per column, and fills on demand: a repaint
-'--- asks for the screenful it is painting and no more. The only thing that
-'--- ever sweeps a whole column is a sort, because a sort genuinely needs
-'--- every record's key -- and what it leaves behind is a warm cache rather
-'--- than a second pass. Everything narrower invalidates by the row: an edit
-'--- or an insert refetches that record's fetch columns, a delete shifts the
-'--- rows above it down, and only a rebind or a column change throws the lot
-'--- away
-'--- the state every implementation carries whatever it reads rows from:
-'--- the bookmark store and the map over it. Kept flat on purpose -- simple
-'--- types and arrays of them, no nested UDTs -- so the VC6 translation is a
-'--- struct copy rather than a graph walk. UcsRowSet and UcsFetchCache stay
-'--- separate parameters for the same reason
 Public Type UcsDataState
     ItemCount               As Long
     Bookmark()              As Variant
