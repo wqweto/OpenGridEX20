@@ -1176,3 +1176,56 @@ one row read the same as a sweep of two.
   wherever a vertical gridline stands. The row had been filled in one go across
   the whole block, so every rule was cleared and drawn again on each repaint,
   which is what made the column boundaries shimmer
+
+### Changed (the control paints its own WM_PAINT, one band at a time)
+
+- `WM_PAINT` is answered in the subclass rather than through VB's `Paint`
+  event, on the grid surface and on the outer control both. `BeginPaint` hands
+  out the DC and, with it, `rcPaint`: a band the update region does not reach
+  is stepped over instead of being drawn for GDI to clip away, so a drag over
+  the headers allocates one bitmap and touches no rows
+- Every band paints into an off-screen bitmap and arrives in one blit --
+  `pvBufferBegin`/`pvBufferEnd`, with the DC and the bitmap living no longer
+  than the band they carry. The group-by box, the header band, the navigator
+  strip and every row are separate bands, which keeps the bitmap the size of a
+  row rather than the client. Painted straight onto the window a band shows
+  every stage it goes through -- the fill, then what is drawn over it -- and
+  that is what the eye reads as flicker
+- The rows loop takes the height per row and accumulates the top, so rows that
+  differ in height need nothing more than a taller bitmap. Empty rows are rows
+  in the same loop, and the strip right of the last column belongs to the row
+  it sits beside; the background below the block is what is left to a plain
+  `FillRect`
+- The marquee and the column rules moved into the row from the block-wide
+  passes that used to follow it, in the order they had -- the rules close over
+  the cells, the horizontal rule and the marquee's dots alike. Solid, dotted
+  and dashed rules all reproduce a block-long line one row at a time
+- VB filled the client with `BackColor` before raising `Paint`, which is where
+  the pixels no painter covers came from -- the tree indent inside the header
+  band, the band beside the navigator. Each band lays that background down for
+  itself now, and only the first line of a band is seeded from the surface: the
+  line a row shares with the row above, where a group row draws its opening rule
+- The row header's border pair closes one line below its row under
+  vertical-only gridlines, which is the next row's line rather than its own, so
+  the block draws the last one after its rows
+
+### Fixed (chrome the original does not colour)
+
+- The record navigator takes the control's own background and the system's
+  button text: its band, its button faces, its text and the separator strip
+  along the grid's bottom edge had been drawn from `BackColorHeader` and
+  `ForeColorHeader`, which looked right only while those properties kept their
+  defaults. `021-colors-chrome` now sets a colour on every one of them and the
+  navigator with it, which is what pins this
+- A header dragged past either edge scrolls the strip a column at a time, which
+  is how a column reaches a position that is not in view. A timer carries the
+  scrolling on while the pointer stays out there, since a pointer that has
+  stopped moving sends nothing more. The drop stays cancelled for as long as it
+  is outside -- there is nowhere out there to drop on -- so the gesture is out,
+  wait, back in, release
+- Empty rows carry the record selector on past the last record, chrome cell by
+  chrome cell, as the original does -- and with empty rows switched on those
+  cells run under the records too, so a record's cell closes over one that
+  reaches a line further down. An empty row's cell closes one line short of
+  itself whichever gridlines are set, where a record's follows the mode
+  (`081`-`083`, recorded from the original at both DPIs)

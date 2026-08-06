@@ -32,6 +32,7 @@ Public Const INTERFACESAFE_FOR_UNTRUSTED_DATA As Long = 2
 Public Const WM_SETTEXT                 As Long = &HC
 Public Const WM_GETTEXT                 As Long = &HD
 Public Const WM_GETTEXTLENGTH           As Long = &HE
+Public Const WM_PAINT                   As Long = &HF
 Public Const WM_ERASEBKGND              As Long = &H14
 Public Const WM_CANCELMODE              As Long = &H1F
 Public Const WM_SETCURSOR               As Long = &H20
@@ -45,6 +46,7 @@ Public Const WM_KEYDOWN                 As Long = &H100
 Public Const WM_KEYUP                   As Long = &H101
 Public Const WM_CHAR                    As Long = &H102
 Public Const WM_COMMAND                 As Long = &H111
+Public Const WM_TIMER                   As Long = &H113
 Public Const WM_HSCROLL                 As Long = &H114
 Public Const WM_VSCROLL                 As Long = &H115
 Public Const WM_CTLCOLORSCROLLBAR       As Long = &H137
@@ -142,6 +144,7 @@ Public Const OPAQUE                     As Long = 2
 Public Const PS_DOT                     As Long = 2
 Public Const DSTINVERT                  As Long = &H550009
 Public Const PATINVERT                  As Long = &H5A0049
+Public Const SRCCOPY                    As Long = &HCC0020
 Public Const PATCOPY                    As Long = &HF00021
 '--- VB extender
 Public Const EBMODE_DESIGN              As Long = 0
@@ -157,6 +160,10 @@ Public Declare Function SetCursor Lib "user32" (ByVal hCursor As Long) As Long
 Public Declare Function LoadCursor Lib "user32" Alias "LoadCursorW" (ByVal hInstance As Long, ByVal lpCursorName As Long) As Long
 Public Declare Function ScreenToClient Lib "user32" (ByVal hWnd As Long, lpPoint As POINTAPI) As Long
 Public Declare Function InvalidateRect Lib "user32" (ByVal hWnd As Long, ByVal lpRect As Long, ByVal bErase As Long) As Long
+Public Declare Function SetTimer Lib "user32" (ByVal hWnd As Long, ByVal nIDEvent As Long, ByVal uElapse As Long, ByVal lpTimerFunc As Long) As Long
+Public Declare Function KillTimer Lib "user32" (ByVal hWnd As Long, ByVal nIDEvent As Long) As Long
+Public Declare Function BeginPaint Lib "user32" (ByVal hWnd As Long, lpPaint As PAINTSTRUCT) As Long
+Public Declare Function EndPaint Lib "user32" (ByVal hWnd As Long, lpPaint As PAINTSTRUCT) As Long
 Public Declare Function UpdateWindow Lib "user32" (ByVal hWnd As Long) As Long
 Public Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (Destination As Any, Source As Any, ByVal Length As Long)
 Public Declare Function ArrPtr Lib "msvbvm60" Alias "VarPtr" (Ptr() As Any) As LongPtr
@@ -179,6 +186,11 @@ Public Declare Function SaveDC Lib "gdi32" (ByVal hDC As Long) As Long
 Public Declare Function RestoreDC Lib "gdi32" (ByVal hDC As Long, ByVal nSavedDC As Long) As Long
 Public Declare Function GetDeviceCaps Lib "gdi32" (ByVal hDC As Long, ByVal nIndex As Long) As Long
 Public Declare Function GetDC Lib "user32" (ByVal hWnd As Long) As Long
+Public Declare Function CreateCompatibleDC Lib "gdi32" (ByVal hDC As Long) As Long
+Public Declare Function CreateCompatibleBitmap Lib "gdi32" (ByVal hDC As Long, ByVal nWidth As Long, ByVal nHeight As Long) As Long
+Public Declare Function DeleteDC Lib "gdi32" (ByVal hDC As Long) As Long
+Public Declare Function BitBlt Lib "gdi32" (ByVal hDCDest As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hDCSrc As Long, ByVal xSrc As Long, ByVal ySrc As Long, ByVal dwRop As Long) As Long
+Public Declare Function SetViewportOrgEx Lib "gdi32" (ByVal hDC As Long, ByVal X As Long, ByVal Y As Long, ByVal lpPoint As Long) As Long
 Public Declare Function ReleaseDC Lib "user32" (ByVal hWnd As Long, ByVal hDC As Long) As Long
 Public Declare Function GetTextMetrics Lib "gdi32" Alias "GetTextMetricsW" (ByVal hDC As Long, lpMetrics As TEXTMETRICW) As Long
 Public Declare Function GetTextExtentPoint32 Lib "gdi32" Alias "GetTextExtentPoint32W" (ByVal hDC As Long, ByVal lpString As Long, ByVal cbString As Long, lpSize As SIZEAPI) As Long
@@ -210,6 +222,15 @@ Public Type RECT
     Top                     As Long
     Right                   As Long
     Bottom                  As Long
+End Type
+
+Public Type PAINTSTRUCT
+    hDC                     As Long
+    fErase                  As Long
+    rcPaint                 As RECT
+    fRestore                As Long
+    fIncUpdate              As Long
+    rgbReserved(0 To 31)    As Byte
 End Type
 
 Public Type SCROLLINFO

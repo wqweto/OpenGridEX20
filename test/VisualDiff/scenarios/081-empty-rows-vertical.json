@@ -1,21 +1,13 @@
 {
     "$schema": "opengex-visualdiff/1",
-    "name": "colors-chrome",
+    "name": "empty-rows-vertical",
     "width": 400,
     "height": 260,
     "apply": "before-show",
     "props": {
-        "GroupByBoxVisible": true,
-        "RecordNavigator": true,
+        "EmptyRows": true,
+        "GridLines": 1,
         "RowHeaders": true,
-        "BackColor": 0x00FF00,
-        "BackColorBkg": 0x0000FF,
-        "BackColorHeader": 0x8000FF,
-        "ForeColorHeader": 0x00FFFF,
-        "BackColorGBBox": 0x604020,
-        "BackColorInfoText": 0x30A0C0,
-        "ForeColorInfoText": 0x0020FF,
-        "GroupByBoxInfoText": "Group by box info text",
         "Columns": [
             { "Caption": "Alpha", "Width": 1200 },
             { "Caption": "Beta", "Width": 1200 }

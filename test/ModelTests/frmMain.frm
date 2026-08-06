@@ -815,6 +815,8 @@ End Sub
 Private Sub pvTestColumnMove()
     Dim oForm           As frmWeak
     Dim lSlack          As Long
+    Dim lIdx            As Long
+    Dim lLeftCol        As Long
 
     Set oForm = New frmWeak
     Load oForm
@@ -867,6 +869,26 @@ Private Sub pvTestColumnMove()
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(80, 40)
         SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(50, 40)
         AssertEquals "ColMove: AllowColumnDrag False moves nothing", 2, .Columns.Item(1).ColPosition
+        .AllowColumnDrag = True
+        '--- more columns than the strip holds, so there is somewhere to scroll
+        For lIdx = 1 To 6
+            .Columns.Add("Col" & lIdx).Width = 1500
+        Next
+        .Rebind
+        lLeftCol = .LeftCol
+        '--- dragged past the right edge the strip scrolls, which is how a
+        '--- column reaches a position that is off the view
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(50, 40)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(1000, 40)
+        AssertEquals "ColMove: dragging off the right edge scrolls right", lLeftCol + 1, CLng(.LeftCol)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(1000, 40)
+        AssertEquals "ColMove: and again while it stays out there", lLeftCol + 2, CLng(.LeftCol)
+        '--- and back the other way, which is a negative x on a captured mouse
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(-5, 40)
+        AssertEquals "ColMove: dragging off the left edge scrolls left", lLeftCol + 1, CLng(.LeftCol)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(-5, 40)
+        '--- the strip stays where the drag left it once the button comes up
+        AssertEquals "ColMove: the drop leaves the strip where it scrolled to", lLeftCol + 1, CLng(.LeftCol)
     End With
     Unload oForm
 End Sub

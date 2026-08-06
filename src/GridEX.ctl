@@ -538,6 +538,8 @@ Private Const CHECK_BOX_CLR             As Long = &H696969
 Private Const CHECK_BOX_CLR_CUR         As Long = &H646464
 Private Const DIVIDER_GRAB_W            As Long = 3
 Private Const MIN_COL_W                 As Long = 10
+Private Const DRAG_SCROLL_ID            As Long = 1
+Private Const DRAG_SCROLL_MS            As Long = 50
 
 '--- property backing variables
 Private m_lFrozenColumns            As Long
@@ -677,9 +679,13 @@ Private m_oDropCol                  As JSColumn
 Private m_lDragStartX               As Long
 Private m_lDragStartY               As Long
 Private m_bDragging                 As Boolean
+Private m_lDragScroll               As Long
 Private m_lSizeStartX               As Long
 Private m_lSizeStartW               As Long
 Private m_pSubclassEdit             As IUnknown
+Private m_hBufDC                    As Long
+Private m_hBufBmp                   As Long
+Private m_hBufOldBmp                As Long
 
 Private Type UcsNavLayout
     BandTop                 As Long
@@ -2152,6 +2158,47 @@ Friend Function frColSortOrder(ByVal lColIndex As Long) As jgexSortOrderConstant
     Next
 End Function
 
+Friend Sub frColMove(oCol As JSColumn, ByVal lNewPos As Long)
+    Dim lIdx            As Long
+    Dim lOldPos         As Long
+    Dim oItem           As JSColumn
+
+    lNewPos = Clamp(lNewPos, 1, m_oColumns.Count)
+    lOldPos = oCol.ColPosition
+    If lNewPos = lOldPos Then
+        Exit Sub
+    End If
+    For lIdx = 1 To m_oColumns.Count
+        Set oItem = m_oColumns.Item(lIdx)
+        If oItem.ColPosition > lOldPos And oItem.ColPosition <= lNewPos Then
+            oItem.frColPosition = oItem.ColPosition - 1
+        ElseIf oItem.ColPosition >= lNewPos And oItem.ColPosition < lOldPos Then
+            oItem.frColPosition = oItem.ColPosition + 1
+        End If
+    Next
+    oCol.frColPosition = lNewPos
+End Sub
+
+Friend Sub frColAutoSize(oCol As JSColumn)
+    Dim oCancel         As JSRetBoolean
+    Dim lWidth          As Long
+
+    lWidth = pvAutoSizeWidth(oCol.Index)
+    If lWidth < MIN_COL_W Then
+        lWidth = MIN_COL_W
+    End If
+    m_lSizeStartW = pvColWidth(oCol)
+    oCol.frWidthPx = lWidth
+    lWidth = oCol.Width
+    oCol.frWidthPx = m_lSizeStartW
+    Set oCancel = New JSRetBoolean
+    RaiseEvent ColResize(oCol.Index, lWidth, oCancel)
+    If Not oCancel.Value Then
+        oCol.Width = lWidth
+    End If
+    pvInvalidate
+End Sub
+
 Friend Sub frRaiseUnboundReadData(ByVal lRowIndex As Long, vBookmark As Variant, oValues As JSRowData)
     RaiseEvent UnboundReadData(lRowIndex, vBookmark, oValues)
 End Sub
@@ -2372,21 +2419,113 @@ End Sub
 
 '--- painting
 
-Private Sub pvPaint(ByVal hDC As Long)
-    Dim lY              As Long
+Private Sub pvOnPaint(ByVal hWnd As Long)
+    Const FUNC_NAME     As String = "pvOnPaint"
+    Dim uPS             As PAINTSTRUCT
+    Dim hMemDC          As Long
+    Dim lWidth          As Long
+    Dim lHeight         As Long
 
-    '--- a sort the caller set up since the last paint takes effect here
-    pvSyncProjection
-    If m_bGroupByBoxVisible Then
-        pvPaintGroupByBox hDC, lY
+    On Error GoTo EH
+    Call BeginPaint(hWnd, uPS)
+    If hWnd = picGrid.hWnd Then
+        pvPaint uPS.hDC, uPS.rcPaint
+    Else
+        lWidth = UserControl.ScaleWidth
+        lHeight = uPS.rcPaint.Bottom - uPS.rcPaint.Top
+        hMemDC = pvBufferBegin(uPS.hDC, uPS.rcPaint.Top, lWidth, lHeight)
+        pvPaintNavigator hMemDC
+        pvBufferEnd uPS.hDC, hMemDC, uPS.rcPaint.Top, lWidth, lHeight
     End If
-    If m_bColumnHeaders Then
-        pvPaintHeaders hDC, lY
-    End If
-    pvPaintRows hDC, lY
+QH:
+    Call EndPaint(hWnd, uPS)
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+    Resume QH
 End Sub
 
-Private Sub pvPaintGroupByBox(ByVal hDC As Long, lY As Long)
+Private Sub pvPaint(ByVal hDC As Long, uClip As RECT)
+    Dim lY              As Long
+    Dim lWidth          As Long
+    Dim lBandH          As Long
+    Dim hMemDC          As Long
+
+    pvSyncProjection
+    lWidth = picGrid.ScaleWidth
+    If m_bGroupByBoxVisible Then
+        lBandH = pvGroupByBoxHeight()
+        If pvNeedRepaint(uClip, lY, lBandH) Then
+            hMemDC = pvBufferBegin(hDC, lY, lWidth, lBandH)
+            pvPaintGroupByBox hMemDC, lY
+            pvBufferEnd hDC, hMemDC, lY, lWidth, lBandH
+        End If
+        lY = lY + lBandH
+    End If
+    If m_bColumnHeaders Then
+        lBandH = m_lColumnHeaderHeight
+        If pvNeedRepaint(uClip, lY, lBandH) Then
+            hMemDC = pvBufferBegin(hDC, lY, lWidth, lBandH)
+            pvPaintHeaders hMemDC, lY
+            pvBufferEnd hDC, hMemDC, lY, lWidth, lBandH
+        End If
+        lY = lY + lBandH
+    End If
+    pvPaintRows hDC, lY, uClip
+End Sub
+
+Private Function pvNeedRepaint(uClip As RECT, ByVal lTop As Long, ByVal lHeight As Long) As Boolean
+    pvNeedRepaint = (uClip.Bottom > lTop And uClip.Top < lTop + lHeight)
+End Function
+
+Private Function pvBufferBegin(ByVal hDC As Long, ByVal lTop As Long, ByVal lWidth As Long, ByVal lHeight As Long) As Long
+    pvBufferBegin = hDC
+    If lWidth <= 0 Or lHeight <= 0 Then
+        Exit Function
+    End If
+    m_hBufDC = CreateCompatibleDC(hDC)
+    If m_hBufDC = 0 Then
+        Exit Function
+    End If
+    m_hBufBmp = CreateCompatibleBitmap(hDC, lWidth, lHeight)
+    If m_hBufBmp = 0 Then
+        pvBufferRelease
+        Exit Function
+    End If
+    m_hBufOldBmp = SelectObject(m_hBufDC, m_hBufBmp)
+    Call SetViewportOrgEx(m_hBufDC, 0, -lTop, 0)
+    '--- only the first line of the band is copied in: it is the one a row
+    '--- shares with the row above it, where a group row draws its opening
+    '--- rule, and the blit would otherwise take that line back out. Every
+    '--- band covers the rest of itself before it paints anything
+    Call BitBlt(m_hBufDC, 0, lTop, lWidth, 1, hDC, 0, lTop, SRCCOPY)
+    pvBufferBegin = m_hBufDC
+End Function
+
+Private Sub pvBufferEnd(ByVal hDC As Long, ByVal hMemDC As Long, ByVal lTop As Long, ByVal lWidth As Long, ByVal lHeight As Long)
+    If hMemDC = hDC Then
+        Exit Sub
+    End If
+    Call BitBlt(hDC, 0, lTop, lWidth, lHeight, hMemDC, 0, lTop, SRCCOPY)
+    pvBufferRelease
+End Sub
+
+Private Sub pvBufferRelease()
+    If m_hBufOldBmp <> 0 Then
+        Call SelectObject(m_hBufDC, m_hBufOldBmp)
+        m_hBufOldBmp = 0
+    End If
+    If m_hBufBmp <> 0 Then
+        Call DeleteObject(m_hBufBmp)
+        m_hBufBmp = 0
+    End If
+    If m_hBufDC <> 0 Then
+        Call DeleteDC(m_hBufDC)
+        m_hBufDC = 0
+    End If
+End Sub
+
+Private Sub pvPaintGroupByBox(ByVal hDC As Long, ByVal lY As Long)
     Dim lBoxH           As Long
     Dim lTotalH         As Long
     Dim uRect           As RECT
@@ -2406,7 +2545,6 @@ Private Sub pvPaintGroupByBox(ByVal hDC As Long, lY As Long)
         pvDrawText hDC, m_sGroupByBoxInfoText, 7, lY + 5, 7 + uRect.Right, lY + 5 + lBoxH, m_clrForeColorInfoText, m_clrBackColorInfoText, jgexAlignLeft, 7, 7 + uRect.Right
     End If
     Call SelectObject(hDC, hPrevFont)
-    lY = lY + lTotalH
 End Sub
 
 Private Function pvChipStagger() As Long
@@ -2510,7 +2648,7 @@ Private Sub pvPaintGroupChips(ByVal hDC As Long, ByVal lY As Long)
     Next
 End Sub
 
-Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
+Private Sub pvPaintHeaders(ByVal hDC As Long, ByVal lY As Long)
     Dim lHdrH           As Long
     Dim uMetrics        As TEXTMETRICW
     Dim lX              As Long
@@ -2523,6 +2661,10 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
 
     lHdrH = m_lColumnHeaderHeight
     lMarkX = -1
+    '--- the tree indent has no header cell of its own and the band does not
+    '--- reach into it: what shows there is the grid's own background, which VB
+    '--- laid down before raising Paint and nothing else does now
+    pvFillRect hDC, 0, lY, picGrid.ScaleWidth, lY + lHdrH, picGrid.BackColor
     hPrevFont = pvSelectFont(hDC, m_oColumnHeaderFont)
     '--- band frame lines first; cell edges painted after overwrite them
     '--- at the cell boundaries
@@ -2560,7 +2702,7 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
         End If
         '--- the header on its way to another position shows inverted, so the
         '--- column the drop will move is visible while it is being dragged
-        If m_bDragging And oCol Is m_oDragCol Then
+        If oCol Is m_oDragCol Then
             Call PatBlt(hDC, lX, lY + 1, lW - 1, lHdrH - 2, DSTINVERT)
         End If
         '--- and the boundary it would land on is marked on the header under
@@ -2589,7 +2731,6 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
         pvFillRect hDC, lMarkX - 2, lY, lMarkX + 1, lY + lHdrH, vbRed
     End If
     Call SelectObject(hDC, hPrevFont)
-    lY = lY + lHdrH
 End Sub
 
 Private Sub pvPaintSortGlyph(ByVal hDC As Long, ByVal lX As Long, ByVal lBottom As Long, ByVal eOrder As jgexSortOrderConstants)
@@ -2655,7 +2796,7 @@ Private Sub pvPaintHeaderCell(ByVal hDC As Long, ByVal lX As Long, ByVal lY As L
     End If
 End Sub
 
-Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
+Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long, uClip As RECT)
     Dim lRowH           As Long
     Dim lHdrW           As Long
     Dim lTotalW         As Long
@@ -2664,98 +2805,135 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
     Dim lRowTop         As Long
     Dim lRowsBottom     As Long
     Dim lCum            As Long
-    Dim lCumF           As Long
-    Dim lW              As Long
-    Dim oCol            As JSColumn
     Dim hPrevFont       As Long
-    Dim uRect           As RECT
+    Dim hMemDC          As Long
+    Dim lBandTop        As Long
+    Dim lLineR          As Long
     Dim lPainted        As Long
     Dim lExtra          As Long
     Dim vOrder          As Variant
     Dim lIdx            As Long
 
-    lRowH = m_lRowHeight
     lHdrW = pvBlockLeft()
     vOrder = pvColOrder()
     For lIdx = 0 To pvOrderMax(vOrder)
         lTotalW = lTotalW + pvColWidth(m_oColumns.ItemByPosition(vOrder(lIdx)))
     Next
-    '--- background right of the columns down to the bottom
-    pvFillRect hDC, lHdrW + lTotalW, lY, picGrid.ScaleWidth, picGrid.ScaleHeight, m_clrBackColorBkg
     pvSyncProjection
     pvPopulateWindow
     lFirst = m_lFirstItem
     If lFirst < 1 Then
         lFirst = 1
     End If
-    If lRowH > 0 Then
-        hPrevFont = pvSelectFont(hDC, m_oFont)
-        For lRow = lFirst To RowCount
-            lRowTop = lY + (lRow - lFirst) * lRowH
-            If lRowTop >= picGrid.ScaleHeight Then
-                Exit For
-            End If
-            If pvIsGroupRow(lRow) Then
-                pvPaintGroupRow hDC, lRow, lRowTop, lRowH, lHdrW, lHdrW + lTotalW, lY
-            Else
-                pvPaintDataRow hDC, lRow, lRowTop, lRowH, lHdrW, lTotalW
-            End If
-            lPainted = lPainted + 1
-        Next
-        Call SelectObject(hDC, hPrevFont)
-    End If
-    lRowsBottom = lY + lPainted * lRowH
     '--- under vertical-only gridlines the row header's border pair ends one
     '--- line below the block, and the gridlines run down to meet it, while
     '--- the cells themselves still stop at the block bottom
     If m_eGridLines = jgexGLVertical Then
         lExtra = 1
     End If
-    If m_bEmptyRows Then
-        '--- empty rows continue the grid to the bottom edge
-        pvFillRect hDC, lHdrW, lRowsBottom, lHdrW + lTotalW, picGrid.ScaleHeight, m_clrBackColor
-        If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLHorizontal Then
-            lRowTop = lRowsBottom
-            Do While lRowTop + lRowH - 1 < picGrid.ScaleHeight
-                pvLine hDC, lHdrW, lRowTop + lRowH - 1, lHdrW + lTotalW, lRowTop + lRowH - 1, m_clrGridLinesColor, pvPenStyle()
-                lRowTop = lRowTop + lRowH
-            Loop
+    '--- one row at a time, each finished in the bitmap before it reaches the
+    '--- surface: its cells, the marquee when it is the current row, the column
+    '--- rules that close over it and the background out to the right edge. The
+    '--- height is taken per row, so rows that differ in height ask for nothing
+    '--- more than a taller bitmap
+    lRowTop = lY
+    lRowsBottom = lY
+    lRow = lFirst
+    Do While lRowTop < picGrid.ScaleHeight
+        lRowH = m_lRowHeight
+        If lRowH <= 0 Then
+            Exit Do
         End If
+        If lRow > RowCount And Not m_bEmptyRows Then
+            Exit Do
+        End If
+        '--- a group row opens with a rule above its top, which is the last
+        '--- line of the row before it, so the band the bitmap covers takes
+        '--- that line in and starts from what the surface already has there
+        lBandTop = lRowTop - 1
+        If lBandTop < 0 Then
+            lBandTop = 0
+        End If
+        If lRow <= RowCount Then
+            lPainted = lPainted + 1
+            lRowsBottom = lRowTop + lRowH
+        End If
+        '--- a row the update region does not reach is stepped over: what it
+        '--- contributes to the block below is counted above, so skipping the
+        '--- paint costs nothing but the bitmap it would have needed
+        If pvNeedRepaint(uClip, lBandTop, lRowTop + lRowH - lBandTop) Then
+            hMemDC = pvBufferBegin(hDC, lBandTop, picGrid.ScaleWidth, lRowTop + lRowH - lBandTop)
+            hPrevFont = pvSelectFont(hMemDC, m_oFont)
+            '--- the strip right of the last column is the row's own background,
+            '--- and the row paints over it: the rule closing a row runs a pixel
+            '--- past the block when no column rule claims that pixel
+            pvFillRect hMemDC, lHdrW + lTotalW, lRowTop, picGrid.ScaleWidth, lRowTop + lRowH, m_clrBackColorBkg
+            If lRow > RowCount Then
+                '--- empty rows continue the grid to the bottom edge, the
+                '--- record selector column with it: the original carries its
+                '--- chrome cells on past the last record
+                If m_bRowHeaders Then
+                    pvFillRect hMemDC, 0, lRowTop, CHROME_COL_W, lRowTop + lRowH, m_clrBackColor
+                    pvPaintRowHeader hMemDC, lRowTop, lRowH, CHROME_COL_W, False, EmptyRow:=True
+                End If
+                pvFillRect hMemDC, lHdrW, lRowTop, lHdrW + lTotalW, lRowTop + lRowH, m_clrBackColor
+                If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLHorizontal Then
+                    If lRowTop + lRowH - 1 < picGrid.ScaleHeight Then
+                        '--- with no vertical gridline claiming the block's last
+                        '--- pixel column the line runs one further right, as it
+                        '--- does on a row that holds a record
+                        lLineR = lHdrW + lTotalW
+                        If m_eGridLines = jgexGLHorizontal Then
+                            lLineR = lLineR + 1
+                        End If
+                        pvLine hMemDC, lHdrW, lRowTop + lRowH - 1, lLineR, lRowTop + lRowH - 1, m_clrGridLinesColor, pvPenStyle()
+                    End If
+                End If
+            ElseIf pvIsGroupRow(lRow) Then
+                pvPaintGroupRow hMemDC, lRow, lRowTop, lRowH, lHdrW, lHdrW + lTotalW, lY
+            Else
+                pvPaintDataRow hMemDC, lRow, lRowTop, lRowH, lHdrW, lTotalW
+            End If
+            '--- focus marquee on the current row; the XOR runs against the DC
+            '--- background color which the original keeps at BackColor, and
+            '--- vertical gridlines paint over the marquee dots
+            If lRow = m_lRow And lRow <= RowCount Then
+                pvPaintRowMarquee hMemDC, lRowTop, lRowH, lHdrW, lTotalW
+            End If
+            pvPaintRowRules hMemDC, lRow, lRowTop, lRowH, lHdrW, vOrder
+            pvBufferEnd hDC, hMemDC, lBandTop, picGrid.ScaleWidth, lRowTop + lRowH - lBandTop
+            Call SelectObject(hMemDC, hPrevFont)
+        End If
+        lRowTop = lRowTop + lRowH
+        lRow = lRow + 1
+    Loop
+    '--- the row header's border pair closes one line below the block, which is
+    '--- outside every row's own band -- and outside the rows entirely when
+    '--- empty ones carry on below them
+    If lExtra > 0 And lPainted > 0 And m_bRowHeaders Then
+        pvLine hDC, 0, lRowsBottom, CHROME_COL_W, lRowsBottom, vb3DDKShadow, PS_SOLID
+    End If
+    If m_bEmptyRows Then
         lRowsBottom = picGrid.ScaleHeight
     Else
-        '--- background below the last row
+        '--- background below the last row: one fill each side of the block,
+        '--- and no rule of its own to clear
         pvFillRect hDC, 0, lRowsBottom + lExtra, lHdrW, picGrid.ScaleHeight, m_clrBackColorBkg
-        pvFillRect hDC, lHdrW, lRowsBottom, lHdrW + lTotalW, picGrid.ScaleHeight, m_clrBackColorBkg
+        pvFillRect hDC, lHdrW, lRowsBottom, picGrid.ScaleWidth, picGrid.ScaleHeight, m_clrBackColorBkg
         '--- the line closing the block runs the whole width when the rows
         '--- are grouped, indent included
         If m_oGroups.Count > 0 And lPainted > 0 Then
             pvLine hDC, 0, lRowsBottom - 1, lHdrW, lRowsBottom - 1, m_clrGridLinesColor, pvPenStyle()
         End If
-    End If
-    If lPainted > 0 Or m_bEmptyRows Then
-        '--- focus marquee on the current row; the XOR runs against the DC
-        '--- background color which the original keeps at BackColor, and
-        '--- vertical gridlines paint over the marquee dots
-        If m_lRow >= lFirst And m_lRow < lFirst + lPainted Then
-            pvPaintRowMarquee hDC, lY + (m_lRow - lFirst) * lRowH, lRowH, lHdrW, lTotalW
-        End If
-        '--- vertical gridlines over the rows block
-        If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLVertical Then
+        '--- the rules run one line past the block to meet that border pair,
+        '--- which is below every row and so outside all of their bitmaps
+        If lExtra > 0 And lPainted > 0 And m_oGroups.Count = 0 Then
             For lIdx = 0 To pvOrderMax(vOrder)
                 lCum = lCum + pvColWidth(m_oColumns.ItemByPosition(vOrder(lIdx)))
-                If m_oGroups.Count > 0 Then
-                    '--- a group row spans the block, so the column rules
-                    '--- break at every one of them
-                    For lRow = lFirst To lFirst + lPainted - 1
-                        If Not pvIsGroupRow(lRow) Then
-                            pvLine hDC, lHdrW + lCum - 1, lY + (lRow - lFirst) * lRowH, _
-                                lHdrW + lCum - 1, lY + (lRow - lFirst + 1) * lRowH, m_clrGridLinesColor, pvPenStyle()
-                        End If
-                    Next
-                ElseIf m_eGridLineStyle = jgexGLSDashes Then
-                    pvDashedVLine hDC, lHdrW + lCum - 1, lY, lRowsBottom + lExtra, m_clrGridLinesColor, lY, lRowH, lRowsBottom
+                If m_eGridLineStyle = jgexGLSDashes Then
+                    pvDashedVLine hDC, lHdrW + lCum - 1, lRowsBottom, lRowsBottom + lExtra, m_clrGridLinesColor, lY, m_lRowHeight, lRowsBottom
                 Else
-                    pvLine hDC, lHdrW + lCum - 1, lY, lHdrW + lCum - 1, lRowsBottom + lExtra, m_clrGridLinesColor, pvPenStyle()
+                    pvLine hDC, lHdrW + lCum - 1, lRowsBottom, lHdrW + lCum - 1, lRowsBottom + lExtra, m_clrGridLinesColor, pvPenStyle()
                 End If
             Next
         End If
@@ -2764,8 +2942,34 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
     '--- band takes over the last client row -- the horizontal scrollbar puts
     '--- it there, and so does a record navigator with no scrollbar beside it
     If m_bBandVisible Then
-        pvLine hDC, 0, picGrid.ScaleHeight - 1, picGrid.ScaleWidth, picGrid.ScaleHeight - 1, m_clrBackColorHeader, PS_SOLID
+        pvLine hDC, 0, picGrid.ScaleHeight - 1, picGrid.ScaleWidth, picGrid.ScaleHeight - 1, UserControl.BackColor, PS_SOLID
     End If
+End Sub
+
+Private Sub pvPaintRowRules(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, vOrder As Variant)
+    Dim lIdx            As Long
+    Dim lCum            As Long
+    Dim lX              As Long
+
+    If m_eGridLines <> jgexGLBoth And m_eGridLines <> jgexGLVertical Then
+        Exit Sub
+    End If
+    If lRow <= RowCount Then
+        If pvIsGroupRow(lRow) Then
+            Exit Sub
+        End If
+    End If
+    For lIdx = 0 To pvOrderMax(vOrder)
+        lCum = lCum + pvColWidth(m_oColumns.ItemByPosition(vOrder(lIdx)))
+        lX = lHdrW + lCum - 1
+        If m_eGridLineStyle = jgexGLSDashes And m_oGroups.Count = 0 Then
+            '--- the dashes restart their phase at every row top, so the row is
+            '--- all the anchor a segment of them needs
+            pvDashedVLine hDC, lX, lRowTop, lRowTop + lRowH, m_clrGridLinesColor, lRowTop, lRowH, lRowTop + lRowH
+        Else
+            pvLine hDC, lX, lRowTop, lX, lRowTop + lRowH, m_clrGridLinesColor, pvPenStyle()
+        End If
+    Next
 End Sub
 
 Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, ByVal lTotalW As Long)
@@ -2814,6 +3018,12 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         '--- the header cell can be shorter than the row, and what shows below
         '--- it is the grid background rather than the row's own color
         pvFillRect hDC, 0, lRowTop, CHROME_COL_W, lRowTop + lRowH, m_clrBackColor
+        '--- empty rows put a chrome cell on every row of the client and the
+        '--- records are painted over that, so the cell underneath this one
+        '--- still closes below the record's own line
+        If m_bEmptyRows Then
+            pvPaintRowHeader hDC, lRowTop, lRowH, CHROME_COL_W, False, EmptyRow:=True
+        End If
         '--- the record-selector arrow marks the current row only
         pvPaintRowHeader hDC, lRowTop, lRowH, CHROME_COL_W, (lRow = m_lRow)
     End If
@@ -3191,27 +3401,38 @@ Private Function pvGroupIndent() As Long
     pvGroupIndent = m_oGroups.Count * GROUP_INDENT_W
 End Function
 
-Private Sub pvPaintRowHeader(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, ByVal bCurrent As Boolean)
+Private Sub pvPaintRowHeader(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, ByVal bCurrent As Boolean, Optional ByVal EmptyRow As Boolean)
     Dim lIdx            As Long
     Dim lC              As Long
 
     '--- a Double3D header-like cell per row. Where its border pair lands is
     '--- an empirical table, one entry per GridLines value, each measured off
     '--- a golden -- no mechanical rule was found that explains why the
-    '--- single-direction modes pull it in opposite directions
-    Select Case m_eGridLines
-    Case jgexGLVertical
-        lC = lRowH
-    Case jgexGLHorizontal
-        lC = lRowH - 2
-    Case Else
+    '--- single-direction modes pull it in opposite directions. Below the
+    '--- records the gridlines no longer move it: an empty row closes its cell
+    '--- one line short of itself whichever mode is set
+    If EmptyRow Then
         lC = lRowH - 1
-    End Select
+    Else
+        Select Case m_eGridLines
+        Case jgexGLVertical
+            lC = lRowH
+        Case jgexGLHorizontal
+            lC = lRowH - 2
+        Case Else
+            lC = lRowH - 1
+        End Select
+    End If
     pvFillRect hDC, 1, lRowTop + 1, lHdrW - 2, lRowTop + lC - 1, m_clrBackColorHeader
     pvLine hDC, 0, lRowTop, lHdrW, lRowTop, vb3DHighlight, PS_SOLID
     pvLine hDC, 0, lRowTop, 0, lRowTop + lC - 1, vb3DHighlight, PS_SOLID
     pvLine hDC, 0, lRowTop + lC - 1, lHdrW, lRowTop + lC - 1, vb3DShadow, PS_SOLID
-    pvLine hDC, 0, lRowTop + lC, lHdrW, lRowTop + lC, vb3DDKShadow, PS_SOLID
+    '--- under vertical-only gridlines the pair closes one line below the row,
+    '--- which belongs to the row after this one: what shows there is drawn
+    '--- with that row, and the last one's with the block it ends
+    If lC < lRowH Then
+        pvLine hDC, 0, lRowTop + lC, lHdrW, lRowTop + lC, vb3DDKShadow, PS_SOLID
+    End If
     pvLine hDC, lHdrW - 2, lRowTop, lHdrW - 2, lRowTop + lC - 1, vb3DShadow, PS_SOLID
     pvLine hDC, lHdrW - 1, lRowTop, lHdrW - 1, lRowTop + lC, vb3DDKShadow, PS_SOLID
     '--- current row arrow marker
@@ -3596,7 +3817,7 @@ End Function
 Private Sub pvNavButton(ByVal hDC As Long, uBtn As RECT)
     '--- a single-pixel white edge on top and left, shadow then dark shadow
     '--- down the right and bottom -- DrawFrameControl doubles the light edge
-    pvFillRect hDC, uBtn.Left, uBtn.Top, uBtn.Right, uBtn.Bottom, m_clrBackColorHeader
+    pvFillRect hDC, uBtn.Left, uBtn.Top, uBtn.Right, uBtn.Bottom, UserControl.BackColor
     pvLine hDC, uBtn.Left, uBtn.Top, uBtn.Right, uBtn.Top, vb3DHighlight, PS_SOLID
     pvLine hDC, uBtn.Left, uBtn.Top, uBtn.Left, uBtn.Bottom, vb3DHighlight, PS_SOLID
     pvLine hDC, uBtn.Right - 2, uBtn.Top + 1, uBtn.Right - 2, uBtn.Bottom - 1, vb3DShadow, PS_SOLID
@@ -3666,10 +3887,16 @@ Private Sub pvPaintNavigator(ByVal hDC As Long)
     Dim lTextH          As Long
     Dim lTextTop        As Long
 
+    pvFillRect hDC, 0, UserControl.ScaleHeight - GetSystemMetrics(SM_CYHSCROLL), UserControl.ScaleWidth, UserControl.ScaleHeight, UserControl.BackColor
+    If Not m_bRecordNavigator Then
+        Exit Sub
+    End If
     If Not pvNavLayout(uNav) Then
         Exit Sub
     End If
-    pvFillRect hDC, 0, uNav.BandTop, uNav.Width, uNav.BandTop + uNav.BandH, m_clrBackColorHeader
+    '--- the band takes the control's own background whatever BackColorHeader
+    '--- is set to: the navigator is chrome, not part of the grid's colours
+    pvFillRect hDC, 0, uNav.BandTop, uNav.Width, uNav.BandTop + uNav.BandH, UserControl.BackColor
     '--- the pair pointing at an end greys out once the current row is there
     lAtFirst = 0
     If m_lRow <= 1 Then
@@ -3708,8 +3935,8 @@ Private Sub pvPaintNavigator(ByVal hDC As Long)
     '--- pixel up is what keeps them on the original's row at every scale
     lTextH = FontTextMetrics(m_oFont, hDC).tmHeight
     lTextTop = uNav.BandTop + (uNav.BandH - lTextH + 1) \ 2
-    pvDrawText hDC, uNav.Prefix, uNav.PrefixX, lTextTop, uNav.PrefixX + pvTextWidth(hDC, uNav.Prefix), lTextTop + lTextH, m_clrForeColorHeader, m_clrBackColorHeader, jgexAlignLeft, uNav.PrefixX, uNav.Width
-    pvDrawText hDC, uNav.Middle, uNav.MiddleX, lTextTop, uNav.MiddleX + pvTextWidth(hDC, uNav.Middle), lTextTop + lTextH, m_clrForeColorHeader, m_clrBackColorHeader, jgexAlignLeft, uNav.MiddleX, uNav.Width
+    pvDrawText hDC, uNav.Prefix, uNav.PrefixX, lTextTop, uNav.PrefixX + pvTextWidth(hDC, uNav.Prefix), lTextTop + lTextH, vbButtonText, UserControl.BackColor, jgexAlignLeft, uNav.PrefixX, uNav.Width
+    pvDrawText hDC, uNav.Middle, uNav.MiddleX, lTextTop, uNav.MiddleX + pvTextWidth(hDC, uNav.Middle), lTextTop + lTextH, vbButtonText, UserControl.BackColor, jgexAlignLeft, uNav.MiddleX, uNav.Width
     '--- the record number sits at the top of the box's interior rather than
     '--- centring in what is left of the band, which the two only tell apart
     '--- once the band height turns odd: a pixel lower at 144dpi
@@ -4265,6 +4492,9 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
                 ControlSubclassProc = MA_NOACTIVATE
                 Handled = True
             End If
+        Case WM_PAINT
+            pvOnPaint hWnd
+            Handled = True
         Case WM_ERASEBKGND
             If m_bRecordNavigator Then
                 ControlSubclassProc = 1
@@ -4281,6 +4511,9 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         GoTo QH
     End If
     Select Case wMsg
+    Case WM_PAINT
+        pvOnPaint hWnd
+        Handled = True
     Case WM_ERASEBKGND
         ControlSubclassProc = 1
         Handled = True
@@ -4295,6 +4528,11 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         End If
         If Not m_oDragCol Is Nothing Then
             pvEndColDrag bCancel:=True
+        End If
+    Case WM_TIMER
+        If wParam = DRAG_SCROLL_ID Then
+            LeftCol = m_lLeftCol + m_lDragScroll
+            Handled = True
         End If
     Case WM_VSCROLL
         pvOnVScroll LoWord(wParam), HiWord(wParam)
@@ -4340,7 +4578,7 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         If oSizeCol Is Nothing Then
             RaiseEvent DblClick
         Else
-            frAutoSizeCol oSizeCol
+            frColAutoSize oSizeCol
         End If
     Case WM_MOUSEMOVE
         '--- no button while a column is being sized: the grid has the mouse
@@ -4541,35 +4779,12 @@ Private Function pvAutoSizeWidth(ByVal lColIndex As Long) As Long
     Call ReleaseDC(picGrid.hWnd, hDC)
 End Function
 
-'--- renumbering, since a position is a property each column carries: the ones
-'--- the move steps over shift by one the other way. Both the header drag and
-'--- an assignment to ColPosition come here, so neither can leave a gap
-Friend Sub frMoveCol(oCol As JSColumn, ByVal lNewPos As Long)
-    Dim lIdx            As Long
-    Dim lOldPos         As Long
-    Dim oItem           As JSColumn
-
-    lNewPos = Clamp(lNewPos, 1, m_oColumns.Count)
-    lOldPos = oCol.ColPosition
-    If lNewPos = lOldPos Then
-        Exit Sub
-    End If
-    For lIdx = 1 To m_oColumns.Count
-        Set oItem = m_oColumns.Item(lIdx)
-        If oItem.ColPosition > lOldPos And oItem.ColPosition <= lNewPos Then
-            oItem.frColPosition = oItem.ColPosition - 1
-        ElseIf oItem.ColPosition >= lNewPos And oItem.ColPosition < lOldPos Then
-            oItem.frColPosition = oItem.ColPosition + 1
-        End If
-    Next
-    oCol.frColPosition = lNewPos
-End Sub
-
 '--- the press on a header is still a click for as long as the pointer stays
 '--- within the double-click box around it -- the same slack the shell gives a
 '--- second click -- and leaving it is what turns the press into a move
 Private Sub pvOnColDrag(ByVal lX As Long, ByVal lY As Long)
     Dim oTarget         As JSColumn
+    Dim lScroll         As Long
 
     If Not m_bDragging Then
         If Not m_bAllowColumnDrag Then
@@ -4585,10 +4800,22 @@ Private Sub pvOnColDrag(ByVal lX As Long, ByVal lY As Long)
     '--- the capture keeps WM_SETCURSOR from arriving, so the pointer is put
     '--- up here for as long as the drag lasts
     pvSetCursor
-    '--- the header the pointer is over is where the column lands if it is
-    '--- dropped now, and the mark on it moves with the pointer -- once per
-    '--- header crossed, not once per pixel the pointer travels
-    If lX >= 0 And lX < picGrid.ScaleWidth Then
+    lScroll = 0
+    If lX < 0 Then
+        lScroll = -1
+    ElseIf lX >= picGrid.ScaleWidth Then
+        lScroll = 1
+    End If
+    If lScroll <> m_lDragScroll Then
+        m_lDragScroll = lScroll
+        If lScroll = 0 Then
+            Call KillTimer(picGrid.hWnd, DRAG_SCROLL_ID)
+        Else
+            Call SetTimer(picGrid.hWnd, DRAG_SCROLL_ID, DRAG_SCROLL_MS, 0)
+            LeftCol = m_lLeftCol + m_lDragScroll
+        End If
+    End If
+    If lScroll = 0 Then
         pvColAtX lX, oTarget
     End If
     If Not oTarget Is m_oDropCol Then
@@ -4615,6 +4842,10 @@ Private Sub pvEndColDrag(ByVal bCancel As Boolean)
     End If
     m_bDragging = False
     Call ReleaseCapture
+    If m_lDragScroll <> 0 Then
+        Call KillTimer(picGrid.hWnd, DRAG_SCROLL_ID)
+        m_lDragScroll = 0
+    End If
     '--- let go of it outside the grid and it stays where it was: only a drop
     '--- on a header is a drop on a position
     If bCancel Or oTarget Is Nothing Then
@@ -4627,34 +4858,11 @@ Private Sub pvEndColDrag(ByVal bCancel As Boolean)
     Set oCancel = New JSRetBoolean
     RaiseEvent BeforeColMove(oCol, lNewPos, oCancel)
     If Not oCancel.Value Then
-        frMoveCol oCol, lNewPos
+        frColMove oCol, lNewPos
         RaiseEvent AfterColMove
     End If
 QH:
     '--- the header that was inverted has to come back either way
-    pvInvalidate
-End Sub
-
-'--- a double-click on the divider fits the column to what it holds, and the
-'--- client hears about it the way it hears about a drag: the width proposed,
-'--- the column still on its old one, and a refusal leaving it there
-Friend Sub frAutoSizeCol(oCol As JSColumn)
-    Dim oCancel         As JSRetBoolean
-    Dim lWidth          As Long
-
-    lWidth = pvAutoSizeWidth(oCol.Index)
-    If lWidth < MIN_COL_W Then
-        lWidth = MIN_COL_W
-    End If
-    m_lSizeStartW = pvColWidth(oCol)
-    oCol.frWidthPx = lWidth
-    lWidth = oCol.Width
-    oCol.frWidthPx = m_lSizeStartW
-    Set oCancel = New JSRetBoolean
-    RaiseEvent ColResize(oCol.Index, lWidth, oCancel)
-    If Not oCancel.Value Then
-        oCol.Width = lWidth
-    End If
     pvInvalidate
 End Sub
 
@@ -5237,6 +5445,7 @@ Private Sub pvOnLButtonDown(ByVal lX As Long, ByVal lY As Long, ByVal lShift As 
             Set m_oDragCol = oCol
             m_lDragStartX = lX
             m_lDragStartY = lY
+            pvInvalidateHeaders
         End If
     ElseIf m_lRowHeight > 0 Then
         '--- data area cell
@@ -5576,30 +5785,6 @@ EH:
     PrintError FUNC_NAME
 End Sub
 
-Private Sub UserControl_Paint()
-    Const FUNC_NAME     As String = "UserControl_Paint"
-
-    '--- the navigator lives in the band, which is the outer control's own
-    '--- client area -- picGrid covers everything above it
-    On Error GoTo EH
-    If m_bRecordNavigator Then
-        pvPaintNavigator UserControl.hDC
-    End If
-    Exit Sub
-EH:
-    PrintError FUNC_NAME
-End Sub
-
-Private Sub picGrid_Paint()
-    Const FUNC_NAME     As String = "picGrid_Paint"
-
-    On Error GoTo EH
-    pvPaint picGrid.hDC
-    Exit Sub
-EH:
-    PrintError FUNC_NAME
-End Sub
-
 Private Sub UserControl_Resize()
     Const FUNC_NAME     As String = "UserControl_Resize"
 
@@ -5701,6 +5886,7 @@ End Sub
 Private Sub UserControl_Terminate()
     pvDestroyEditor
     pvUnsubclass
+    pvBufferRelease
     If Not m_oGroups Is Nothing Then
         m_oGroups.frTerminate
         Set m_oGroups = Nothing

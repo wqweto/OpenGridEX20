@@ -121,7 +121,7 @@ Public Property Let ColPosition(ByVal nValue As Integer)
     If m_pOwner Is Nothing Then
         m_lColPosition = nValue
     Else
-        m_pOwner.frMoveCol Me, nValue
+        m_pOwner.frColMove Me, nValue
     End If
 End Property
 
@@ -502,7 +502,7 @@ End Property
 Public Sub AutoSize()
 Attribute AutoSize.VB_Description = "Adjusts the width of a column to accommodate the longest text."
     If Not m_pOwner Is Nothing Then
-        m_pOwner.frAutoSizeCol Me
+        m_pOwner.frColAutoSize Me
     End If
 End Sub
 
