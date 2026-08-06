@@ -5,6 +5,7 @@ Begin VB.UserControl GridEX
    ClientLeft      =   0
    ClientTop       =   0
    ClientWidth     =   3840
+   HasDC           =   0   'False
    ScaleHeight     =   240
    ScaleMode       =   3  'Pixel
    ScaleWidth      =   320
@@ -13,6 +14,7 @@ Begin VB.UserControl GridEX
       BackColor       =   &H80000005&
       BorderStyle     =   0  'None
       ForeColor       =   &H80000008&
+      HasDC           =   0   'False
       Height          =   2415
       Left            =   0
       ScaleHeight     =   201
@@ -535,6 +537,7 @@ Private Const CHECK_BOX_H               As Long = 12
 Private Const CHECK_BOX_CLR             As Long = &H696969
 Private Const CHECK_BOX_CLR_CUR         As Long = &H646464
 
+'--- property backing variables
 Private m_lFrozenColumns            As Long
 Private m_lRowHeight                As Long
 Private m_eOLEDropMode              As jgexOleDropModeConstants
@@ -568,15 +571,10 @@ Private m_eNewRowPos                As jgexNewRowPosConstants
 Private m_lItemCount                As Long
 Private m_eDataMode                 As jgexDataModeConstants
 Private m_lLeftCol                  As Long
-Private m_hScrollH                  As Long
-Private m_bHScroll                  As Boolean
-Private m_bBand                     As Boolean
 Private WithEvents m_oColumnHeaderFont As StdFont
 Attribute m_oColumnHeaderFont.VB_VarHelpID = -1
 Private WithEvents m_oFont          As StdFont
 Attribute m_oFont.VB_VarHelpID = -1
-Private m_bRowHeightSet             As Boolean
-Private m_bScrollUpdating           As Boolean
 Private m_lFirstItem                As Long
 Private m_eGridLines                As jgexGridLinesConstants
 Private m_clrGridLinesColor         As OLE_COLOR
@@ -584,9 +582,6 @@ Private m_clrBackColorBkg           As OLE_COLOR
 Private m_lCardSpacing              As Long
 Private m_lCardWidth                As Long
 Private m_lRow                      As Long
-'--- the current row's wrapper, the page's own instance of it. Written wherever
-'--- m_lRow is, and what Value, DataChanged and the pending row read
-Private m_oRowData                  As JSRowData
 Private m_sErrorText                As String
 Private m_bAllowEdit                As Boolean
 Private m_bAllowDelete              As Boolean
@@ -648,6 +643,13 @@ Private m_vScrollToolTipColumn      As Variant
 Private m_bAutomaticSort            As Boolean
 Private m_lPreviewRowIndent         As Long
 Private m_bAllowRowSizing           As Boolean
+Private m_hWndEdit                  As Long
+'--- not backing property
+Private m_hWndHScroll               As Long
+Private m_bBandVisible              As Boolean
+Private m_bRowHeightSet             As Boolean
+Private m_bScrollUpdating           As Boolean
+Private m_oRowData                  As JSRowData
 Private m_pSubclassPic              As IUnknown
 Private m_pSubclassCtl              As IUnknown
 Private m_lSelAnchor                As Long
@@ -659,14 +661,13 @@ Private m_bWindowDirty              As Boolean
 Private m_lVersion                  As Long
 Private m_lHoldRowIndex             As Long
 Private m_bInPendCommit             As Boolean
-Private m_bSortDirty                As Boolean
 Private m_bInSet                    As Boolean
 Private m_bEditing                  As Boolean
 Private m_lEditRow                  As Long
 Private m_lEditCol                  As Long
 Private m_sEditOldValue             As String
 Private m_bInEditSetup              As Boolean
-Private m_hWndEdit                  As Long
+Private m_bClickOpenedEdit          As Boolean
 Private m_pSubclassEdit             As IUnknown
 
 Private Type UcsNavLayout
@@ -794,13 +795,13 @@ Public Property Let RowSelected(ByVal RowPosition As Long, ByVal bValue As Boole
         If Not pvIsRowSelected(RowPosition) Then
             pvAddSel RowPosition
             RaiseEvent SelectionChange
-            pvInvalidate
+            pvInvalidate SkipScroll:=True
         End If
     Else
         If pvIsRowSelected(RowPosition) Then
             m_oSelectedItems.RemoveRowPosition RowPosition
             RaiseEvent SelectionChange
-            pvInvalidate
+            pvInvalidate SkipScroll:=True
         End If
     End If
 End Property
@@ -833,7 +834,7 @@ Public Property Let Col(ByVal nValue As Integer)
         m_lCol = nValue
         '--- the current cell is drawn out of the selected row it sits in, so
         '--- moving between columns is a repaint and not only an event
-        pvInvalidate
+        pvInvalidate SkipScroll:=True
         RaiseEvent RowColChange(m_lRow, lLastCol)
     End If
 End Property
@@ -1019,7 +1020,7 @@ Public Property Let ItemCount(ByVal lValue As Long)
     '--- own, so setting it is what makes it re-read the source
     m_pDataModel.Refresh
     m_bWindowDirty = True
-    frSortChanged bInvalidate:=True
+    frNotifySortChanged
 End Property
 
 Public Property Get DataMode() As jgexDataModeConstants
@@ -1045,21 +1046,14 @@ Public Property Let LeftCol(ByVal nValue As Integer)
     '--- scrolling stops once the last column reaches the right edge, so a
     '--- value past that clamps -- the frozen block is not scrolled over and
     '--- takes its width out of the strip the rest has to fill
-    lMax = pvVisibleColCount() - pvVisibleColsInWidth(pvScrollableWidth(), pvFrozenCount() + 1) + 1
+    lMax = pvVisibleColCount() - pvColsFitFrom(pvScrollableWidth(), pvFrozenCount() + 1) + 1
     If lMax < 1 Then
         lMax = 1
     End If
-    If nValue > lMax Then
-        nValue = lMax
-    End If
-    If nValue < 1 Then
-        nValue = 1
-    End If
+    nValue = Clamp(nValue, 1, lMax)
     If m_lLeftCol <> nValue Then
         m_lLeftCol = nValue
-        '--- painting starts at the left-most column, so scrolling repaints
         pvInvalidate
-        pvUpdateScrollBars
         RaiseEvent LeftColChange
     End If
 End Property
@@ -1098,8 +1092,8 @@ Public Property Let FirstItem(ByVal lValue As Long)
     End If
     If m_lFirstItem <> lValue Then
         m_lFirstItem = lValue
-        RaiseEvent FirstItemChange
         pvInvalidate
+        RaiseEvent FirstItemChange
     End If
 End Property
 
@@ -1177,7 +1171,7 @@ Public Property Let Row(ByVal lValue As Long)
         m_oSelectedItems.Clear
         pvAddSel m_lRow
         m_lSelAnchor = m_lRow
-        pvInvalidate
+        pvInvalidate SkipScroll:=True
     End If
 End Property
 
@@ -1413,7 +1407,7 @@ Public Property Let Value(ByVal ColIndex As Integer, ByVal vntValue As Variant)
     End If
     m_oRowData.frAllowUpdate = True
     m_oRowData.Value(ColIndex) = vntValue
-    pvInvalidate
+    pvInvalidate SkipScroll:=True
 End Property
 
 Public Property Get FullyLoaded() As Boolean
@@ -1844,7 +1838,8 @@ End Sub
 
 Public Sub CollapseAll()
 Attribute CollapseAll.VB_Description = "Collapses all group rows."
-    pvSetAllCollapsed True
+    m_pDataModel.SetAllExpanded False
+    pvRecalcVisible
 End Sub
 
 '--- the level a group row sits at, 0 for a record: read off the page buffer
@@ -1871,13 +1866,9 @@ Public Sub RefreshGroups(Optional ByVal AllCollapsed As Boolean)
 Attribute RefreshGroups.VB_Description = "Forces recalculation of groups."
     '--- the groups are rebuilt from scratch, which resets every expand box
     '--- to DefaultGroupMode unless this call overrides it
-    m_pDataModel.RefreshGroups
+    m_pDataModel.RefreshGroups AllCollapsed
     pvSyncProjection
-    If AllCollapsed Then
-        pvSetAllCollapsed True
-    Else
-        pvInvalidate
-    End If
+    pvInvalidate
 End Sub
 
 Public Sub EnsureVisible(Optional ByVal Row As Long, Optional ByVal Col As Integer)
@@ -1961,7 +1952,8 @@ End Sub
 
 Public Sub ExpandAll()
 Attribute ExpandAll.VB_Description = "Expands all group rows."
-    pvSetAllCollapsed False
+    m_pDataModel.SetAllExpanded True
+    pvRecalcVisible
 End Sub
 
 Public Function HitTest(ByVal X As Long, ByVal Y As Long) As jgexHitTestConstants
@@ -2103,13 +2095,8 @@ End Sub
 
 Public Function GetRowData(ByVal RowPosition As Long) As JSRowData
 Attribute GetRowData.VB_Description = "Returns a JSRowData object representing a row."
-    '--- the page buffer where the row is on show, so what RowFormat wrote is
-    '--- on the wrapper the client gets back and the identity holds for the
-    '--- population; a row off the page is minted for the occasion
     Set GetRowData = pvRowDataAt(RowPosition)
     If GetRowData Is Nothing Then
-        '--- a position past the last row still answers with a wrapper rather
-        '--- than Nothing, which is what the client can call members on
         Set GetRowData = New JSRowData
         GetRowData.frReset m_oColumns.Count
     End If
@@ -2117,16 +2104,10 @@ End Function
 
 '= friend ================================================================
 
-Friend Sub frSortChanged(Optional ByVal bInvalidate As Boolean)
-    m_bSortDirty = True
-    '--- SortKeys and Groups both come through here, and the model cannot tell
-    '--- which moved -- RefreshGroups rebuilds the group rows and re-sorts
-    '--- under them, so it covers either. No remap of the current row here:
-    '--- this only marks the order stale, and remapping eagerly would move the
-    '--- marquee on every collection edit rather than once, when it rebuilds
-    m_pDataModel.RefreshGroups
+Friend Sub frNotifySortChanged()
+    m_pDataModel.RefreshGroups False
     m_bWindowDirty = True
-    If bInvalidate And Not m_bInSet Then
+    If Not m_bInSet Then
         pvInvalidate
     End If
 End Sub
@@ -2138,6 +2119,29 @@ Friend Function frColIsGrouped(ByVal lColIndex As Long) As Boolean
         If m_oGroups.Item(lIdx).ColIndex = lColIndex Then
             frColIsGrouped = True
             Exit For
+        End If
+    Next
+End Function
+
+Friend Function frColSortOrder(ByVal lColIndex As Long) As jgexSortOrderConstants
+    Dim lIdx            As Long
+    Dim oKey            As JSSortKey
+    Dim oGroup          As JSGroup
+
+    '--- grouping sorts by the column too, and the original marks the header
+    '--- with the same arrow an explicit sort key gets
+    For lIdx = 1 To m_oGroups.Count
+        Set oGroup = m_oGroups.Item(lIdx)
+        If oGroup.ColIndex = lColIndex Then
+            frColSortOrder = oGroup.SortOrder
+            Exit Function
+        End If
+    Next
+    For lIdx = 1 To m_oSortKeys.Count
+        Set oKey = m_oSortKeys.Item(lIdx)
+        If oKey.ColIndex = lColIndex Then
+            frColSortOrder = oKey.SortOrder
+            Exit Function
         End If
     Next
 End Function
@@ -2165,55 +2169,23 @@ Friend Sub frRaiseUnboundDelete(ByVal lRowIndex As Long, vBookmark As Variant)
     RaiseEvent UnboundDelete(lRowIndex, vBookmark)
 End Sub
 
-Friend Function frFireFetchData(ByVal lRowIndex As Long, ByVal lColIndex As Long, vBookmark As Variant) As Variant
+Friend Function frRaiseFetchData(ByVal lRowIndex As Long, ByVal lColIndex As Long, vBookmark As Variant) As Variant
     Dim oValue          As JSRetVariant
 
     Set oValue = New JSRetVariant
     RaiseEvent FetchData(lRowIndex, lColIndex, vBookmark, oValue)
-    AssignVariant frFireFetchData, oValue.Value
+    AssignVariant frRaiseFetchData, oValue.Value
 End Function
 
-Friend Function frFireFetchIcon(ByVal lRowIndex As Long, ByVal lColIndex As Long, vBookmark As Variant) As Long
+Friend Function frRaiseFetchIcon(ByVal lRowIndex As Long, ByVal lColIndex As Long, vBookmark As Variant) As Long
     Dim oIconIndex      As JSRetInteger
 
     Set oIconIndex = New JSRetInteger
     RaiseEvent FetchIcon(lRowIndex, lColIndex, vBookmark, oIconIndex)
-    frFireFetchIcon = oIconIndex.Value
-End Function
-
-Friend Function frColSortOrder(ByVal lColIndex As Long) As jgexSortOrderConstants
-    Dim lIdx            As Long
-    Dim oKey            As JSSortKey
-    Dim oGroup          As JSGroup
-
-    '--- grouping sorts by the column too, and the original marks the header
-    '--- with the same arrow an explicit sort key gets
-    For lIdx = 1 To m_oGroups.Count
-        Set oGroup = m_oGroups.Item(lIdx)
-        If oGroup.ColIndex = lColIndex Then
-            frColSortOrder = oGroup.SortOrder
-            Exit Function
-        End If
-    Next
-    For lIdx = 1 To m_oSortKeys.Count
-        Set oKey = m_oSortKeys.Item(lIdx)
-        If oKey.ColIndex = lColIndex Then
-            frColSortOrder = oKey.SortOrder
-            Exit Function
-        End If
-    Next
+    frRaiseFetchIcon = oIconIndex.Value
 End Function
 
 '= private ===============================================================
-
-Private Function pvRowDataAt(ByVal lRowPosition As Long) As JSRowData
-    Set pvRowDataAt = pvWindowRow(lRowPosition)
-    If pvRowDataAt Is Nothing Then
-        If lRowPosition >= 1 And lRowPosition <= m_pDataModel.RowCount Then
-            Set pvRowDataAt = m_pDataModel.GetRowData(lRowPosition)
-        End If
-    End If
-End Function
 
 Private Sub pvCreateDataModel()
     Dim oUnbound        As cUnboundDataModel
@@ -2238,10 +2210,6 @@ Private Sub pvCreateDataModel()
     End Select
 End Sub
 
-'--- the page the grid is showing, one wrapper per display position. The
-'--- model fills each one and RowFormat decorates it here, once, so a repaint
-'--- is a walk over buffers rather than a walk back into the data source --
-'--- which is what the original does: a bare WM_PAINT raises nothing
 Private Sub pvPopulateWindow()
     Dim lFirst          As Long
     Dim lCount          As Long
@@ -2290,15 +2258,6 @@ Private Sub pvPopulateWindow()
     pvSyncRowData
 End Sub
 
-'--- the marquee and the selection stay on the records they were on, wherever
-'--- a reprojection puts them. The model bumps Version in DataProject and
-'--- nowhere else, so that is what the control watches: the record under the
-'--- current row is held as a row index -- the one address space a
-'--- reprojection cannot move -- and resolved back to a position when the
-'--- version moves
-'--- a collapse reprojects without re-sorting, so it deliberately leaves
-'--- Version alone -- held group wrappers must survive one, which the probe
-'--- pinned. The rows still move, so the remap is called there directly
 Private Sub pvRemapCurrent()
     Dim oItem           As JSSelectedItem
 
@@ -2342,6 +2301,15 @@ Private Sub pvSyncRowData()
     Set m_oRowData = oRowData
 End Sub
 
+Private Function pvRowDataAt(ByVal lRowPosition As Long) As JSRowData
+    Set pvRowDataAt = pvWindowRow(lRowPosition)
+    If pvRowDataAt Is Nothing Then
+        If lRowPosition >= 1 And lRowPosition <= m_pDataModel.RowCount Then
+            Set pvRowDataAt = m_pDataModel.GetRowData(lRowPosition)
+        End If
+    End If
+End Function
+
 Private Function pvWindowRow(ByVal lPos As Long) As JSRowData
     If lPos >= m_lWindowFirst And lPos < m_lWindowFirst + m_lWindowCount Then
         Set pvWindowRow = m_aWindow(lPos - m_lWindowFirst + 1)
@@ -2365,11 +2333,6 @@ Private Sub pvRecalcVisible()
     pvRemapCurrent
     m_bWindowDirty = True
     pvInvalidate
-End Sub
-
-Private Sub pvSetAllCollapsed(ByVal bValue As Boolean)
-    m_pDataModel.SetAllExpanded Not bValue
-    pvRecalcVisible
 End Sub
 
 Private Function pvIsGroupRow(ByVal lPos As Long) As Boolean
@@ -2776,13 +2739,14 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal lY As Long)
     '--- separator strip the original draws along the bottom edge when the
     '--- band takes over the last client row -- the horizontal scrollbar puts
     '--- it there, and so does a record navigator with no scrollbar beside it
-    If m_bBand Then
+    If m_bBandVisible Then
         pvLine hDC, 0, picGrid.ScaleHeight - 1, picGrid.ScaleWidth, picGrid.ScaleHeight - 1, m_clrBackColorHeader, PS_SOLID
     End If
 End Sub
 
 Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, ByVal lTotalW As Long)
     Dim bSelected       As Boolean
+    Dim bCurrentRow     As Boolean
     Dim clrBack         As OLE_COLOR
     Dim clrText         As OLE_COLOR
     Dim lFillL          As Long
@@ -2802,6 +2766,10 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
 
     '--- the current row is always shown selected, as in the original
     bSelected = pvIsRowSelected(lRow) Or (m_lRow >= 1 And lRow = m_lRow)
+    '--- a block of rows has no current cell to lift out of it: what is
+    '--- selected paints as one, and only a selection of one row singles the
+    '--- cell the marquee is on out of it
+    bCurrentRow = bSelected And lRow = m_lRow And m_oSelectedItems.Count <= 1
     If bSelected Then
         pvSelColors clrBack, clrText
     ElseIf m_bUseEvenOddColor Then
@@ -2850,7 +2818,7 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
             '--- inside a selected row the current cell keeps the plain colors:
             '--- Col = 0 selects the whole row and nothing is singled out, but
             '--- once a cell is current the original lifts it out of the block
-            If bSelected And m_lCol = lPos And lRow = m_lRow Then
+            If bCurrentRow And m_lCol = lPos Then
                 '--- inset where the marquee runs, so the row's selection colour
                 '--- still shows in the band its XOR checkerboard inverts
                 '--- against -- that is the row's own edge, not the boundary
@@ -2874,7 +2842,7 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
                 '--- a checkbox column draws its state instead of its text, and
                 '--- the box on the current cell is outlined a shade darker
                 pvPaintCheckBox hDC, lX + (lW - CHECK_BOX_W) \ 2 - 1, lRowTop + (pvRowContentH(lRowH) - CHECK_BOX_H) \ 2, _
-                    pvIsChecked(pvWindowRow(lRow), oCol.Index), (bSelected And m_lCol = lPos And lRow = m_lRow)
+                    pvIsChecked(pvWindowRow(lRow), oCol.Index), (bCurrentRow And m_lCol = lPos)
                 sText = vbNullString
             Else
                 sText = pvCellText(pvWindowRow(lRow), oCol.Index)
@@ -3360,7 +3328,7 @@ Private Function pvPenStyle() As Long
     End Select
 End Function
 
-Private Sub pvInvalidate()
+Private Sub pvInvalidate(Optional ByVal SkipScroll As Boolean)
     Const FUNC_NAME     As String = "pvInvalidate"
 
     '--- tolerate refresh before the control window exists
@@ -3370,10 +3338,16 @@ Private Sub pvInvalidate()
     If Not m_bRedraw Then
         Exit Sub
     End If
-    pvUpdateScrollBars
-    picGrid.Refresh
+    If Not SkipScroll Then
+        pvUpdateScrollBars
+    End If
+    pvLayoutEditor
+    Call InvalidateRect(picGrid.hWnd, 0, 0)
     If m_bRecordNavigator Then
-        UserControl.Refresh
+        Call InvalidateRect(UserControl.hWnd, 0, 1)
+        If hsbGrid.Visible Then
+            Call InvalidateRect(hsbGrid.hWnd, 0, 1)
+        End If
     End If
     Exit Sub
 EH:
@@ -3442,22 +3416,17 @@ Private Function pvVisibleColCount() As Long
 End Function
 
 Private Function pvClampRow(ByVal lRow As Long) As Long
-    pvClampRow = lRow
-    If pvClampRow < 1 Then
-        pvClampRow = 1
-    ElseIf pvClampRow > RowCount Then
-        pvClampRow = RowCount
-    End If
+    pvClampRow = Clamp(lRow, 1, RowCount)
 End Function
 
 Private Function pvHitScrollBar() As Boolean
     Dim uPt             As POINTAPI
 
-    If m_hScrollH = 0 Then
+    If m_hWndHScroll = 0 Then
         Exit Function
     End If
     Call GetCursorPos(uPt)
-    pvHitScrollBar = (WindowFromPoint(uPt.X, uPt.Y) = m_hScrollH)
+    pvHitScrollBar = (WindowFromPoint(uPt.X, uPt.Y) = m_hWndHScroll)
 End Function
 
 Private Function pvNavLayout(uNav As UcsNavLayout) As Boolean
@@ -3465,6 +3434,7 @@ Private Function pvNavLayout(uNav As UcsNavLayout) As Boolean
     Dim lBtnTop         As Long
     Dim lBtnH           As Long
     Dim lBoxW           As Long
+    Dim hDC             As Long
     Dim hPrevFont       As Long
     Dim lX              As Long
     Dim vSplit          As Variant
@@ -3490,10 +3460,14 @@ Private Function pvNavLayout(uNav As UcsNavLayout) As Boolean
     lBtnW = uNav.BandH + 1
     lBtnTop = uNav.BandTop + 1
     lBtnH = uNav.BandH - 1
-    hPrevFont = pvSelectFont(UserControl.hDC, m_oFont)
+    '--- asked for rather than read off the control: HasDC is False on both
+    '--- surfaces, so hDC answers for the paint in hand and nothing else, and
+    '--- this layout is wanted from a hit test as much as from the paint
+    hDC = GetDC(UserControl.hWnd)
+    hPrevFont = pvSelectFont(hDC, m_oFont)
     lX = 4
     uNav.PrefixX = lX
-    lX = lX + pvTextWidth(UserControl.hDC, uNav.Prefix) + 4
+    lX = lX + pvTextWidth(hDC, uNav.Prefix) + 4
     pvSetRect uNav.BtnFirst, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
     lX = lX + lBtnW
     pvSetRect uNav.BtnPrev, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
@@ -3504,19 +3478,20 @@ Private Function pvNavLayout(uNav As UcsNavLayout) As Boolean
     '--- exactly the width of "9999999" (42, 49 and 63) grown by the border.
     '--- Measured, not derived from tmAveCharWidth: that averages the whole
     '--- charset (5, 7 and 8 px here) and does not track the digit advance
-    lBoxW = pvTextWidth(UserControl.hDC, "9999999") + 4
+    lBoxW = pvTextWidth(hDC, "9999999") + 4
     '--- the box is taller than the band and clipped by it, like the original's
     '--- TextBox (53x24 inside a 22px band at 120dpi)
     pvSetRect uNav.Box, lX, uNav.BandTop, lX + lBoxW, uNav.BandTop + uNav.BandH + 4
     lX = lX + lBoxW + 4
     uNav.MiddleX = lX
-    lX = lX + pvTextWidth(UserControl.hDC, uNav.Middle) + 8
+    lX = lX + pvTextWidth(hDC, uNav.Middle) + 8
     pvSetRect uNav.BtnNext, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
     lX = lX + lBtnW
     pvSetRect uNav.BtnLast, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
     lX = lX + lBtnW
     uNav.Width = lX
-    Call SelectObject(UserControl.hDC, hPrevFont)
+    Call SelectObject(hDC, hPrevFont)
+    Call ReleaseDC(UserControl.hWnd, hDC)
     pvNavLayout = True
 End Function
 
@@ -3537,14 +3512,6 @@ Private Function pvTextWidth(ByVal hDC As Long, sText As String) As Long
     '--- original lays its group-by chip out with
     Call GetTextExtentPoint32(hDC, StrPtr(sText), Len(sText), uSize)
     pvTextWidth = uSize.cx
-End Function
-
-Private Function pvNavigatorWidth() As Long
-    Dim uNav            As UcsNavLayout
-
-    If pvNavLayout(uNav) Then
-        pvNavigatorWidth = uNav.Width
-    End If
 End Function
 
 Private Sub pvOnNavigatorClick(ByVal lX As Long, ByVal lY As Long)
@@ -3706,7 +3673,7 @@ Private Sub pvLayoutGrid()
     '--- the grid surface owns everything above the scrollbar band, so its
     '--- own WS_VSCROLL stops where the band starts -- which is what makes
     '--- the vertical thumb geometry match the original
-    If m_bBand Then
+    If m_bBandVisible Then
         lBandH = GetSystemMetrics(SM_CYHSCROLL)
     End If
     picGrid.Move 0, 0, UserControl.ScaleWidth, UserControl.ScaleHeight - lBandH
@@ -3714,21 +3681,26 @@ End Sub
 
 Private Sub pvLayoutHScroll(ByVal bNeedH As Boolean, ByVal bNeedV As Boolean)
     Dim lBandH          As Long
+    Dim lNavW           As Long
+    Dim uNav            As UcsNavLayout
 
     '--- a VB6 HScrollBar rather than a Win32 SCROLLBAR child: the original
     '--- is a VB6 control too, so the runtime draws both with the same code
     '--- and the shaft dither matches by construction
     If Not bNeedH Then
         hsbGrid.Visible = False
-        m_hScrollH = 0
+        m_hWndHScroll = 0
         Exit Sub
     End If
     lBandH = GetSystemMetrics(SM_CYHSCROLL)
     '--- the band stops at the client width, leaving the usual corner gap
     '--- under the vertical bar, as the original's does
-    hsbGrid.Move pvNavigatorWidth(), UserControl.ScaleHeight - lBandH, picGrid.ScaleWidth - pvNavigatorWidth(), lBandH
+    If pvNavLayout(uNav) Then
+        lNavW = uNav.Width
+    End If
+    hsbGrid.Move lNavW, UserControl.ScaleHeight - lBandH, picGrid.ScaleWidth - lNavW, lBandH
     hsbGrid.Visible = True
-    m_hScrollH = hsbGrid.hWnd
+    m_hWndHScroll = hsbGrid.hWnd
 End Sub
 
 Private Sub pvUpdateScrollBars()
@@ -3763,7 +3735,7 @@ Private Sub pvUpdateScrollBars()
     '--- bar for columns that do fit and pays for it out of the vertical page,
     '--- which is a thumb short by a row
     lFullH = picGrid.ScaleHeight
-    If m_bBand Then
+    If m_bBandVisible Then
         lFullH = lFullH + GetSystemMetrics(SM_CYHSCROLL)
     End If
     lFullW = picGrid.ScaleWidth
@@ -3814,80 +3786,42 @@ Private Sub pvUpdateScrollBars()
             If m_lRowHeight > 0 Then
                 .nPage = lAvailH \ m_lRowHeight
             End If
-            If m_lFirstItem > 0 Then
-                .nPos = m_lFirstItem - 1
-            End If
+            m_lFirstItem = Clamp(m_lFirstItem, 1, RowCount - .nPage + 1)
+            .nPos = m_lFirstItem - 1
         End With
         Call SetScrollInfo(picGrid.hWnd, SB_VERT, uSi, 1)
     End If
-    m_bHScroll = bNeedH
     '--- the band hosts the navigator as well, so it can be there without a
     '--- horizontal scrollbar
-    m_bBand = bNeedH Or m_bRecordNavigator
+    m_bBandVisible = bNeedH Or m_bRecordNavigator
     '--- the band appearing takes height away from the grid surface
     pvLayoutGrid
     pvLayoutHScroll bNeedH, bNeedV
     If bNeedH Then
-        '--- the bar scrolls the columns after the frozen block, so both its
-        '--- range and its position count from there
-        lPage = pvVisibleColsInWidth(pvScrollableWidth(), pvFrozenCount() + 1)
+        lPage = pvColsFitFrom(pvScrollableWidth(), pvFrozenCount() + 1)
         If lPage < 1 Then
             lPage = 1
         End If
-        hsbGrid.LargeChange = 1
-        hsbGrid.Min = 0
-        hsbGrid.Max = pvVisibleColCount() - pvFrozenCount() - lPage
-        If hsbGrid.Max < 1 Then
-            hsbGrid.Max = 1
-        End If
-        If m_lLeftCol - pvFrozenCount() - 1 >= 0 And m_lLeftCol - pvFrozenCount() - 1 <= hsbGrid.Max Then
-            hsbGrid.Value = m_lLeftCol - pvFrozenCount() - 1
-        End If
-        pvSetHScrollInfo
+        '--- the vertical block is done with it by now, and every field this
+        '--- one reads is written below
+        With uSi
+            .cbSize = Len(uSi)
+            .fMask = SIF_RANGE Or SIF_PAGE Or SIF_POS
+            .nMin = pvFrozenCount() + 1
+            .nMax = pvVisibleColCount() - lPage + 1
+            If .nMax < .nMin Then
+                .nMax = .nMin
+            End If
+            .nPage = 1
+            m_lLeftCol = Clamp(m_lLeftCol, .nMin, .nMax)
+            .nPos = m_lLeftCol
+        End With
+        Call SetScrollInfo(hsbGrid.hWnd, SB_CTL, uSi, 1)
+    ElseIf m_lLeftCol > 1 Then
+        '--- they all fit now, so nothing is scrolled off at all
+        m_lLeftCol = 1
     End If
     m_bScrollUpdating = False
-End Sub
-
-Private Sub pvSetHScrollInfo()
-    Dim uSi             As SCROLLINFO
-    Dim lPage           As Long
-
-    '--- a column wider than the room left after the frozen block still counts
-    '--- as the one on show, or the last LeftCol lands past the final column
-    '--- and the thumb comes out a step too small -- which is what 1500 twip
-    '--- columns do at 144dpi, where they take 150px of the 72 left over
-    lPage = pvVisibleColsInWidth(pvScrollableWidth(), pvFrozenCount() + 1)
-    If lPage < 1 Then
-        lPage = 1
-    End If
-    '--- VB6 maps a scrollbar's Min..Max onto 0..32767 before handing it to
-    '--- Windows, and the thumb it computes from that lands a pixel off the
-    '--- original's. The original keeps the column numbers themselves in the
-    '--- scroll info (min=first scrollable, max=last valid LeftCol, page=1),
-    '--- read back with GetScrollInfo, so set those over VB6's mapping
-    uSi.cbSize = Len(uSi)
-    uSi.fMask = SIF_RANGE Or SIF_PAGE Or SIF_POS
-    uSi.nMin = pvFrozenCount() + 1
-    uSi.nMax = pvVisibleColCount() - lPage + 1
-    If uSi.nMax < uSi.nMin Then
-        uSi.nMax = uSi.nMin
-    End If
-    uSi.nPage = 1
-    uSi.nPos = m_lLeftCol
-    '--- VB6's own Min/Max/Value carry the same column numbers, so whichever
-    '--- of the two a drag ends up reported through says the same thing. They
-    '--- were never set at all, which left Value on its 0 and every drag on
-    '--- the first column. Assigning them here is safe: the caller holds
-    '--- m_bScrollUpdating, which is what pvOnHScroll checks before acting
-    If hsbGrid.Min <> uSi.nMin Or hsbGrid.Max <> uSi.nMax Then
-        hsbGrid.Min = uSi.nMin
-        hsbGrid.Max = uSi.nMax
-    End If
-    If hsbGrid.Value <> m_lLeftCol And m_lLeftCol >= uSi.nMin And m_lLeftCol <= uSi.nMax Then
-        hsbGrid.Value = m_lLeftCol
-    End If
-    Call SetScrollInfo(hsbGrid.hWnd, SB_CTL, uSi, 0)
-    hsbGrid.Refresh
 End Sub
 
 Private Function pvTotalColWidth() As Long
@@ -4000,12 +3934,11 @@ Private Function pvFrozenCount() As Long
     End If
 End Function
 
-Private Function pvVisibleColsInWidth(ByVal lWidth As Long, Optional ByVal lStart As Long = 1) As Long
+Private Function pvColsFitFrom(ByVal lWidth As Long, ByVal lStart As Long) As Long
     Dim lIdx            As Long
     Dim oCol            As JSColumn
     Dim lCum            As Long
 
-    '--- how many whole columns fit in lWidth starting at lStart
     For lIdx = lStart To m_oColumns.Count
         Set oCol = m_oColumns.ItemByPosition(lIdx)
         If oCol.Visible Then
@@ -4016,11 +3949,31 @@ Private Function pvVisibleColsInWidth(ByVal lWidth As Long, Optional ByVal lStar
             If lCum >= lWidth Then
                 Exit Function
             End If
-            pvVisibleColsInWidth = pvVisibleColsInWidth + 1
+            pvColsFitFrom = pvColsFitFrom + 1
         End If
     Next
-    If pvVisibleColsInWidth < 1 Then
-        pvVisibleColsInWidth = 1
+    If pvColsFitFrom < 1 Then
+        pvColsFitFrom = 1
+    End If
+End Function
+
+Private Function pvColsFitBefore(ByVal lWidth As Long, ByVal lStart As Long) As Long
+    Dim lIdx            As Long
+    Dim oCol            As JSColumn
+    Dim lCum            As Long
+
+    For lIdx = lStart - 1 To pvFrozenCount() + 1 Step -1
+        Set oCol = m_oColumns.ItemByPosition(lIdx)
+        If oCol.Visible Then
+            lCum = lCum + pvColWidth(oCol)
+            If lCum >= lWidth Then
+                Exit For
+            End If
+            pvColsFitBefore = pvColsFitBefore + 1
+        End If
+    Next
+    If pvColsFitBefore < 1 Then
+        pvColsFitBefore = 1
     End If
 End Function
 
@@ -4263,7 +4216,7 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         '--- scrollbar's colour and activation messages
         Select Case wMsg
         Case WM_LBUTTONDOWN
-            pvOnNavigatorClick pvLoWord(lParam), pvHiWord(lParam)
+            pvOnNavigatorClick GetXLParam(lParam), GetYLParam(lParam)
         Case WM_MOUSEACTIVATE
             If pvHitScrollBar() Then
                 ControlSubclassProc = MA_NOACTIVATE
@@ -4271,12 +4224,20 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
             End If
         Case WM_CTLCOLORSCROLLBAR
             Handled = True
+        Case WM_HSCROLL
+            If lParam = hsbGrid.hWnd Then
+                pvOnHScroll LoWord(wParam), HiWord(wParam)
+                Handled = True
+            End If
         End Select
         GoTo QH
     End If
     Select Case wMsg
+    Case WM_ERASEBKGND
+        ControlSubclassProc = 1
+        Handled = True
     Case WM_VSCROLL
-        pvOnVScroll wParam And &HFFFF&, (wParam And &HFFFF0000) \ &H10000
+        pvOnVScroll LoWord(wParam), HiWord(wParam)
         Handled = True
     Case WM_KEYDOWN
         nKeyCode = CInt(wParam And &HFFFF&)
@@ -4284,29 +4245,23 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         RaiseEvent KeyDown(nKeyCode, nShift)
         pvOnKeyDown nKeyCode, nShift
     Case WM_LBUTTONDOWN
-        '--- the cell change and the editor it opens are announced before the
-        '--- click itself reaches the client, which is the order the original
-        '--- raises them in. The mouse events carry container units, as it
-        '--- reports them too: a click 38 pixels in comes out as 570 twips
-        pvOnLButtonDown pvLoWord(lParam), pvHiWord(lParam), pvMouseShift(wParam)
-        RaiseEvent MouseDown(vbLeftButton, pvMouseShift(wParam), pvLoWord(lParam) * Screen.TwipsPerPixelX, pvHiWord(lParam) * Screen.TwipsPerPixelY)
-        '--- the grid's own click handling takes the focus for itself, which
-        '--- would kill the caret an in-place editor just created, so the
-        '--- default runs here and the editor takes the focus back after it
+        pvOnLButtonDown GetXLParam(lParam), GetYLParam(lParam), pvMouseShift(wParam)
+        RaiseEvent MouseDown(vbLeftButton, pvMouseShift(wParam), GetXLParam(lParam) * Screen.TwipsPerPixelX, GetYLParam(lParam) * Screen.TwipsPerPixelY)
         If m_hWndEdit <> 0 Then
             ControlSubclassProc = CallNextSubclassProc(m_pSubclassPic, hWnd, wMsg, wParam, lParam)
             Handled = True
             Call SetFocusApi(m_hWndEdit)
         End If
     Case WM_LBUTTONUP
-        RaiseEvent MouseUp(vbLeftButton, pvMouseShift(wParam), pvLoWord(lParam) * Screen.TwipsPerPixelX, pvHiWord(lParam) * Screen.TwipsPerPixelY)
+        m_bClickOpenedEdit = False
+        RaiseEvent MouseUp(vbLeftButton, pvMouseShift(wParam), GetXLParam(lParam) * Screen.TwipsPerPixelX, GetYLParam(lParam) * Screen.TwipsPerPixelY)
         RaiseEvent Click
     Case WM_LBUTTONDBLCLK
         RaiseEvent DblClick
     Case WM_MOUSEMOVE
-        RaiseEvent MouseMove(pvMouseButton(wParam), pvMouseShift(wParam), pvLoWord(lParam) * Screen.TwipsPerPixelX, pvHiWord(lParam) * Screen.TwipsPerPixelY)
+        RaiseEvent MouseMove(pvMouseButton(wParam), pvMouseShift(wParam), GetXLParam(lParam) * Screen.TwipsPerPixelX, GetYLParam(lParam) * Screen.TwipsPerPixelY)
         If (wParam And MK_LBUTTON) <> 0 Then
-            pvOnMouseDrag pvHiWord(lParam)
+            pvOnMouseDrag GetYLParam(lParam)
         End If
     Case WM_CHAR
         nKeyAscii = CInt(wParam And &HFFFF&)
@@ -4326,11 +4281,11 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         End If
     End Select
 QH:
-    '--- note: performance optimization for design-time subclassing
-    If Not Handled And ThunkPrivateData(m_pSubclassPic) = EBMODE_DESIGN Then
-        Handled = True
-        ControlSubclassProc = CallNextSubclassProc(m_pSubclassPic, hWnd, wMsg, wParam, lParam)
-    End If
+'    '--- note: performance optimization for design-time subclassing
+'    If Not Handled And ThunkPrivateData(m_pSubclassPic) = EBMODE_DESIGN Then
+'        Handled = True
+'        ControlSubclassProc = CallNextSubclassProc(m_pSubclassPic, hWnd, wMsg, wParam, lParam)
+'    End If
 End Function
 
 Private Function pvShiftState() As Integer
@@ -4372,7 +4327,7 @@ Private Sub pvOnMouseDrag(ByVal lY As Long)
 
     '--- dragging with the left button held extends a multi-select range
     '--- from the mouse-down anchor to the row under the cursor
-    If Not m_bMultiSelect Or m_lRowHeight <= 0 Then
+    If Not m_bMultiSelect Or m_lRowHeight <= 0 Or m_bClickOpenedEdit Then
         Exit Sub
     End If
     lTopHdr = pvTopHeight()
@@ -4386,25 +4341,6 @@ Private Sub pvOnMouseDrag(ByVal lY As Long)
         EnsureVisible m_lRow
     End If
 End Sub
-
-Private Function pvMakeDWord(ByVal lLoWord As Long, ByVal lHiWord As Long) As Long
-    '--- the lParam shape the window messages take, low word first
-    pvMakeDWord = (lLoWord And &HFFFF&) Or (lHiWord * &H10000)
-End Function
-
-Private Function pvLoWord(ByVal lValue As Long) As Long
-    Dim nWord           As Integer
-
-    Call CopyMemory(nWord, lValue, 2)
-    pvLoWord = nWord
-End Function
-
-Private Function pvHiWord(ByVal lValue As Long) As Long
-    Dim nWord           As Integer
-
-    Call CopyMemory(nWord, ByVal VarPtr(lValue) + 2, 2)
-    pvHiWord = nWord
-End Function
 
 Private Function pvColAtX(ByVal lX As Long, oCol As JSColumn) As Long
     Dim lCum            As Long
@@ -4437,10 +4373,11 @@ Private Function pvGroupAtPoint(ByVal lX As Long, ByVal lY As Long, oGroup As JS
     '--- has not painted yet still hit-tests, and a caption or font changed
     '--- since would otherwise leave the rectangles behind. It costs one text
     '--- measurement per group level, on a click
-    hDC = picGrid.hDC
+    hDC = GetDC(picGrid.hWnd)
     hPrevFont = pvSelectFont(hDC, m_oFont)
     pvLayoutGroupChips hDC, 0
     Call SelectObject(hDC, hPrevFont)
+    Call ReleaseDC(picGrid.hWnd, hDC)
     For lIdx = 1 To m_oGroups.Count
         Set oItem = m_oGroups.Item(lIdx)
         With oItem.frChipRect
@@ -4489,7 +4426,7 @@ Private Function pvBeginEdit(ByVal lPos As Long, ByVal lCol As Long, ByVal bSele
     If oCancel.Value Then
         Exit Function
     End If
-    If Not pvCellRect(lPos, lCol, lX, lY, lW) Then
+    If Not pvCellRect(lPos, oCol.Index, lX, lY, lW) Then
         Exit Function
     End If
     If oCol.EditType = jgexEditCheckBox Then
@@ -4498,10 +4435,27 @@ Private Function pvBeginEdit(ByVal lPos As Long, ByVal lCol As Long, ByVal bSele
         '--- Anywhere in the cell counts -- 064 clicks well left of the box and
         '--- still toggles, and a point a row above it toggles at 144dpi too
         Value(oCol.Index) = Not pvIsChecked(pvRowDataAt(lPos), oCol.Index)
+        pvInvalidate SkipScroll:=True
         RaiseEvent Change
-        pvInvalidate
         pvBeginEdit = True
         Exit Function
+    End If
+    '--- the cell opens the box, so it has to be all the way inside the view
+    '--- first: a click on a row or a column hanging off the edge scrolls it
+    '--- in, and the click is carried along with it so the caret still lands
+    '--- where it was put
+    If lClickX >= 0 Then
+        lClickX = lClickX - lX
+        lClickY = lClickY - lY
+    End If
+    EnsureVisible lPos
+    pvEnsureColVisible lPos, oCol.Index
+    If Not pvCellRect(lPos, oCol.Index, lX, lY, lW) Then
+        Exit Function
+    End If
+    If lClickX >= 0 Then
+        lClickX = lClickX + lX
+        lClickY = lClickY + lY
     End If
     m_bInEditSetup = True
     m_bEditing = True
@@ -4578,7 +4532,7 @@ Private Function pvBeginEdit(ByVal lPos As Long, ByVal lCol As Long, ByVal bSele
         If lClickY - lTextTop >= uMetrics.tmHeight Then
             lCaret = Len(m_sEditOldValue)
         Else
-            lCaret = SendMessage(m_hWndEdit, EM_CHARFROMPOS, 0, pvMakeDWord(lClickX - lX, lClickY - lTextTop))
+            lCaret = SendMessage(m_hWndEdit, EM_CHARFROMPOS, 0, MakeDWord(lClickX - lX, lClickY - lTextTop))
             If lCaret = -1 Then
                 '--- the point fell outside the editor, which answers with the end
                 lCaret = Len(m_sEditOldValue)
@@ -4667,8 +4621,8 @@ Private Sub pvCancelRow()
     If m_lRow >= m_lWindowFirst And m_lRow < m_lWindowFirst + m_lWindowCount Then
         Set m_aWindow(m_lRow - m_lWindowFirst + 1) = m_oRowData
     End If
+    pvInvalidate SkipScroll:=True
     RaiseEvent RowFormat(m_oRowData)
-    pvInvalidate
 End Sub
 
 Private Sub pvEndEdit(Optional ByVal bCancel As Boolean)
@@ -4709,12 +4663,12 @@ Private Sub pvEndEdit(Optional ByVal bCancel As Boolean)
         End If
     End If
 QH:
+    pvInvalidate SkipScroll:=True
     RaiseEvent AfterColEdit(lCol)
     '--- the editor window is gone by now, so the grid takes the focus back
     '--- through the API rather than through VB, which raises when the control
     '--- is not in a state to take it
     Call SetFocusApi(hWnd)
-    pvInvalidate
 End Sub
 
 Private Function pvGroupByBoxHeight() As Long
@@ -4760,14 +4714,15 @@ Private Function pvColByPosition(ByVal lPos As Long) As JSColumn
     Next
 End Function
 
-Private Function pvCellRect(ByVal lPos As Long, ByVal lCol As Long, lX As Long, lY As Long, lW As Long) As Boolean
+Private Function pvCellRect(ByVal lPos As Long, ByVal lColIndex As Long, lX As Long, lY As Long, lW As Long) As Boolean
     Dim vOrder          As Variant
     Dim lIdx            As Long
-    Dim lSeen           As Long
     Dim oItem           As JSColumn
     Dim lCum            As Long
 
-    '--- where the cell sits in the control, which is where the editor goes
+    '--- where the cell sits in the control, which is where the editor goes.
+    '--- Keyed by the column rather than by its place among the visible ones,
+    '--- since scrolling moves that place while the cell stays the same cell
     If m_lRowHeight <= 0 Or lPos < m_lFirstItem Then
         Exit Function
     End If
@@ -4777,8 +4732,7 @@ Private Function pvCellRect(ByVal lPos As Long, ByVal lCol As Long, lX As Long, 
     For lIdx = 0 To pvOrderMax(vOrder)
         Set oItem = m_oColumns.ItemByPosition(vOrder(lIdx))
         If oItem.Visible Then
-            lSeen = lSeen + 1
-            If lSeen = lCol Then
+            If oItem.Index = lColIndex Then
                 lX = lCum
                 lW = pvColWidth(oItem)
                 pvCellRect = True
@@ -4788,6 +4742,91 @@ Private Function pvCellRect(ByVal lPos As Long, ByVal lCol As Long, lX As Long, 
         End If
     Next
 End Function
+
+'--- the editor follows its cell: the grid scrolling under it moves it, a
+'--- column half off the right edge clips it, and a cell scrolled out of the
+'--- view altogether takes it out of sight rather than leaving it floating
+Private Function pvEditorRect(lX As Long, lTop As Long, lW As Long, lH As Long) As Boolean
+    Dim lPos            As Long
+    Dim lY              As Long
+    Dim lCellW          As Long
+    Dim oCol            As JSColumn
+    Dim uMetrics        As TEXTMETRICW
+
+    '--- a selection of more than one row is a different mode: the box goes
+    '--- away rather than sitting on whichever of them holds the current cell
+    If m_oSelectedItems.Count > 1 Then
+        Exit Function
+    End If
+    lPos = m_pDataModel.GetRowPosition(m_lEditRow)
+    If lPos < 1 Then
+        Exit Function
+    End If
+    If Not pvCellRect(lPos, m_lEditCol, lX, lY, lCellW) Then
+        Exit Function
+    End If
+    Set oCol = m_oColumns.Item(m_lEditCol)
+    uMetrics = FontTextMetrics(m_oFont)
+    lTop = lY + (pvRowContentH(m_lRowHeight) - uMetrics.tmHeight) \ 2
+    lH = uMetrics.tmHeight
+    If oCol.WordWrap Then
+        lTop = lY + 1
+        lH = pvRowContentH(m_lRowHeight) - 2
+    End If
+    lX = lX + 1
+    lW = lCellW - 4
+    '--- what is left of the cell inside the grid surface: a column half off
+    '--- the right edge leaves a narrower box, and a part-row at the bottom
+    '--- keeps its own, clipped by the window it sits in. Only a cell with
+    '--- nothing left inside the surface at all goes away
+    If lW > picGrid.ScaleWidth - lX Then
+        lW = picGrid.ScaleWidth - lX
+    End If
+    pvEditorRect = (lW > 0 And lTop < picGrid.ScaleHeight)
+End Function
+
+'--- a column half off the right edge is walked in one at a time; one that
+'--- scrolled off the left is not in the order at all, so the view walks back
+'--- to it. Both loops are bounded by the column count, since LeftCol clamps
+'--- and would otherwise leave them turning
+Private Sub pvEnsureColVisible(ByVal lPos As Long, ByVal lColIndex As Long)
+    Dim lIdx            As Long
+    Dim lX              As Long
+    Dim lY              As Long
+    Dim lW              As Long
+
+    For lIdx = 1 To m_oColumns.Count
+        If pvCellRect(lPos, lColIndex, lX, lY, lW) Or m_lLeftCol <= 1 Then
+            Exit For
+        End If
+        LeftCol = m_lLeftCol - 1
+    Next
+    For lIdx = 1 To m_oColumns.Count
+        If Not pvCellRect(lPos, lColIndex, lX, lY, lW) Then
+            Exit For
+        End If
+        If lX + lW <= picGrid.ScaleWidth Or lX <= pvBlockLeft() Then
+            Exit For
+        End If
+        LeftCol = m_lLeftCol + 1
+    Next
+End Sub
+
+Private Sub pvLayoutEditor()
+    Dim lX              As Long
+    Dim lTop            As Long
+    Dim lW              As Long
+    Dim lH              As Long
+
+    If m_hWndEdit = 0 Then
+        Exit Sub
+    End If
+    If pvEditorRect(lX, lTop, lW, lH) Then
+        Call SetWindowPos(m_hWndEdit, 0, lX, lTop, lW, lH, SWP_NOZORDER Or SWP_SHOWWINDOW)
+    Else
+        Call SetWindowPos(m_hWndEdit, 0, 0, 0, 0, 0, SWP_NOMOVE Or SWP_NOSIZE Or SWP_NOZORDER Or SWP_HIDEWINDOW)
+    End If
+End Sub
 
 Private Sub pvAutoSort(oCol As JSColumn)
     Dim lIdx            As Long
@@ -4852,8 +4891,15 @@ Private Sub pvOnLButtonDown(ByVal lX As Long, ByVal lY As Long, ByVal lShift As 
         If lRow >= 1 And lRow <= RowCount And lPos >= 1 Then
             pvNavigate lRow, lPos, lShift, (lShift And vbCtrlMask) <> 0
             '--- clicking a cell opens its editor, which is what BeforeColEdit
-            '--- announces -- and it happens before the client sees MouseDown
-            pvBeginEdit lRow, lPos, False, lX, lY
+            '--- announces -- and it happens before the client sees MouseDown.
+            '--- The click belongs to the editor from there on: the button is
+            '--- still down over the grid, and without this the first move
+            '--- would drag a selection out of the cell being edited
+            '--- Ctrl+click is a selection gesture and nothing else: it picks
+            '--- the row up or puts it down, and no editor opens under it
+            If (lShift And vbCtrlMask) = 0 Then
+                m_bClickOpenedEdit = pvBeginEdit(lRow, lPos, False, lX, lY)
+            End If
         End If
     End If
 End Sub
@@ -4905,7 +4951,7 @@ Private Sub pvSetRow(ByVal lValue As Long)
         If m_pDataModel.RowIndex(m_lRow) > 0 Then
             m_lHoldRowIndex = m_pDataModel.RowIndex(m_lRow)
         End If
-        pvInvalidate
+        pvInvalidate SkipScroll:=True
         RaiseEvent RowColChange(lLastRow, m_lCol)
     End If
 End Sub
@@ -4942,15 +4988,37 @@ Private Sub pvNavigate(ByVal lRow As Long, ByVal lCol As Long, ByVal lShift As L
 End Sub
 
 Private Sub pvUpdateSelection(ByVal lRow As Long, ByVal lShift As Long, ByVal bCtrlToggle As Boolean)
+    Dim bSame           As Boolean
+
     If lRow < 1 Or lRow > RowCount Then
         Exit Sub
     End If
     If m_bMultiSelect And bCtrlToggle Then
-        pvToggleSel lRow
+        If pvIsRowSelected(lRow) Then
+            m_oSelectedItems.RemoveRowPosition lRow
+        Else
+            pvAddSel lRow
+        End If
+        m_lSelAnchor = lRow
+        pvInvalidate SkipScroll:=True
+        RaiseEvent SelectionChange
     ElseIf m_bMultiSelect And (lShift And vbShiftMask) <> 0 Then
         pvSetRangeSel m_lSelAnchor, lRow
     Else
-        pvSetSingleSel lRow
+        '--- re-selecting the row that already is the whole selection changes
+        '--- nothing, and the original stays quiet about it -- a click that only
+        '--- moves the column raises RowColChange and no more
+        bSame = (m_oSelectedItems.Count = 1)
+        If bSame Then
+            bSame = (m_oSelectedItems.Item(1).RowPosition = lRow)
+        End If
+        m_oSelectedItems.Clear
+        pvAddSel lRow
+        m_lSelAnchor = lRow
+        pvInvalidate SkipScroll:=True
+        If Not bSame Then
+            RaiseEvent SelectionChange
+        End If
     End If
 End Sub
 
@@ -4974,36 +5042,6 @@ Private Sub pvAddSel(ByVal lPos As Long)
     m_oSelectedItems.frAdd lPos, m_pDataModel.RowBookmark(lRow), lRow
 End Sub
 
-Private Sub pvSetSingleSel(ByVal lPos As Long)
-    Dim bSame           As Boolean
-
-    '--- re-selecting the row that already is the whole selection changes
-    '--- nothing, and the original stays quiet about it -- a click that only
-    '--- moves the column raises RowColChange and no more
-    bSame = (m_oSelectedItems.Count = 1)
-    If bSame Then
-        bSame = (m_oSelectedItems.Item(1).RowPosition = lPos)
-    End If
-    m_oSelectedItems.Clear
-    pvAddSel lPos
-    m_lSelAnchor = lPos
-    If Not bSame Then
-        RaiseEvent SelectionChange
-    End If
-    pvInvalidate
-End Sub
-
-Private Sub pvToggleSel(ByVal lPos As Long)
-    If pvIsRowSelected(lPos) Then
-        m_oSelectedItems.RemoveRowPosition lPos
-    Else
-        pvAddSel lPos
-    End If
-    m_lSelAnchor = lPos
-    RaiseEvent SelectionChange
-    pvInvalidate
-End Sub
-
 Private Sub pvSetRangeSel(ByVal lFrom As Long, ByVal lTo As Long)
     Dim lLo             As Long
     Dim lHi             As Long
@@ -5023,19 +5061,9 @@ Private Sub pvSetRangeSel(ByVal lFrom As Long, ByVal lTo As Long)
     For lIdx = lLo To lHi
         pvAddSel lIdx
     Next
+    pvInvalidate SkipScroll:=True
     RaiseEvent SelectionChange
-    pvInvalidate
 End Sub
-
-Private Function pvClampCol(ByVal lValue As Long) As Long
-    pvClampCol = lValue
-    If pvClampCol < 1 Then
-        pvClampCol = 1
-    End If
-    If pvClampCol > m_oColumns.Count Then
-        pvClampCol = m_oColumns.Count
-    End If
-End Function
 
 Private Sub pvOnVScroll(ByVal lCode As Long, ByVal lPos As Long)
     Dim uSi             As SCROLLINFO
@@ -5077,28 +5105,44 @@ Private Sub pvOnVScroll(ByVal lCode As Long, ByVal lPos As Long)
     End Select
 End Sub
 
-Private Sub pvOnHScroll(ByVal bTracking As Boolean)
+Private Sub pvOnHScroll(ByVal lCode As Long, ByVal lPos As Long)
     Dim uSi             As SCROLLINFO
 
     If m_bScrollUpdating Then
         Exit Sub
     End If
-    '--- the bar carries the column numbers pvSetHScrollInfo put on the window
-    '--- itself, over VB6's Min..Max mapping, so VB6's own Value knows nothing
-    '--- about them and reading it lands on the first column every time. The
-    '--- position comes back off the window for the same reason it went on.
-    '--- A drag reports where it is in nTrackPos, lPos still holding where it
-    '--- started; anything else has already moved lPos
-    uSi.cbSize = Len(uSi)
-    uSi.fMask = SIF_POS Or SIF_TRACKPOS
-    If GetScrollInfo(hsbGrid.hWnd, SB_CTL, uSi) = 0 Then
-        Exit Sub
-    End If
-    If bTracking Then
-        LeftCol = pvClampCol(uSi.nTrackPos)
-    Else
-        LeftCol = pvClampCol(uSi.nPos)
-    End If
+    '--- what the bar carries is column numbers, written onto the window by
+    '--- pvUpdateScrollBars, so a position out of the message is a column and
+    '--- needs no mapping back
+    Select Case lCode
+    Case SB_LINELEFT
+        LeftCol = m_lLeftCol - 1
+    Case SB_LINERIGHT
+        LeftCol = m_lLeftCol + 1
+    Case SB_PAGELEFT
+        LeftCol = m_lLeftCol - pvColsFitBefore(pvScrollableWidth(), m_lLeftCol)
+    Case SB_PAGERIGHT
+        LeftCol = m_lLeftCol + pvColsFitFrom(pvScrollableWidth(), m_lLeftCol)
+    Case SB_THUMBPOSITION, SB_THUMBTRACK
+        '--- while the thumb is being dragged the columns follow only with
+        '--- ContinuousScroll, otherwise they wait for the button release
+        If lCode = SB_THUMBTRACK And Not m_bContinuousScroll Then
+            Exit Sub
+        End If
+        '--- the position rides in the message, as it does for any range that
+        '--- fits 16 bits -- reading it back is only needed past that
+        If lPos = 0 Then
+            uSi.cbSize = Len(uSi)
+            uSi.fMask = SIF_TRACKPOS
+            Call GetScrollInfo(hsbGrid.hWnd, SB_CTL, uSi)
+            lPos = uSi.nTrackPos
+        End If
+        LeftCol = Clamp(lPos, 1, m_oColumns.Count)
+    Case SB_LEFT
+        LeftCol = 1
+    Case SB_RIGHT
+        LeftCol = m_oColumns.Count
+    End Select
 End Sub
 
 '=========================================================================
@@ -5137,26 +5181,6 @@ Private Sub UserControl_ReadProperties(PropBag As PropertyBag)
     On Error GoTo EH
     pvInheritAmbientFont
     pvSubclass
-    Exit Sub
-EH:
-    PrintError FUNC_NAME
-End Sub
-
-Private Sub hsbGrid_Change()
-    Const FUNC_NAME     As String = "hsbGrid_Change"
-
-    On Error GoTo EH
-    pvOnHScroll bTracking:=False
-    Exit Sub
-EH:
-    PrintError FUNC_NAME
-End Sub
-
-Private Sub hsbGrid_Scroll()
-    Const FUNC_NAME     As String = "hsbGrid_Scroll"
-
-    On Error GoTo EH
-    pvOnHScroll bTracking:=True
     Exit Sub
 EH:
     PrintError FUNC_NAME
@@ -5226,6 +5250,21 @@ EH:
     PrintError FUNC_NAME
 End Sub
 
+Private Sub UserControl_Hide()
+    Const FUNC_NAME     As String = "UserControl_Hide"
+    Dim bInIde          As Boolean: Debug.Assert SetTrue(bInIde)
+    
+    On Error GoTo EH
+    If bInIde Then
+        If Ambient.UserMode And EventsFrozen Then
+            UserControl_Terminate
+        End If
+    End If
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
 '=========================================================================
 ' Base class events
 '=========================================================================
@@ -5274,6 +5313,7 @@ Private Sub UserControl_Initialize()
     m_eCursorLocation = jgexUseServer
     m_eBorderStyle = jgexFixed
     m_lDefaultColumnWidth = 100
+    m_lLeftCol = 1
     m_oColumnHeaderFont_FontChanged vbNullString
     m_oFont_FontChanged vbNullString
     m_lImageWidth = 16

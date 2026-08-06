@@ -1053,3 +1053,75 @@ one row read the same as a sweep of two.
   open, so what was left was the two calls its callers can make themselves.
   `pvEndEdit` takes `Optional bCancel` now, so the four ordinary callers pass
   nothing and only Escape says what it is
+
+### Fixed (the bars, the editor and the paint)
+
+- The horizontal bar is driven by the `WM_HSCROLL` its own window sends to the
+  parent, decoded like the vertical one has always been -- line, page, thumb
+  and end. It used to come through VB's `Change`/`Scroll` events, which report
+  VB's `Value` rather than the column numbers written onto the window, so a
+  drag that ended anywhere reported the first column. VB's `Min`/`Max`/`Value`
+  are no longer written at all: two sets of numbers on one window is what made
+  the two disagree
+- `LeftCol` and `FirstItem` are re-clamped wherever the room changes, not just
+  where they are assigned: widening a grid parked at the right end, or making
+  one taller parked at the bottom, brings the columns and rows hidden off the
+  other side back into view instead of painting blank where they were. The two
+  are not symmetric -- a client's `FirstItem` past the end sticks where every
+  row fits, which the nav event order pins, while `LeftCol` goes back to the
+  first column
+- The in-place editor follows its cell. It was placed once, at creation, and
+  left there: scrolling moved the grid out from under it. `pvLayoutEditor` runs
+  on every repaint and moves it, clips it where its column is half off the
+  right edge, and puts it away when the cell is off the view altogether --
+  which needed `pvCellRect` keyed by the column itself, since a column's place
+  among the visible ones moves with `LeftCol`
+- A cell is scrolled all the way into view before its editor opens on it, and
+  the click is carried along with the scroll so the caret still lands where it
+  was put
+- The editor goes away while more than one row is selected, and a block of rows
+  paints as one: no current cell is lifted out of it
+- Ctrl+click selects and nothing else -- no editor opens under it -- and the
+  click that does open one keeps its drag, since the button is still down over
+  the grid and the first move would otherwise drag a selection out of the cell
+  being edited
+- `WM_ERASEBKGND` is answered by the grid: `pvPaint` covers the whole surface,
+  so erasing first only paints the background twice
+- Painting goes through `InvalidateRect`/`UpdateWindow` rather than VB's
+  `Refresh`. With `HasDC = False` on both surfaces, `hDC` answers for the paint
+  in hand and nothing else, so the two places that measure text for a hit test
+  ask for a DC of their own -- and the band, which fills the full width, puts
+  the scrollbar back over itself afterwards
+
+### Changed (naming and shape)
+
+- `LoWord`/`HiWord` are unsigned, as the macros they mirror are, and the signed
+  pair is `GetXLParam`/`GetYLParam` after the `windowsx.h` names -- a scroll
+  position counts, a mouse coordinate measures, and only one of them may come
+  back negative. `MakeDWord` and a `Clamp` sit beside them in `mdGlobals.bas`
+- `frRaiseFetchData`/`frRaiseFetchIcon` join the four `frRaiseUnbound*` raisers
+  under one prefix; `frSortChanged` is `frNotifySortChanged`, which is what it
+  does -- a collection telling the control, not an event going out
+- `IDataModel.RefreshGroups` takes `bAllCollapsed`, so the rebuild and the
+  collapse are one pass rather than a reprojection each
+- `pvInvalidate` takes `SkipScroll`, passed by the eleven callers that move the
+  marquee, the selection or a cell's contents -- none of which can change what
+  a scrollbar is
+- Dead state removed: `m_bHScroll` and `m_bSortDirty` were written and never
+  read. `m_bBand` is `m_bBandVisible`, `m_hScrollH` is `m_hWndHScroll`, and the
+  member block is property-backing storage first, then the control's own state
+
+### Changed (weak references and the horizontal page)
+
+- The eight classes that point back at their owner set and clear that pointer
+  through `mdGlobals.SetWeakRef` rather than each writing it raw. Under the IDE
+  it takes a real reference instead, so Stop never finds a member holding a
+  pointer nothing AddRef-ed -- a leak while debugging in place of a crash
+- A horizontal page is what the strip can hold rather than a fixed number of
+  columns: paging right starts the view on the column that was cut off at the
+  right edge, paging left leaves the column the view started on cut off there
+  instead. It had been reading `nPage` back off the bar, which the range in
+  column numbers keeps at 1, so a page moved exactly one column
+- `pvVisibleColsInWidth` is `pvColsFitFrom`, beside a new `pvColsFitBefore`
+  counting the other way, which is what the two page directions ask for. Both
+  answer at least one, so a page always moves

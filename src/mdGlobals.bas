@@ -52,10 +52,14 @@ Public Const SIF_POS                    As Long = 4
 Public Const SWP_NOSIZE                 As Long = 1
 Public Const SWP_NOMOVE                 As Long = 2
 Public Const SWP_NOZORDER               As Long = 4
+Public Const SWP_SHOWWINDOW             As Long = &H40
+Public Const SWP_HIDEWINDOW             As Long = &H80
+Public Const SW_HIDE                    As Long = 0
 Public Const SWP_FRAMECHANGED           As Long = &H20
 Public Const SIF_TRACKPOS               As Long = &H10
 Public Const SM_CXVSCROLL               As Long = 2
 Public Const SM_CYHSCROLL               As Long = 3
+Public Const WM_HSCROLL                 As Long = &H114
 Public Const WM_VSCROLL                 As Long = &H115
 Public Const WM_KEYDOWN                  As Long = &H100
 Public Const WM_LBUTTONDOWN              As Long = &H201
@@ -73,7 +77,14 @@ Public Const SB_PAGEUP                  As Long = 2
 Public Const SB_PAGEDOWN                As Long = 3
 Public Const SB_THUMBPOSITION           As Long = 4
 Public Const SB_THUMBTRACK              As Long = 5
+Public Const SB_LINELEFT                As Long = 0
+Public Const SB_LINERIGHT               As Long = 1
+Public Const SB_PAGELEFT                As Long = 2
+Public Const SB_PAGERIGHT               As Long = 3
+Public Const SB_LEFT                    As Long = 6
+Public Const SB_RIGHT                   As Long = 7
 Public Const EBMODE_DESIGN              As Long = 0
+Public Const WM_ERASEBKGND              As Long = &H14
 Public Const WM_MOUSEACTIVATE           As Long = &H21
 Public Const WM_CTLCOLORSCROLLBAR       As Long = &H137
 Public Const MA_NOACTIVATE              As Long = 3
@@ -114,6 +125,9 @@ Public Declare Function SendMessage Lib "user32" Alias "SendMessageW" (ByVal hWn
 Public Declare Function CreateWindowEx Lib "user32" Alias "CreateWindowExW" (ByVal dwExStyle As Long, ByVal lpClassName As Long, ByVal lpWindowName As Long, ByVal dwStyle As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hWndParent As Long, ByVal hMenu As Long, ByVal hInstance As Long, lpParam As Any) As Long
 Public Declare Function DestroyWindow Lib "user32" (ByVal hWnd As Long) As Long
 Public Declare Function SetFocusApi Lib "user32" Alias "SetFocus" (ByVal hWnd As Long) As Long
+Public Declare Function ShowWindow Lib "user32" (ByVal hWnd As Long, ByVal nCmdShow As Long) As Long
+Public Declare Function InvalidateRect Lib "user32" (ByVal hWnd As Long, ByVal lpRect As Long, ByVal bErase As Long) As Long
+Public Declare Function UpdateWindow Lib "user32" (ByVal hWnd As Long) As Long
 Public Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (Destination As Any, Source As Any, ByVal Length As Long)
 Public Declare Function ArrPtr Lib "msvbvm60" Alias "VarPtr" (Ptr() As Any) As LongPtr
 Public Declare Function OleTranslateColor Lib "olepro32" (ByVal clrOle As OLE_COLOR, ByVal hPal As Long, clrRef As Long) As Long
@@ -206,6 +220,44 @@ Public Const LIB_NAME               As String = "OpenGridEX20"
 '=========================================================================
 ' Functions
 '=========================================================================
+
+Public Function Clamp(ByVal lValue As Long, ByVal lMin As Long, ByVal lMax As Long) As Long
+    Clamp = lValue
+    If Clamp < lMin Then
+        Clamp = lMin
+    ElseIf Clamp > lMax Then
+        Clamp = lMax
+    End If
+End Function
+
+'--- the lParam shape the window messages take, low word first
+Public Function MakeDWord(ByVal lLoWord As Long, ByVal lHiWord As Long) As Long
+    MakeDWord = (lLoWord And &HFFFF&) Or (lHiWord * &H10000)
+End Function
+
+'--- the halves as LOWORD and HIWORD give them: unsigned
+Public Function LoWord(ByVal lValue As Long) As Long
+    LoWord = lValue And &HFFFF&
+End Function
+
+Public Function HiWord(ByVal lValue As Long) As Long
+    HiWord = (lValue \ &H10000) And &HFFFF&
+End Function
+
+'--- and the coordinate pair an lParam carries, which is signed
+Public Function GetXLParam(ByVal lParam As Long) As Long
+    Dim nWord           As Integer
+
+    Call CopyMemory(nWord, lParam, 2)
+    GetXLParam = nWord
+End Function
+
+Public Function GetYLParam(ByVal lParam As Long) As Long
+    Dim nWord           As Integer
+
+    Call CopyMemory(nWord, ByVal VarPtr(lParam) + 2, 2)
+    GetYLParam = nWord
+End Function
 
 '--- metric props are stored internally in pixels and exposed in twips;
 '--- conversion snaps to the nearest whole pixel like the original
@@ -366,3 +418,18 @@ Public Sub LogError(sMessage As String, Optional ByVal lLine As Long)
 EH:
     bDisabled = True
 End Sub
+
+Public Function SetTrue(bValue As Boolean) As Boolean
+    bValue = True
+    SetTrue = True
+End Function
+
+Public Function SetWeakRef(oDst As Object, ByVal oSrc As Object) As Object
+    Dim bInIde          As Boolean: Debug.Assert SetTrue(bInIde)
+
+    If bInIde Then
+        Set oDst = oSrc
+    Else
+        Call CopyMemory(oDst, oSrc, PTR_SIZE)
+    End If
+End Function

@@ -47,7 +47,7 @@ End Property
 Public Property Let ColIndex(ByVal nValue As Integer)
     m_nColIndex = nValue
     If Not m_pOwner Is Nothing Then
-        m_pOwner.frSortChanged bInvalidate:=True
+        m_pOwner.frNotifySortChanged
     End If
 End Property
 
@@ -61,7 +61,7 @@ Public Property Let SortOrder(ByVal eValue As jgexSortOrderConstants)
     '--- flipping a key in place re-sorts, which is how the samples toggle
     '--- ascending/descending from a header click
     If Not m_pOwner Is Nothing Then
-        m_pOwner.frSortChanged bInvalidate:=True
+        m_pOwner.frNotifySortChanged
     End If
 End Property
 
@@ -70,14 +70,14 @@ End Property
 '=========================================================================
 
 Friend Sub frInit(ByVal oCtl As GridEX, ByVal nIndex As Integer, ByVal nColIndex As Integer, ByVal eSortOrder As jgexSortOrderConstants)
-    Call CopyMemory(m_pOwner, oCtl, PTR_SIZE)
+    SetWeakRef m_pOwner, oCtl
     m_nIndex = nIndex
     m_nColIndex = nColIndex
     m_eSortOrder = eSortOrder
 End Sub
 
 Friend Sub frTerminate()
-    Call CopyMemory(m_pOwner, NULL_PTR, PTR_SIZE)
+    SetWeakRef m_pOwner, Nothing
 End Sub
 
 Friend Sub frSetIndex(ByVal nIndex As Integer)

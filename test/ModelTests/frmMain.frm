@@ -66,6 +66,8 @@ Private Const MODULE_NAME As String = "frmMain"
 ' API
 '=========================================================================
 
+Private Const WM_HSCROLL            As Long = &H114
+Private Const WM_ERASEBKGND         As Long = &H14
 Private Const WM_VSCROLL            As Long = &H115
 Private Const WM_KEYDOWN            As Long = &H100
 Private Const WM_LBUTTONDOWN        As Long = &H201
@@ -73,16 +75,29 @@ Private Const WM_LBUTTONUP          As Long = &H202
 Private Const WM_MOUSEMOVE          As Long = &H200
 Private Const WM_CHAR               As Long = &H102
 Private Const MK_LBUTTON            As Long = &H1
+Private Const MK_CONTROL            As Long = &H8
 Private Const SB_LINEUP             As Long = 0
 Private Const SB_LINEDOWN           As Long = 1
 Private Const SB_PAGEDOWN           As Long = 3
 Private Const SB_THUMBPOSITION      As Long = 4
 Private Const SB_THUMBTRACK         As Long = 5
+Private Const SB_LINELEFT           As Long = 0
+Private Const SB_LINERIGHT          As Long = 1
+Private Const SB_PAGELEFT           As Long = 2
+Private Const SB_PAGERIGHT          As Long = 3
+Private Const SB_LEFT               As Long = 6
+Private Const SB_RIGHT              As Long = 7
+Private Const GW_CHILD              As Long = 5
+Private Const GW_HWNDNEXT           As Long = 2
 Private Const GWL_STYLE             As Long = -16
 Private Const WS_VSCROLL            As Long = &H200000
+Private Const WS_VISIBLE            As Long = &H10000000
 
 Private Declare Function SendMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long
 Private Declare Function GetParent Lib "user32" (ByVal hWnd As Long) As Long
+Private Declare Function GetWindow Lib "user32" (ByVal hWnd As Long, ByVal wCmd As Long) As Long
+Private Declare Function GetWindowRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
+Private Declare Function IsWindowVisible Lib "user32" (ByVal hWnd As Long) As Long
 Private Declare Function GetClientRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
 Private Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long) As Long
 Private Declare Function GetFocus Lib "user32" () As Long
@@ -131,6 +146,9 @@ Private Sub Form_Load()
     pvTestRowDataWeakRef
     pvTestUnbound
     pvTestScroll
+    pvTestHScroll
+    pvTestEditorFollowsScroll
+    pvTestEditorScrollsIn
     pvTestScrollProps
     pvTestItemCountInvalidate
     pvTestEditLeaveCell
@@ -502,6 +520,7 @@ End Sub
 
 Private Sub pvTestScroll()
     Dim oForm           As frmWeak
+    Dim lFirstItem      As Long
 
     Set oForm = New frmWeak
     Load oForm
@@ -522,9 +541,190 @@ Private Sub pvTestScroll()
         SendMessage .hWnd, WM_VSCROLL, SB_PAGEDOWN, 0
         Assert "Scroll: page down advances", .FirstItem > 2
         AssertEquals "Scroll: FirstItemChange event count", "First;First;First;First;", oForm.EventLog
+        '--- at the bottom, then given more room: the rows hidden above have to
+        '--- come back, or the grid paints blank where they were
+        .FirstItem = .RowCount
+        lFirstItem = .FirstItem
+        Assert "Scroll: the end is past the first row", lFirstItem > 1
+        .Height = .Height * 2
+        Assert "Scroll: a taller grid brings the rows above back", .FirstItem < lFirstItem
     End With
     Unload oForm
 End Sub
+
+'--- the horizontal bar is a window of its own and notifies its parent, which
+'--- is what the control listens to. A real drag cannot be driven from here --
+'--- a scrollbar runs a modal tracking loop on button down and a synthetic
+'--- click deadlocks the run -- but the notification it would send can be
+Private Sub pvTestHScroll()
+    Dim oForm           As frmWeak
+    Dim hParent         As Long
+    Dim hBar            As Long
+    Dim lIdx            As Long
+    Dim lLeftCol        As Long
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        For lIdx = 1 To 6
+            .Columns.Add("Col" & lIdx).Width = 1500
+        Next
+        .DataMode = jgexUnbound
+        .ItemCount = 3
+        .Rebind
+        AssertEquals "HScroll: LeftCol after Rebind", 1, .LeftCol
+        hParent = GetParent(.hWnd)
+        '--- two children under the band: the grid surface and the bar
+        hBar = GetWindow(hParent, GW_CHILD)
+        Do While hBar <> 0 And hBar = .hWnd
+            hBar = GetWindow(hBar, GW_HWNDNEXT)
+        Loop
+        Assert "HScroll: the bar has a window of its own", hBar <> 0
+        SendMessage hParent, WM_HSCROLL, SB_LINERIGHT, hBar
+        AssertEquals "HScroll: a line right moves one column", 2, .LeftCol
+        SendMessage hParent, WM_HSCROLL, SB_LINERIGHT, hBar
+        AssertEquals "HScroll: and another", 3, .LeftCol
+        SendMessage hParent, WM_HSCROLL, SB_LINELEFT, hBar
+        AssertEquals "HScroll: a line left moves back", 2, .LeftCol
+        '--- the column rides in the high word, which is what a dropped thumb
+        '--- reports: it used to land on the first column whatever it said
+        SendMessage hParent, WM_HSCROLL, SB_THUMBPOSITION Or 4 * &H10000, hBar
+        AssertEquals "HScroll: the thumb lands where it is dropped", 4, .LeftCol
+        SendMessage hParent, WM_HSCROLL, SB_LEFT, hBar
+        AssertEquals "HScroll: home goes to the first column", 1, .LeftCol
+        '--- a page is what the strip holds: the column cut in half at the
+        '--- right edge is the one the view starts on after paging right, and
+        '--- paging back leaves the column it started on cut off at that edge
+        SendMessage hParent, WM_HSCROLL, SB_PAGERIGHT, hBar
+        AssertEquals "HScroll: page right starts on the column that was cut off", 2, .LeftCol
+        SendMessage hParent, WM_HSCROLL, SB_PAGERIGHT, hBar
+        AssertEquals "HScroll: and again", 3, .LeftCol
+        SendMessage hParent, WM_HSCROLL, SB_PAGELEFT, hBar
+        AssertEquals "HScroll: page left puts it back at the right edge", 2, .LeftCol
+        SendMessage hParent, WM_HSCROLL, SB_PAGELEFT, hBar
+        AssertEquals "HScroll: and back to the first", 1, .LeftCol
+        '--- a drag reports itself all the way through, and the columns follow
+        '--- it only with ContinuousScroll -- otherwise they wait for the drop
+        SendMessage hParent, WM_HSCROLL, SB_THUMBTRACK Or 3 * &H10000, hBar
+        AssertEquals "HScroll: a track without ContinuousScroll waits", 1, .LeftCol
+        .ContinuousScroll = True
+        SendMessage hParent, WM_HSCROLL, SB_THUMBTRACK Or 3 * &H10000, hBar
+        AssertEquals "HScroll: with it the columns follow the thumb", 3, .LeftCol
+        '--- at the right end, then given more room: the columns hidden off the
+        '--- left have to come back, or the grid paints blank where they were
+        SendMessage hParent, WM_HSCROLL, SB_RIGHT, hBar
+        lLeftCol = .LeftCol
+        Assert "HScroll: the end is past the first column", lLeftCol > 1
+        .Width = .Width * 2
+        Assert "HScroll: widening brings the left-hand columns back", .LeftCol < lLeftCol
+        .Width = .Width * 4
+        AssertEquals "HScroll: room for all of them scrolls back to the first", 1, .LeftCol
+    End With
+    Unload oForm
+End Sub
+
+'--- the editor is a window of its own over the cell, so scrolling the grid
+'--- under it has to take it along, clip it where the cell is half off the
+'--- edge, and put it away once the cell is not on show at all. The host is
+'--- loaded and never shown, so what is asked is the editor's own style bit
+'--- rather than IsWindowVisible, which answers for the whole chain of parents
+Private Sub pvTestEditorFollowsScroll()
+    Dim oForm           As frmWeak
+    Dim hEdit           As Long
+    Dim uRect           As RECT
+    Dim lTop            As Long
+    Dim lWidth          As Long
+    Dim lIdx            As Long
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        For lIdx = 1 To 6
+            .Columns.Add("Col" & lIdx).Width = 1500
+        Next
+        .Columns.Item(1).EditType = jgexEditTextBox
+        .DataMode = jgexUnbound
+        .ItemCount = 50
+        .Rebind
+        .AllowEdit = True
+        '--- same geometry as pvTestEditLeaveCell: data from y=52, rows 19px,
+        '--- so (50, 80) is the second row
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 80)
+        hEdit = .hWndEdit
+        Assert "Editor: the editor opened", hEdit <> 0
+        Assert "Editor: and is shown", pvIsShown(hEdit)
+        Call GetWindowRect(hEdit, uRect)
+        lTop = uRect.Top
+        lWidth = uRect.Right - uRect.Left
+        '--- one row down: its own row moves up a row and it goes with it
+        .FirstItem = 2
+        Call GetWindowRect(hEdit, uRect)
+        Assert "Editor: a row scroll moves it up one row", uRect.Top < lTop
+        Assert "Editor: and leaves it shown", pvIsShown(hEdit)
+        '--- back where it was, to the pixel
+        .FirstItem = 1
+        Call GetWindowRect(hEdit, uRect)
+        AssertEquals "Editor: scrolling back puts it where it was", lTop, uRect.Top
+        '--- its row scrolled off the top of the view
+        .FirstItem = 20
+        Assert "Editor: a cell off the view hides it", Not pvIsShown(hEdit)
+        .FirstItem = 1
+        Assert "Editor: and coming back shows it again", pvIsShown(hEdit)
+        '--- its column half off the right edge leaves it narrower
+        .Width = .Width \ 2
+        Call GetWindowRect(hEdit, uRect)
+        Assert "Editor: a clipped column clips the editor", uRect.Right - uRect.Left < lWidth
+        Assert "Editor: and still shown", pvIsShown(hEdit)
+        '--- scrolled past, its column is not in the view at all
+        .Width = lWidth * 20
+        .LeftCol = 4
+        Assert "Editor: a column scrolled out of view hides it", Not pvIsShown(hEdit)
+        .LeftCol = 1
+        Assert "Editor: and scrolling back to it shows it again", pvIsShown(hEdit)
+        '--- more than one row selected is a different mode altogether
+        .MultiSelect = True
+        .RowSelected(3) = True
+        Assert "Editor: a second selected row hides it", Not pvIsShown(hEdit)
+        .RowSelected(3) = False
+        Assert "Editor: and one row again shows it", pvIsShown(hEdit)
+    End With
+    Unload oForm
+End Sub
+
+'--- a cell hanging off an edge is scrolled all the way in before its editor
+'--- opens on it, so the box is never born clipped
+Private Sub pvTestEditorScrollsIn()
+    Dim oForm           As frmWeak
+    Dim uRect           As RECT
+    Dim lIdx            As Long
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        For lIdx = 1 To 6
+            .Columns.Add("Col" & lIdx).Width = 1500
+        Next
+        .DataMode = jgexUnbound
+        .ItemCount = 50
+        .Rebind
+        .AllowEdit = True
+        '--- the second column hangs off the right edge at this width
+        AssertEquals "EditorScroll: starts on the first column", 1, .LeftCol
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(150, 80)
+        AssertEquals "EditorScroll: the part-shown column scrolled in", 2, .LeftCol
+        Call GetWindowRect(.hWndEdit, uRect)
+        Assert "EditorScroll: so the editor opened whole", uRect.Right - uRect.Left > 90
+        '--- and a row below the last one on show comes up to meet it
+        .FirstItem = 1
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 60)
+        AssertEquals "EditorScroll: a row above the view scrolls to it", 1, .FirstItem
+    End With
+    Unload oForm
+End Sub
+
+Private Function pvIsShown(ByVal hWnd As Long) As Boolean
+    pvIsShown = (GetWindowLong(hWnd, GWL_STYLE) And WS_VISIBLE) <> 0
+End Function
 
 Private Sub pvTestEditLeaveCell()
     Dim oForm           As frmWeak
@@ -977,6 +1177,10 @@ Private Sub pvTestKeyNav()
         .DataMode = jgexUnbound
         .ItemCount = 50
         .Rebind
+        '--- the paint leaves no pixel of the surface untouched, so the grid
+        '--- answers the erase itself rather than having it painted twice
+        AssertEquals "KeyNav: the grid takes the background erase", 1, _
+            SendMessage(.hWnd, WM_ERASEBKGND, 0, 0)
         AssertEquals "KeyNav: initial Row", 1, .Row
         '--- a fresh bind has the whole row selected, not a cell in it
         AssertEquals "KeyNav: initial Col", 0, .Col
@@ -1136,9 +1340,13 @@ Private Sub pvTestMouse()
         AssertEquals "Mouse: click sets Row 2", 2, .Row
         AssertEquals "Mouse: click sets Col 1", 1, .Col
         Assert "Mouse: Click event fired", InStr(oForm.EventLog, "Click;") > 0
-        '--- click a cell in the second column
+        '--- click a cell in the second column, which hangs off the right edge
+        '--- here: opening its editor scrolls it fully in, so the columns move
+        '--- under the clicks that follow and the view is put back first
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(150, 80)
         AssertEquals "Mouse: click sets Col 2", 2, .Col
+        AssertEquals "Mouse: a part-shown column scrolls in to be edited", 2, .LeftCol
+        .LeftCol = 1
         '--- click the first column header
         oForm.EventLog = vbNullString
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
@@ -1247,6 +1455,28 @@ Private Sub pvTestKeyPressDrag()
         Assert "Drag: row under cursor selected", .RowSelected(2)
         Assert "Drag: anchor row still selected", .RowSelected(1)
         Assert "Drag: row past cursor not selected", Not .RowSelected(4)
+        '--- a click that opened an editor keeps its drag: the button is still
+        '--- down over the grid, and the cell being edited is not the start of
+        '--- a selection
+        .Row = 1
+        .SelectedItems.Clear
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(30, 60)
+        Assert "Drag: the click opened an editor", .hWndEdit <> 0
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, pvMakeLong(30, 120)
+        AssertEquals "Drag: an editing click does not drag a selection", 1, .SelectedItems.Count
+        SendMessage .hWnd, WM_LBUTTONUP, 0, pvMakeLong(30, 120)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, pvMakeLong(30, 120)
+        Assert "Drag: and the button coming up gives it back", .SelectedItems.Count > 1
+        '--- Ctrl+click picks rows up and puts them down, and opens nothing
+        .SelectedItems.Clear
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(30, 60)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, pvMakeLong(30, 60)
+        Assert "Ctrl+click: a plain click opens the editor", .hWndEdit <> 0
+        SendMessage .hWnd, WM_LBUTTONDOWN, MK_CONTROL, pvMakeLong(30, 100)
+        AssertEquals "Ctrl+click: opens no editor", 0, .hWndEdit
+        AssertEquals "Ctrl+click: and takes the row into the selection", 2, .SelectedItems.Count
+        SendMessage .hWnd, WM_LBUTTONDOWN, MK_CONTROL, pvMakeLong(30, 100)
+        AssertEquals "Ctrl+click: again puts it back down", 1, .SelectedItems.Count
     End With
     Unload oForm
 End Sub

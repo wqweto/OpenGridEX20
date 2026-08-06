@@ -61,7 +61,7 @@ End Type
 '=========================================================================
 
 Friend Sub frInit(ByVal oCtl As GridEX)
-    Call CopyMemory(m_pOwner, oCtl, PTR_SIZE)
+    SetWeakRef m_pOwner, oCtl
     Set m_uState.Bookmarks = New VBA.Collection
     Set m_oFetchBuffer = New JSRowData
     m_oFetchBuffer.frAllowUpdate = True
@@ -70,8 +70,7 @@ Friend Sub frInit(ByVal oCtl As GridEX)
 End Sub
 
 Friend Sub frTerminate()
-    '--- zero the raw pointer or VB6 releases a control it never AddRef-ed
-    Call CopyMemory(m_pOwner, NULL_PTR, PTR_SIZE)
+    SetWeakRef m_pOwner, Nothing
     Set m_uState.Bookmarks = Nothing
     Set m_oFetchBuffer = Nothing
     Erase m_aRecord
@@ -326,8 +325,12 @@ Private Sub IDataModel_Terminate()
     frTerminate
 End Sub
 
-Private Sub IDataModel_RefreshGroups()
+Private Sub IDataModel_RefreshGroups(ByVal bAllCollapsed As Boolean)
     m_uState.OrderDirty = True
+    If bAllCollapsed Then
+        pvEnsureOrder
+        DataSetAllExpanded m_uRowSet, False
+    End If
 End Sub
 
 Private Sub IDataModel_RefreshSort()
@@ -381,7 +384,7 @@ Private Function IDataModel_GetRowData(ByVal lRowPosition As Long) As JSRowData
             '--- client here exactly as it does in a bound grid
             oData.frSetValue lIdx, pvCellValue(lRowIndex, lIdx)
             If lIdx <= m_uFetch.ColCount And m_uFetch.IsFetchIcon(lIdx) Then
-                oData.IconIndex(lIdx) = m_pOwner.frFireFetchIcon(lRowIndex, lIdx, m_uState.Bookmark(lRowIndex))
+                oData.IconIndex(lIdx) = m_pOwner.frRaiseFetchIcon(lRowIndex, lIdx, m_uState.Bookmark(lRowIndex))
             ElseIf lIdx <= m_aRecord(lRowIndex).CellCount Then
                 oData.IconIndex(lIdx) = m_aRecord(lRowIndex).IconIndexes(lIdx)
             End If
@@ -528,6 +531,5 @@ End Function
 '=========================================================================
 
 Private Sub Class_Terminate()
-    '--- zero the raw pointer or VB6 releases a control it never AddRef-ed
     frTerminate
 End Sub

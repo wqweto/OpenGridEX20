@@ -113,8 +113,7 @@ End Sub
 '=========================================================================
 
 Friend Sub frInit(ByVal oCtl As GridEX)
-    '--- weak, as everywhere else the object model points back at its owner
-    Call CopyMemory(m_pOwner, oCtl, PTR_SIZE)
+    SetWeakRef m_pOwner, oCtl
 End Sub
 
 Friend Sub frTerminate()
@@ -125,7 +124,7 @@ Friend Sub frTerminate()
         Set oItem = m_cItems.Item(lIdx)
         oItem.frTerminate
     Next
-    Call CopyMemory(m_pOwner, NULL_PTR, PTR_SIZE)
+    SetWeakRef m_pOwner, Nothing
 End Sub
 
 '=========================================================================

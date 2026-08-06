@@ -500,7 +500,7 @@ Public Function DataFetchValue(uState As UcsDataState, uFetch As UcsFetchCache, 
         '--- not re-enter the same cell
         uFetch.Valid(lColIndex, lRowIndex) = True
         AssignVariant uFetch.Value(lColIndex, lRowIndex), _
-            oCtl.frFireFetchData(lRowIndex, lColIndex, uState.Bookmark(lRowIndex))
+            oCtl.frRaiseFetchData(lRowIndex, lColIndex, uState.Bookmark(lRowIndex))
     End If
     AssignVariant DataFetchValue, uFetch.Value(lColIndex, lRowIndex)
 End Function
@@ -521,7 +521,7 @@ Public Sub DataRefetchRow(uState As UcsDataState, uFetch As UcsFetchCache, oCtl 
             AssignVariant vOld, uFetch.Value(lIdx, lRowIndex)
             uFetch.Valid(lIdx, lRowIndex) = True
             AssignVariant uFetch.Value(lIdx, lRowIndex), _
-                oCtl.frFireFetchData(lRowIndex, lIdx, uState.Bookmark(lRowIndex))
+                oCtl.frRaiseFetchData(lRowIndex, lIdx, uState.Bookmark(lRowIndex))
             '--- a fetch column can be a sort or a group key, but only a value
             '--- that actually moved can move the record
             If DataCompareValues(vOld, uFetch.Value(lIdx, lRowIndex), jgexSortTypeString) <> 0 Then

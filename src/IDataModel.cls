@@ -115,8 +115,10 @@ Public Sub Refresh()
 End Sub
 
 '--- The projection is stale but the records are not: nothing is refetched,
-'--- and GroupFooterStyle is re-read off the owner along with Groups
-Public Sub RefreshGroups()
+'--- and GroupFooterStyle is re-read off the owner along with Groups. The
+'--- rebuild resets every expand box to DefaultGroupMode; bAllCollapsed
+'--- overrides that in the same pass rather than reprojecting a second time
+Public Sub RefreshGroups(ByVal bAllCollapsed As Boolean)
 End Sub
 
 Public Sub RefreshSort()

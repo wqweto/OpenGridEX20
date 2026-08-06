@@ -46,7 +46,7 @@ Private m_pOwner                    As GridEX
 Private m_oRs                       As Object
 Private m_lCurRowIndex              As Long
 Private m_aField()                  As Object
-Private m_lFieldCount                As Long
+Private m_lFieldCount               As Long
 Private m_uState                    As UcsDataState
 Private m_uRowSet                   As UcsRowSet
 Private m_uFetch                    As UcsFetchCache
@@ -56,15 +56,14 @@ Private m_uFetch                    As UcsFetchCache
 '=========================================================================
 
 Friend Sub frInit(ByVal oCtl As GridEX)
-    Call CopyMemory(m_pOwner, oCtl, PTR_SIZE)
+    SetWeakRef m_pOwner, oCtl
     Set m_uState.Bookmarks = New VBA.Collection
     m_uState.OrderDirty = True
     m_uState.BookmarksDirty = True
 End Sub
 
 Friend Sub frTerminate()
-    '--- zero the raw pointer or VB6 releases a control it never AddRef-ed
-    Call CopyMemory(m_pOwner, NULL_PTR, PTR_SIZE)
+    SetWeakRef m_pOwner, Nothing
     Set m_oRs = Nothing
     Set m_uState.Bookmarks = Nothing
     Erase m_uState.Bookmark
@@ -349,8 +348,12 @@ Private Sub IDataModel_Terminate()
     frTerminate
 End Sub
 
-Private Sub IDataModel_RefreshGroups()
+Private Sub IDataModel_RefreshGroups(ByVal bAllCollapsed As Boolean)
     m_uState.OrderDirty = True
+    If bAllCollapsed Then
+        pvEnsureOrder
+        DataSetAllExpanded m_uRowSet, False
+    End If
 End Sub
 
 Private Sub IDataModel_RefreshSort()
@@ -405,7 +408,7 @@ Private Function IDataModel_GetRowData(ByVal lRowPosition As Long) As JSRowData
             oData.frSetValue lIdx, pvCellValue(lRowIndex, lIdx)
             If lIdx <= m_uFetch.ColCount Then
                 If m_uFetch.IsFetchIcon(lIdx) Then
-                    oData.IconIndex(lIdx) = m_pOwner.frFireFetchIcon(lRowIndex, lIdx, m_uState.Bookmark(lRowIndex))
+                    oData.IconIndex(lIdx) = m_pOwner.frRaiseFetchIcon(lRowIndex, lIdx, m_uState.Bookmark(lRowIndex))
                 End If
             End If
         Next
@@ -547,6 +550,5 @@ End Function
 '=========================================================================
 
 Private Sub Class_Terminate()
-    '--- zero the raw pointer or VB6 releases a control it never AddRef-ed
     frTerminate
 End Sub

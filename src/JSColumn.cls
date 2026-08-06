@@ -489,7 +489,7 @@ Attribute AutoSize.VB_Description = "Adjusts the width of a column to accommodat
 End Sub
 
 Friend Sub frInit(ByVal oCtl As GridEX, ByVal nIndex As Integer, sCaption As String, ByVal eColumnType As jgexColumnTypeConstants, ByVal eEditType As jgexEditTypeConstants, sKey As String)
-    Call CopyMemory(m_pOwner, oCtl, PTR_SIZE)
+    SetWeakRef m_pOwner, oCtl
     m_nIndex = nIndex
     m_nColPosition = nIndex
     m_sCaption = sCaption
@@ -507,7 +507,7 @@ Friend Sub frSetIndex(ByVal nIndex As Integer)
 End Sub
 
 Friend Sub frTerminate()
-    Call CopyMemory(m_pOwner, NULL_PTR, PTR_SIZE)
+    SetWeakRef m_pOwner, Nothing
 End Sub
 
 '=========================================================================

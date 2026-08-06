@@ -41,9 +41,6 @@ Private Type UcsCell
     DisplayValue            As String
     CellStyle               As String
     CellPicture             As Picture
-    '--- set by a write through the public Value, not by the fill a model
-    '--- does through frSetValue: what it marks is a cell modified since the
-    '--- wrapper was filled, which is what the control's pending row is
     Dirty                   As Boolean
 End Type
 
@@ -61,12 +58,6 @@ Private m_bPreviewRowVisible        As Boolean
 Private m_lRowHeight                As Long
 Private m_lCellCount                As Long
 Private m_aCell()                   As UcsCell
-'--- only the buffer the control hands out to be filled takes a Value write.
-'--- Probed on the original: a write anywhere else -- a wrapper from
-'--- GetRowData, a record or a group row alike -- raises &H80040000 with
-'--- "'Value' property can not be change in this context." (its own grammar).
-'--- DisplayValue, CellStyle and the rest stay open: decorating the row is
-'--- what RowFormat is for
 Private m_bAllowUpdate              As Boolean
 
 '=========================================================================
@@ -371,6 +362,5 @@ End Sub
 '=========================================================================
 
 Private Sub Class_Terminate()
-    '--- zero the raw pointer or VB6 releases a control it never AddRef-ed
     frTerminate
 End Sub
