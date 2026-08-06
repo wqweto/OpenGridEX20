@@ -24,7 +24,7 @@ DefObj A-Z
 ' Constants and member variables
 '=========================================================================
 
-Private m_nValue                    As Integer
+Private m_lValue                    As Long
 
 '=========================================================================
 ' Properties
@@ -32,17 +32,17 @@ Private m_nValue                    As Integer
 
 Public Property Get Value() As Integer
 Attribute Value.VB_UserMemId = 0
-    Value = m_nValue
+    Value = m_lValue
 End Property
 
 Public Property Let Value(ByVal nValue As Integer)
-    m_nValue = nValue
+    m_lValue = nValue
 End Property
 
 '=========================================================================
 ' Methods
 '=========================================================================
 
-Friend Sub frInit(ByVal nValue As Integer)
-    m_nValue = nValue
+Friend Sub frInit(ByVal lValue As Long)
+    m_lValue = lValue
 End Sub

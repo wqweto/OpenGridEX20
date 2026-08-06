@@ -26,9 +26,9 @@ DefObj A-Z
 '=========================================================================
 
 Private m_pOwner                    As GridEX
-Private m_nIndex                    As Integer
+Private m_lIndex                    As Long
 Private m_eSortOrder                As jgexSortOrderConstants
-Private m_nColIndex                 As Integer
+Private m_lColIndex                 As Long
 '--- where the control last laid this level's chip out, so painting and
 '--- hit-testing read the same rectangle instead of each walking the row
 Private m_uChipRect                 As RECT
@@ -39,7 +39,7 @@ Private m_uChipRect                 As RECT
 
 Public Property Get Index() As Integer
 Attribute Index.VB_Description = "Returns a value that represents the index of the JSGroup in the JSGroups collection."
-    Index = m_nIndex
+    Index = m_lIndex
 End Property
 
 Public Property Get SortOrder() As jgexSortOrderConstants
@@ -55,34 +55,19 @@ End Property
 
 Public Property Get ColIndex() As Integer
 Attribute ColIndex.VB_Description = "Returns/sets the index of the grouped column."
-    ColIndex = m_nColIndex
+    ColIndex = m_lColIndex
 End Property
 
 Public Property Let ColIndex(ByVal nValue As Integer)
-    m_nColIndex = nValue
+    m_lColIndex = nValue
     If Not m_pOwner Is Nothing Then
         m_pOwner.frNotifySortChanged
     End If
 End Property
 
-'=========================================================================
-' Methods
-'=========================================================================
-
-Friend Sub frInit(ByVal oCtl As GridEX, ByVal nIndex As Integer, ByVal nColIndex As Integer, ByVal eSortOrder As jgexSortOrderConstants)
-    SetWeakRef m_pOwner, oCtl
-    m_nIndex = nIndex
-    m_nColIndex = nColIndex
-    m_eSortOrder = eSortOrder
-End Sub
-
-Friend Sub frTerminate()
-    SetWeakRef m_pOwner, Nothing
-End Sub
-
-Friend Sub frSetIndex(ByVal nIndex As Integer)
-    m_nIndex = nIndex
-End Sub
+Friend Property Let frIndex(ByVal lIndex As Long)
+    m_lIndex = lIndex
+End Property
 
 Friend Property Get frChipRect() As RECT
     frChipRect = m_uChipRect
@@ -91,6 +76,21 @@ End Property
 Friend Property Let frChipRect(uValue As RECT)
     m_uChipRect = uValue
 End Property
+
+'=========================================================================
+' Methods
+'=========================================================================
+
+Friend Sub frInit(ByVal oCtl As GridEX, ByVal lIndex As Long, ByVal lColIndex As Long, ByVal eSortOrder As jgexSortOrderConstants)
+    SetWeakRef m_pOwner, oCtl
+    m_lIndex = lIndex
+    m_lColIndex = lColIndex
+    m_eSortOrder = eSortOrder
+End Sub
+
+Friend Sub frTerminate()
+    SetWeakRef m_pOwner, Nothing
+End Sub
 
 '=========================================================================
 ' Base class events

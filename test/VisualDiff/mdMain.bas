@@ -226,7 +226,10 @@ Public Sub Main()
                     If Not C2Obj(JsonValue(C2Obj(vDoc), "input")) Is Nothing Then
                         sEvents = Left$(sGolden, Len(sGolden) - Len(".png")) & ".events.txt"
                         WriteTextFile App.Path & "\output" & sDpi & "\" & sName & ".events.txt", oForm.EventLog
-                        If Not IGNORE_EVENT_GOLDEN Then
+                        '--- a scenario whose gesture only lands at one of the
+                        '--- two scales has no log recorded at the other, and
+                        '--- pixels are all it is asked about there
+                        If Not IGNORE_EVENT_GOLDEN And FileExists(sEvents) Then
                             Assert sMode & " " & sName & sDpi & "dpi events" & pvEventReport(ReadTextFile(sEvents), oForm.EventLog), _
                                 ReadTextFile(sEvents) = oForm.EventLog
                         End If

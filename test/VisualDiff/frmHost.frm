@@ -388,6 +388,8 @@ Private Sub pvRunInput(oList As Object)
     Dim lJdx            As Long
     Dim hTarget         As Long
     Dim uPt             As POINTAPI
+    Dim oStep           As Object
+    Dim lPts            As Long
 
     '--- clicks and keystrokes are posted at the control the same way the
     '--- ported samples receive them, so an edit session can be scripted
@@ -406,8 +408,46 @@ Private Sub pvRunInput(oList As Object)
             Call ClientToScreen(hWnd, uPt)
             hTarget = WindowFromPoint(uPt.X, uPt.Y)
             Call ScreenToClient(hTarget, uPt)
-            Call SendMessage(hTarget, WM_LBUTTONDOWN, MK_LBUTTON, ByVal pvMakeLong(uPt.X, uPt.Y))
-            Call SendMessage(hTarget, WM_LBUTTONUP, 0, ByVal pvMakeLong(uPt.X, uPt.Y))
+            Call SendMessage(hTarget, WM_LBUTTONDOWN, MK_LBUTTON, ByVal MakeDWord(uPt.X, uPt.Y))
+            Call SendMessage(hTarget, WM_LBUTTONUP, 0, ByVal MakeDWord(uPt.X, uPt.Y))
+        End If
+        '--- the pair a divider takes for an auto-size, in the order Windows
+        '--- delivers them: the second press arrives as the double-click
+        Set oPoint = C2Obj(JsonValue(oEntry, "dblclick"))
+        If Not oPoint Is Nothing Then
+            uPt.X = C2Lng(JsonValue(oPoint, 0))
+            uPt.Y = C2Lng(JsonValue(oPoint, 1))
+            Call ClientToScreen(hWnd, uPt)
+            hTarget = WindowFromPoint(uPt.X, uPt.Y)
+            Call ScreenToClient(hTarget, uPt)
+            Call SendMessage(hTarget, WM_LBUTTONDOWN, MK_LBUTTON, ByVal MakeDWord(uPt.X, uPt.Y))
+            Call SendMessage(hTarget, WM_LBUTTONUP, 0, ByVal MakeDWord(uPt.X, uPt.Y))
+            Call SendMessage(hTarget, WM_LBUTTONDBLCLK, MK_LBUTTON, ByVal MakeDWord(uPt.X, uPt.Y))
+            Call SendMessage(hTarget, WM_LBUTTONUP, 0, ByVal MakeDWord(uPt.X, uPt.Y))
+        End If
+        '--- a press, a run of moves and a release, which is what anything that
+        '--- follows the pointer needs: the first point picks the window and
+        '--- the rest are sent to it, wherever they land
+        Set oPoint = C2Obj(JsonValue(oEntry, "drag"))
+        If Not oPoint Is Nothing Then
+            lPts = C2Lng(JsonValue(oPoint, "-1"))
+            For lJdx = 0 To lPts - 1
+                Set oStep = C2Obj(JsonValue(oPoint, lJdx))
+                uPt.X = C2Lng(JsonValue(oStep, 0))
+                uPt.Y = C2Lng(JsonValue(oStep, 1))
+                Call ClientToScreen(hWnd, uPt)
+                If lJdx = 0 Then
+                    hTarget = WindowFromPoint(uPt.X, uPt.Y)
+                End If
+                Call ScreenToClient(hTarget, uPt)
+                If lJdx = 0 Then
+                    Call SendMessage(hTarget, WM_LBUTTONDOWN, MK_LBUTTON, ByVal MakeDWord(uPt.X, uPt.Y))
+                Else
+                    Call SendMessage(hTarget, WM_MOUSEMOVE, MK_LBUTTON, ByVal MakeDWord(uPt.X, uPt.Y))
+                End If
+                pvSettle 5
+            Next
+            Call SendMessage(hTarget, WM_LBUTTONUP, 0, ByVal MakeDWord(uPt.X, uPt.Y))
         End If
         '--- keys follow the focus, which an in-place editor takes from the grid
         If Not IsEmpty(JsonValue(oEntry, "key")) Then
@@ -473,10 +513,6 @@ Private Function pvFindEditWindow(ByVal hParent As Long) As Long
         End If
         hChild = GetWindow(hChild, GW_HWNDNEXT)
     Loop
-End Function
-
-Private Function pvMakeLong(ByVal lLo As Long, ByVal lHi As Long) As Long
-    pvMakeLong = (lLo And &HFFFF&) Or (lHi * &H10000)
 End Function
 
 Private Sub pvRunCalls(oList As Object)
@@ -576,6 +612,13 @@ Private Sub m_oExt_ObjectEvent(Info As EventInfo)
     On Error GoTo EH
     If m_bLogEvents Then
         m_sEventLog = m_sEventLog & pvFormatEvent(Info) & vbCrLf
+        '--- what the column itself says while the event is being raised, which
+        '--- the parameter beside it need not agree with
+        If Info.Name = "ColResize" Then
+            m_sEventLog = m_sEventLog & "Column.Width=" & _
+                CallByName(CallByName(CallByName(m_oExt.Object, "Columns", VbGet), "Item", VbGet, _
+                C2Lng(Info.EventParameters("ColIndex").Value)), "Width", VbGet) & vbCrLf
+        End If
     End If
     If Info.Name = "UnboundReadData" Then
         If Not m_oUnboundRows Is Nothing Then

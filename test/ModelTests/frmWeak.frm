@@ -51,6 +51,8 @@ Private Const MODULE_NAME As String = "frmWeak"
 '=========================================================================
 
 Public EventLog                     As String
+Public CancelResize                 As Boolean
+Public CancelMove                   As Boolean
 '--- what the feed should hand out, by row and column. The original refuses
 '--- a write through JSRowData.Value outside UnboundReadData -- probed: it
 '--- raises &H80040000 "'Value' property can not be change in this context."
@@ -129,6 +131,38 @@ Private Sub GridEX1_Click()
 
     On Error GoTo EH
     EventLog = EventLog & "Click;"
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
+Private Sub GridEX1_ColResize(ByVal ColIndex As Integer, ByVal NewColWidth As Long, ByVal Cancel As JSRetBoolean)
+    Const FUNC_NAME     As String = "GridEX1_ColResize"
+
+    On Error GoTo EH
+    EventLog = EventLog & "Resize(" & ColIndex & "," & NewColWidth & ");"
+    Cancel.Value = CancelResize
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
+Private Sub GridEX1_BeforeColMove(ByVal Column As JSColumn, ByVal NewPosition As Integer, ByVal Cancel As JSRetBoolean)
+    Const FUNC_NAME     As String = "GridEX1_BeforeColMove"
+
+    On Error GoTo EH
+    EventLog = EventLog & "BeforeMove(" & Column.Caption & "," & NewPosition & ");"
+    Cancel.Value = CancelMove
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
+Private Sub GridEX1_AfterColMove()
+    Const FUNC_NAME     As String = "GridEX1_AfterColMove"
+
+    On Error GoTo EH
+    EventLog = EventLog & "AfterMove;"
     Exit Sub
 EH:
     PrintError FUNC_NAME

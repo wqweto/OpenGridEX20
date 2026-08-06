@@ -27,11 +27,11 @@ DefObj A-Z
 
 Private m_sKey                      As String
 Private m_eHeaderAlignment          As jgexAlignmentConstants
-Private m_nHeaderIcon               As Integer
-Private m_nDefaultIcon              As Integer
+Private m_lHeaderIcon               As Long
+Private m_lDefaultIcon              As Long
 Private m_pOwner                    As GridEX
-Private m_nIndex                    As Integer
-Private m_nColPosition              As Integer
+Private m_lIndex                    As Long
+Private m_lColPosition              As Long
 Private m_oValueList                As JSValueList
 Private m_bVisible                  As Boolean
 Private m_lWidth                    As Long
@@ -91,34 +91,38 @@ End Property
 
 Public Property Get HeaderIcon() As Integer
 Attribute HeaderIcon.VB_Description = "Returns/sets the index of the JSGridImage displayed in the column's header."
-    HeaderIcon = m_nHeaderIcon
+    HeaderIcon = m_lHeaderIcon
 End Property
 
 Public Property Let HeaderIcon(ByVal nValue As Integer)
-    m_nHeaderIcon = nValue
+    m_lHeaderIcon = nValue
 End Property
 
 Public Property Get DefaultIcon() As Integer
 Attribute DefaultIcon.VB_Description = "Returns/sets the index of the JSGridImage displayed in the column's cells."
-    DefaultIcon = m_nDefaultIcon
+    DefaultIcon = m_lDefaultIcon
 End Property
 
 Public Property Let DefaultIcon(ByVal nValue As Integer)
-    m_nDefaultIcon = nValue
+    m_lDefaultIcon = nValue
 End Property
 
 Public Property Get Index() As Integer
 Attribute Index.VB_Description = "Returns a value that represents the index of the JSColumn in the JSColumns collection."
-    Index = m_nIndex
+    Index = m_lIndex
 End Property
 
 Public Property Get ColPosition() As Integer
 Attribute ColPosition.VB_Description = "Returns/sets the position of the column."
-    ColPosition = m_nColPosition
+    ColPosition = m_lColPosition
 End Property
 
 Public Property Let ColPosition(ByVal nValue As Integer)
-    m_nColPosition = nValue
+    If m_pOwner Is Nothing Then
+        m_lColPosition = nValue
+    Else
+        m_pOwner.frMoveCol Me, nValue
+    End If
 End Property
 
 Public Property Get ValueList() As JSValueList
@@ -147,7 +151,6 @@ Attribute Width.VB_Description = "Returns/sets the width of a column."
 End Property
 
 Public Property Let Width(ByVal lValue As Long)
-    '--- stored in pixels; snapped to nearest like the original
     m_lWidth = ToPixels(lValue)
 End Property
 
@@ -217,7 +220,7 @@ End Property
 Public Property Get SortOrder() As jgexSortOrderConstants
 Attribute SortOrder.VB_Description = "Returns a value that represents the sort applied to a column."
     If Not m_pOwner Is Nothing Then
-        SortOrder = m_pOwner.frColSortOrder(m_nIndex)
+        SortOrder = m_pOwner.frColSortOrder(m_lIndex)
     End If
 End Property
 
@@ -242,7 +245,7 @@ End Property
 Public Property Get IsGrouped() As Boolean
 Attribute IsGrouped.VB_Description = "Returns a value that indicates whether the Column is grouped."
     If Not m_pOwner Is Nothing Then
-        IsGrouped = m_pOwner.frColIsGrouped(m_nIndex)
+        IsGrouped = m_pOwner.frColIsGrouped(m_lIndex)
     End If
 End Property
 
@@ -480,30 +483,37 @@ Public Property Let TotalRowPrefix(ByVal sValue As String)
     m_sTotalRowPrefix = sValue
 End Property
 
+Friend Property Let frColPosition(ByVal lValue As Long)
+    m_lColPosition = lValue
+End Property
+
+Friend Property Let frWidthPx(ByVal lValue As Long)
+    m_lWidth = lValue
+End Property
+
+Friend Property Let frIndex(ByVal lIndex As Long)
+    m_lIndex = lIndex
+End Property
+
 '=========================================================================
 ' Methods
 '=========================================================================
 
 Public Sub AutoSize()
 Attribute AutoSize.VB_Description = "Adjusts the width of a column to accommodate the longest text."
+    If Not m_pOwner Is Nothing Then
+        m_pOwner.frAutoSizeCol Me
+    End If
 End Sub
 
-Friend Sub frInit(ByVal oCtl As GridEX, ByVal nIndex As Integer, sCaption As String, ByVal eColumnType As jgexColumnTypeConstants, ByVal eEditType As jgexEditTypeConstants, sKey As String)
+Friend Sub frInit(ByVal oCtl As GridEX, ByVal lIndex As Long, sCaption As String, ByVal eColumnType As jgexColumnTypeConstants, ByVal eEditType As jgexEditTypeConstants, sKey As String)
     SetWeakRef m_pOwner, oCtl
-    m_nIndex = nIndex
-    m_nColPosition = nIndex
+    m_lIndex = lIndex
+    m_lColPosition = lIndex
     m_sCaption = sCaption
     m_eColumnType = eColumnType
     m_eEditType = eEditType
     m_sKey = sKey
-End Sub
-
-Friend Property Let frWidthPx(ByVal lValue As Long)
-    m_lWidth = lValue
-End Property
-
-Friend Sub frSetIndex(ByVal nIndex As Integer)
-    m_nIndex = nIndex
 End Sub
 
 Friend Sub frTerminate()
@@ -523,8 +533,8 @@ Private Sub Class_Initialize()
     m_eEditType = jgexEditTextBox
     m_eSortType = jgexSortTypeString
     m_lWidth = 100
-    m_nHeaderIcon = -1
-    m_nDefaultIcon = -1
+    m_lHeaderIcon = -1
+    m_lDefaultIcon = -1
     m_lMinRowsInCardView = 1
     m_lMaxRowsInCardView = 1
     m_sGroupEmptyStringCaption = "(none)"

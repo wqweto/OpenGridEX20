@@ -1,0 +1,7 @@
+MouseDown(Button=1, X=1470, Y=90)
+MouseMove(Button=0, X=870, Y=90)
+MouseMove(Button=0, X=270, Y=90)
+MouseMove(Button=0, X=30, Y=90)
+MouseMove(Button=0, X=-630, Y=90)
+ColResize(ColIndex=1, NewColWidth=150)
+Column.Width=1500

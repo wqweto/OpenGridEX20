@@ -536,6 +536,8 @@ Private Const CHECK_BOX_W               As Long = 11
 Private Const CHECK_BOX_H               As Long = 12
 Private Const CHECK_BOX_CLR             As Long = &H696969
 Private Const CHECK_BOX_CLR_CUR         As Long = &H646464
+Private Const DIVIDER_GRAB_W            As Long = 3
+Private Const MIN_COL_W                 As Long = 10
 
 '--- property backing variables
 Private m_lFrozenColumns            As Long
@@ -653,6 +655,7 @@ Private m_oRowData                  As JSRowData
 Private m_pSubclassPic              As IUnknown
 Private m_pSubclassCtl              As IUnknown
 Private m_lSelAnchor                As Long
+Private m_bCurRowDeselected         As Boolean
 Private m_pDataModel                As IDataModel
 Private m_aWindow()                 As JSRowData
 Private m_lWindowFirst              As Long
@@ -668,6 +671,14 @@ Private m_lEditCol                  As Long
 Private m_sEditOldValue             As String
 Private m_bInEditSetup              As Boolean
 Private m_bClickOpenedEdit          As Boolean
+Private m_oSizeCol                  As JSColumn
+Private m_oDragCol                  As JSColumn
+Private m_oDropCol                  As JSColumn
+Private m_lDragStartX               As Long
+Private m_lDragStartY               As Long
+Private m_bDragging                 As Boolean
+Private m_lSizeStartX               As Long
+Private m_lSizeStartW               As Long
 Private m_pSubclassEdit             As IUnknown
 
 Private Type UcsNavLayout
@@ -715,8 +726,7 @@ Public Property Get RowHeight() As Long
 End Property
 
 Public Property Let RowHeight(ByVal lValue As Long)
-    '--- stored in pixels; snapped to nearest like the original; an
-    '--- explicit height survives later font changes
+    '--- an explicit height survives later font changes
     m_lRowHeight = ToPixels(lValue)
     m_bRowHeightSet = True
 End Property
@@ -909,7 +919,6 @@ Attribute ColumnHeaderHeight.VB_Description = "Returns/sets the height of the co
 End Property
 
 Public Property Let ColumnHeaderHeight(ByVal lValue As Long)
-    '--- stored in pixels; snapped to nearest like the original
     m_lColumnHeaderHeight = ToPixels(lValue)
 End Property
 
@@ -946,7 +955,6 @@ Attribute DefaultColumnWidth.VB_Description = "Returns/sets a value indicating t
 End Property
 
 Public Property Let DefaultColumnWidth(ByVal lValue As Long)
-    '--- stored in pixels; snapped to nearest like the original
     m_lDefaultColumnWidth = ToPixels(lValue)
 End Property
 
@@ -1130,7 +1138,6 @@ Attribute CardSpacing.VB_Description = "Returns/sets the horizontal and vertical
 End Property
 
 Public Property Let CardSpacing(ByVal lValue As Long)
-    '--- stored in pixels; snapped to nearest like the original
     m_lCardSpacing = ToPixels(lValue)
 End Property
 
@@ -1140,7 +1147,6 @@ Attribute CardWidth.VB_Description = "Returns/sets the width of a card."
 End Property
 
 Public Property Let CardWidth(ByVal lValue As Long)
-    '--- stored in pixels; snapped to nearest like the original
     m_lCardWidth = ToPixels(lValue)
 End Property
 
@@ -2513,8 +2519,10 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
     Dim hPrevFont       As Long
     Dim vOrder          As Variant
     Dim lIdx            As Long
+    Dim lMarkX          As Long
 
     lHdrH = m_lColumnHeaderHeight
+    lMarkX = -1
     hPrevFont = pvSelectFont(hDC, m_oColumnHeaderFont)
     '--- band frame lines first; cell edges painted after overwrite them
     '--- at the cell boundaries
@@ -2550,6 +2558,19 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
             pvPaintSortGlyph hDC, lX + 2 + pvTextWidth(hDC, oCol.Caption) + 4, _
                 lY + (lHdrH - uMetrics.tmHeight + 1) \ 2 + uMetrics.tmHeight \ 2 + 4, frColSortOrder(oCol.Index)
         End If
+        '--- the header on its way to another position shows inverted, so the
+        '--- column the drop will move is visible while it is being dragged
+        If m_bDragging And oCol Is m_oDragCol Then
+            Call PatBlt(hDC, lX, lY + 1, lW - 1, lHdrH - 2, DSTINVERT)
+        End If
+        '--- and the boundary it would land on is marked on the header under
+        '--- the pointer: the far side of it, on the side the column comes from
+        If m_bDragging And oCol Is m_oDropCol And Not oCol Is m_oDragCol Then
+            lMarkX = lX
+            If m_oDropCol.ColPosition > m_oDragCol.ColPosition Then
+                lMarkX = lX + lW
+            End If
+        End If
         lX = lX + lW
     Next
     If pvGroupIndent() > 0 Then
@@ -2561,6 +2582,11 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, lY As Long)
     '--- filler cell up to the right edge (its right border is clipped off)
     If lX < picGrid.ScaleWidth Then
         pvPaintHeaderCell hDC, lX, lY, picGrid.ScaleWidth - lX + 2, lHdrH, vbNullString, jgexAlignLeft
+    End If
+    '--- the mark goes on after the cells so the header beside it cannot paint
+    '--- over the pixel it shares with the boundary
+    If lMarkX >= 0 Then
+        pvFillRect hDC, lMarkX - 2, lY, lMarkX + 1, lY + lHdrH, vbRed
     End If
     Call SelectObject(hDC, hPrevFont)
     lY = lY + lHdrH
@@ -2625,9 +2651,7 @@ Private Sub pvPaintHeaderCell(ByVal hDC As Long, ByVal lX As Long, ByVal lY As L
         pvLine hDC, lX + lW - 1, lY, lX + lW - 1, lY + lH, vb3DDKShadow, PS_SOLID
     End Select
     If LenB(sCaption) <> 0 Then
-        '--- DT_VCENTER over the full cell height, not an inset rect: same
-        '--- result at 96dpi, a pixel higher at 120dpi
-        pvDrawText hDC, sCaption, lX + 2, lY, lX + lW - 2, lY + lH, m_clrForeColorHeader, m_clrBackColorHeader, eAlign, lX + 2, lX + lW - 2
+        pvDrawText hDC, sCaption, lX + 2, lY, lX + lW - 2, lY + lH, m_clrForeColorHeader, m_clrBackColorHeader, eAlign, lX + 2, lX + lW - 2, bEllipsis:=True
     End If
 End Sub
 
@@ -2759,13 +2783,16 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
     Dim lW              As Long
     Dim sText           As String
     Dim lClipR          As Long
+    Dim lVLine          As Long
     Dim lMarqueeR       As Long
     Dim lLineR          As Long
     Dim vOrder          As Variant
     Dim lIdx            As Long
 
-    '--- the current row is always shown selected, as in the original
-    bSelected = pvIsRowSelected(lRow) Or (m_lRow >= 1 And lRow = m_lRow)
+    '--- the current row shows selected without being in the collection -- the
+    '--- original paints it that way for a selection built by a client -- until
+    '--- a Ctrl+click takes it out, and then it keeps the focus rect alone
+    bSelected = pvIsRowSelected(lRow) Or (m_lRow >= 1 And lRow = m_lRow And Not m_bCurRowDeselected)
     '--- a block of rows has no current cell to lift out of it: what is
     '--- selected paints as one, and only a selection of one row singles the
     '--- cell the marquee is on out of it
@@ -2797,7 +2824,12 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         pvFillRect hDC, pvRowHeaderWidth(), lRowTop, lHdrW, lRowTop + lRowH, m_clrBackColorRowGroup
         pvPaintIndentRules hDC, lRowTop, lRowH, pvGroupIndent()
     End If
-    pvFillRect hDC, lHdrW, lRowTop, lHdrW + lTotalW, lRowTop + lRowH, clrBack
+    '--- the pixel column a vertical gridline stands in is not the cell's to
+    '--- fill: clearing the rule and drawing it again is what makes the column
+    '--- boundaries shimmer while the grid repaints
+    If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLVertical Then
+        lVLine = 1
+    End If
     '--- text of the current row clips inside the marquee, so a cell running
     '--- past the client edge stops short of the marquee's right border
     lMarqueeR = -1
@@ -2815,6 +2847,7 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         If oCol.Visible Then
             lPos = lPos + 1
             lW = pvColWidth(oCol)
+            pvFillRect hDC, lX, lRowTop, lX + lW - lVLine, lRowTop + lRowH, clrBack
             '--- inside a selected row the current cell keeps the plain colors:
             '--- Col = 0 selects the whole row and nothing is singled out, but
             '--- once a cell is current the original lifts it out of the block
@@ -2830,6 +2863,9 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
                 End If
                 If lFillR > pvMarqueeRight(lHdrW, lTotalW) Then
                     lFillR = pvMarqueeRight(lHdrW, lTotalW)
+                End If
+                If lFillR > lX + lW - lVLine Then
+                    lFillR = lX + lW - lVLine
                 End If
                 pvFillRect hDC, lFillL, lRowTop + 1, lFillR, lRowTop + pvRowContentH(lRowH) - 1, m_clrBackColor
                 clrCellBack = m_clrBackColor
@@ -2852,7 +2888,7 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
                 If lMarqueeR >= 0 And lClipR > lMarqueeR Then
                     lClipR = lMarqueeR
                 End If
-                pvDrawText hDC, sText, lX + 2, lRowTop, lX + lW - 3, lRowTop + pvRowContentH(lRowH), clrCellText, clrCellBack, oCol.TextAlignment, lX, lClipR, oCol.WordWrap
+                pvDrawText hDC, sText, lX + 2, lRowTop, lX + lW - 3, lRowTop + pvRowContentH(lRowH), clrCellText, clrCellBack, oCol.TextAlignment, lX, lClipR, oCol.WordWrap, bEllipsis:=True
             End If
             lX = lX + lW
         End If
@@ -3344,7 +3380,7 @@ Private Sub pvInvalidate(Optional ByVal SkipScroll As Boolean)
     pvLayoutEditor
     Call InvalidateRect(picGrid.hWnd, 0, 0)
     If m_bRecordNavigator Then
-        Call InvalidateRect(UserControl.hWnd, 0, 1)
+        Call InvalidateRect(UserControl.hWnd, 0, 0)
         If hsbGrid.Visible Then
             Call InvalidateRect(hsbGrid.hWnd, 0, 1)
         End If
@@ -3352,6 +3388,20 @@ Private Sub pvInvalidate(Optional ByVal SkipScroll As Boolean)
     Exit Sub
 EH:
     PrintError FUNC_NAME
+End Sub
+
+'--- everything above the rows repaints on its own: the group-by box and the
+'--- header band. The rows have not changed while a column is dragged over the
+'--- headers, and painting them again is what the eye sees as flicker
+Private Sub pvInvalidateHeaders()
+    Dim uRect           As RECT
+
+    If Not m_bRedraw Then
+        Exit Sub
+    End If
+    uRect.Right = picGrid.ScaleWidth
+    uRect.Bottom = pvRowsTop()
+    Call InvalidateRect(picGrid.hWnd, VarPtr(uRect), 0)
 End Sub
 
 Private Function pvTopHeight() As Long
@@ -4095,7 +4145,7 @@ Private Sub pvLine(ByVal hDC As Long, ByVal lX1 As Long, ByVal lY1 As Long, ByVa
     Call DeleteObject(hPen)
 End Sub
 
-Private Sub pvDrawText(ByVal hDC As Long, sText As String, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long, ByVal clrText As OLE_COLOR, ByVal clrBack As OLE_COLOR, ByVal eAlign As jgexAlignmentConstants, ByVal ClipLeft As Long, ByVal ClipRight As Long, Optional ByVal bWordWrap As Boolean)
+Private Sub pvDrawText(ByVal hDC As Long, sText As String, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long, ByVal clrText As OLE_COLOR, ByVal clrBack As OLE_COLOR, ByVal eAlign As jgexAlignmentConstants, ByVal ClipLeft As Long, ByVal ClipRight As Long, Optional ByVal bWordWrap As Boolean, Optional ByVal bEllipsis As Boolean)
     Dim uRect           As RECT
     Dim lFlags          As Long
     Dim lSaved          As Long
@@ -4104,15 +4154,15 @@ Private Sub pvDrawText(ByVal hDC As Long, sText As String, ByVal lLeft As Long, 
     uRect.Top = lTop
     uRect.Right = lRight
     uRect.Bottom = lBottom
-    '--- wrapped text starts at the top of its cell, a pixel in, since it is
-    '--- the lines it breaks into that fill the room rather than one line
-    '--- centred in it
     If bWordWrap Then
         uRect.Top = lTop + 1
         uRect.Bottom = lBottom - 1
         lFlags = DT_WORDBREAK Or DT_NOPREFIX
     Else
         lFlags = DT_SINGLELINE Or DT_VCENTER Or DT_NOPREFIX
+        If bEllipsis Then
+            lFlags = lFlags Or DT_END_ELLIPSIS
+        End If
     End If
     Select Case eAlign
     Case jgexAlignCenter
@@ -4120,17 +4170,9 @@ Private Sub pvDrawText(ByVal hDC As Long, sText As String, ByVal lLeft As Long, 
     Case jgexAlignRight
         lFlags = lFlags Or DT_RIGHT
     End Select
-    '--- text is positioned in its own rect but clipped separately: data
-    '--- cells clip to the whole cell so ClearType fringes bleed into the
-    '--- inset like the original's, headers clip to the text rect
     lSaved = SaveDC(hDC)
-    '--- clipped to the rect the text was laid into, which for wrapped text is
-    '--- inset: DT_NOCLIP would otherwise let a line's opaque background run
-    '--- out over the marquee band below it
     Call IntersectClipRect(hDC, ClipLeft, uRect.Top, ClipRight, uRect.Bottom)
     lFlags = lFlags Or DT_NOCLIP
-    '--- opaque so glyph anti-aliasing blends against the known cell
-    '--- background exactly like the original
     Call SetBkMode(hDC, OPAQUE)
     Call SetBkColor(hDC, pvColor(clrBack))
     Call SetTextColor(hDC, pvColor(clrText))
@@ -4210,6 +4252,7 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
     Dim nKeyCode        As Integer
     Dim nShift          As Integer
     Dim nKeyAscii       As Integer
+    Dim oSizeCol        As JSColumn
 
     If hWnd = UserControl.hWnd Then
         '--- the outer control is the band: navigator clicks plus the child
@@ -4220,6 +4263,11 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         Case WM_MOUSEACTIVATE
             If pvHitScrollBar() Then
                 ControlSubclassProc = MA_NOACTIVATE
+                Handled = True
+            End If
+        Case WM_ERASEBKGND
+            If m_bRecordNavigator Then
+                ControlSubclassProc = 1
                 Handled = True
             End If
         Case WM_CTLCOLORSCROLLBAR
@@ -4236,6 +4284,18 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
     Case WM_ERASEBKGND
         ControlSubclassProc = 1
         Handled = True
+    Case WM_SETCURSOR
+        If pvSetCursor() Then
+            ControlSubclassProc = 1
+            Handled = True
+        End If
+    Case WM_CANCELMODE
+        If Not m_oSizeCol Is Nothing Then
+            pvEndColSize bCancel:=True
+        End If
+        If Not m_oDragCol Is Nothing Then
+            pvEndColDrag bCancel:=True
+        End If
     Case WM_VSCROLL
         pvOnVScroll LoWord(wParam), HiWord(wParam)
         Handled = True
@@ -4254,13 +4314,43 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         End If
     Case WM_LBUTTONUP
         m_bClickOpenedEdit = False
-        RaiseEvent MouseUp(vbLeftButton, pvMouseShift(wParam), GetXLParam(lParam) * Screen.TwipsPerPixelX, GetYLParam(lParam) * Screen.TwipsPerPixelY)
-        RaiseEvent Click
+        '--- a drag that resized or repositioned a column is not a click on it,
+        '--- and the original says nothing at all about the button coming up --
+        '--- the resize or the move itself is the whole of what it reports
+        If Not m_oSizeCol Is Nothing Then
+            pvEndColSize bCancel:=False
+        ElseIf m_bDragging Then
+            '--- once the header has started moving there is no header click:
+            '--- where it is dropped is all the client hears about
+            pvEndColDrag bCancel:=False
+        Else
+            If Not m_oDragCol Is Nothing Then
+                Set oSizeCol = m_oDragCol
+                Set m_oDragCol = Nothing
+                RaiseEvent ColumnHeaderClick(oSizeCol)
+                If m_bAutomaticSort Then
+                    pvAutoSort oSizeCol
+                End If
+            End If
+            RaiseEvent MouseUp(vbLeftButton, pvMouseShift(wParam), GetXLParam(lParam) * Screen.TwipsPerPixelX, GetYLParam(lParam) * Screen.TwipsPerPixelY)
+            RaiseEvent Click
+        End If
     Case WM_LBUTTONDBLCLK
-        RaiseEvent DblClick
+        Set oSizeCol = pvColDividerAt(GetXLParam(lParam), GetYLParam(lParam))
+        If oSizeCol Is Nothing Then
+            RaiseEvent DblClick
+        Else
+            frAutoSizeCol oSizeCol
+        End If
     Case WM_MOUSEMOVE
-        RaiseEvent MouseMove(pvMouseButton(wParam), pvMouseShift(wParam), GetXLParam(lParam) * Screen.TwipsPerPixelX, GetYLParam(lParam) * Screen.TwipsPerPixelY)
-        If (wParam And MK_LBUTTON) <> 0 Then
+        '--- no button while a column is being sized: the grid has the mouse
+        '--- for itself, which is what the original reports through the drag
+        RaiseEvent MouseMove(IIf(m_oSizeCol Is Nothing, pvMouseButton(wParam), 0), pvMouseShift(wParam), GetXLParam(lParam) * Screen.TwipsPerPixelX, GetYLParam(lParam) * Screen.TwipsPerPixelY)
+        If Not m_oSizeCol Is Nothing Then
+            pvOnColSize GetXLParam(lParam)
+        ElseIf Not m_oDragCol Is Nothing And (wParam And MK_LBUTTON) <> 0 Then
+            pvOnColDrag GetXLParam(lParam), GetYLParam(lParam)
+        ElseIf (wParam And MK_LBUTTON) <> 0 Then
             pvOnMouseDrag GetYLParam(lParam)
         End If
     Case WM_CHAR
@@ -4281,11 +4371,11 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         End If
     End Select
 QH:
-'    '--- note: performance optimization for design-time subclassing
-'    If Not Handled And ThunkPrivateData(m_pSubclassPic) = EBMODE_DESIGN Then
-'        Handled = True
-'        ControlSubclassProc = CallNextSubclassProc(m_pSubclassPic, hWnd, wMsg, wParam, lParam)
-'    End If
+    '--- note: performance optimization for design-time subclassing
+    If Not Handled And ThunkPrivateData(m_pSubclassPic) = EBMODE_DESIGN Then
+        Handled = True
+        ControlSubclassProc = CallNextSubclassProc(m_pSubclassPic, hWnd, wMsg, wParam, lParam)
+    End If
 End Function
 
 Private Function pvShiftState() As Integer
@@ -4340,6 +4430,259 @@ Private Sub pvOnMouseDrag(ByVal lY As Long)
         pvSetRangeSel m_lSelAnchor, lRow
         EnsureVisible m_lRow
     End If
+End Sub
+
+'--- a column is resized by the divider on its right, so that is the one the
+'--- grab looks for and the column it belongs to is the one that changes width.
+'--- AllowSizing decides whether it can be grabbed at all
+Private Function pvColDividerAt(ByVal lX As Long, ByVal lY As Long) As JSColumn
+    Dim vOrder          As Variant
+    Dim lIdx            As Long
+    Dim oCol            As JSColumn
+    Dim lCum            As Long
+
+    If Not m_bColumnHeaders Or lY < pvGroupByBoxHeight() Or lY >= pvRowsTop() Then
+        Exit Function
+    End If
+    lCum = pvBlockLeft()
+    vOrder = pvColOrder()
+    For lIdx = 0 To pvOrderMax(vOrder)
+        Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
+        If oCol.Visible Then
+            lCum = lCum + pvColWidth(oCol)
+            If Abs(lX - lCum) <= DIVIDER_GRAB_W Then
+                If oCol.AllowSizing Then
+                    Set pvColDividerAt = oCol
+                End If
+                Exit Function
+            End If
+        End If
+    Next
+End Function
+
+Private Function pvSetCursor() As Boolean
+    Dim uPt             As POINTAPI
+    Dim lCursor         As Long
+
+    If m_bDragging Then
+        lCursor = IDC_SIZEALL
+    ElseIf Not m_oSizeCol Is Nothing Then
+        lCursor = IDC_SIZEWE
+    Else
+        Call GetCursorPos(uPt)
+        Call ScreenToClient(picGrid.hWnd, uPt)
+        If Not pvColDividerAt(uPt.X, uPt.Y) Is Nothing Then
+            lCursor = IDC_SIZEWE
+        End If
+    End If
+    If lCursor <> 0 Then
+        Call SetCursor(LoadCursor(0, lCursor))
+        pvSetCursor = True
+    End If
+End Function
+
+'--- the column follows the divider while the button is down, so what the grid
+'--- paints is the width the client will be told about
+Private Sub pvOnColSize(ByVal lX As Long)
+    Dim lWidth          As Long
+
+    '--- the capture keeps WM_SETCURSOR from arriving, so the sizer is put up
+    '--- here for as long as the drag lasts
+    pvSetCursor
+    lWidth = m_lSizeStartW + lX - m_lSizeStartX
+    If lWidth < MIN_COL_W Then
+        lWidth = MIN_COL_W
+    End If
+    If lWidth <> pvColWidth(m_oSizeCol) Then
+        m_oSizeCol.frWidthPx = lWidth
+        pvInvalidate
+    End If
+End Sub
+
+'--- the client hears the width once, when the button comes up, and can refuse
+'--- it. A cancel -- WM_CANCELMODE, a message box going up under the drag --
+'--- puts the column back without asking
+'--- the widest of what the column holds: the values on the page in the data
+'--- font, plus the two pixels a painted cell starts its text at and the three
+'--- it is clipped at, and the caption in the header's own font with the room
+'--- that one leaves it. What is scrolled away is not measured
+Private Function pvAutoSizeWidth(ByVal lColIndex As Long) As Long
+    Dim lIdx            As Long
+    Dim hDC             As Long
+    Dim hPrevFont       As Long
+    Dim lWidth          As Long
+    Dim oRowData        As JSRowData
+
+    '--- the page is what is measured, so it has to be there: a client can ask
+    '--- for a fit before the grid has ever painted
+    pvSyncProjection
+    pvPopulateWindow
+    hDC = GetDC(picGrid.hWnd)
+    If m_bColumnHeaders Then
+        hPrevFont = pvSelectFont(hDC, m_oColumnHeaderFont)
+        '--- nine, where a value takes five: probed against the original, which
+        '--- fits a caption into four pixels more than the text it draws
+        pvAutoSizeWidth = pvTextWidth(hDC, m_oColumns.Item(lColIndex).Caption) + 9
+        Call SelectObject(hDC, hPrevFont)
+    End If
+    hPrevFont = pvSelectFont(hDC, m_oFont)
+    For lIdx = 1 To m_lWindowCount
+        Set oRowData = m_aWindow(lIdx)
+        If Not oRowData Is Nothing Then
+            If oRowData.RowIndex > 0 Then
+                lWidth = pvTextWidth(hDC, pvCellText(oRowData, lColIndex)) + 5
+                If lWidth > pvAutoSizeWidth Then
+                    pvAutoSizeWidth = lWidth
+                End If
+            End If
+        End If
+    Next
+    Call SelectObject(hDC, hPrevFont)
+    Call ReleaseDC(picGrid.hWnd, hDC)
+End Function
+
+'--- renumbering, since a position is a property each column carries: the ones
+'--- the move steps over shift by one the other way. Both the header drag and
+'--- an assignment to ColPosition come here, so neither can leave a gap
+Friend Sub frMoveCol(oCol As JSColumn, ByVal lNewPos As Long)
+    Dim lIdx            As Long
+    Dim lOldPos         As Long
+    Dim oItem           As JSColumn
+
+    lNewPos = Clamp(lNewPos, 1, m_oColumns.Count)
+    lOldPos = oCol.ColPosition
+    If lNewPos = lOldPos Then
+        Exit Sub
+    End If
+    For lIdx = 1 To m_oColumns.Count
+        Set oItem = m_oColumns.Item(lIdx)
+        If oItem.ColPosition > lOldPos And oItem.ColPosition <= lNewPos Then
+            oItem.frColPosition = oItem.ColPosition - 1
+        ElseIf oItem.ColPosition >= lNewPos And oItem.ColPosition < lOldPos Then
+            oItem.frColPosition = oItem.ColPosition + 1
+        End If
+    Next
+    oCol.frColPosition = lNewPos
+End Sub
+
+'--- the press on a header is still a click for as long as the pointer stays
+'--- within the double-click box around it -- the same slack the shell gives a
+'--- second click -- and leaving it is what turns the press into a move
+Private Sub pvOnColDrag(ByVal lX As Long, ByVal lY As Long)
+    Dim oTarget         As JSColumn
+
+    If Not m_bDragging Then
+        If Not m_bAllowColumnDrag Then
+            Exit Sub
+        End If
+        If Abs(lX - m_lDragStartX) <= GetSystemMetrics(SM_CXDOUBLECLK) \ 2 And Abs(lY - m_lDragStartY) <= GetSystemMetrics(SM_CYDOUBLECLK) \ 2 Then
+            Exit Sub
+        End If
+        m_bDragging = True
+        Call SetCapture(picGrid.hWnd)
+        pvInvalidateHeaders
+    End If
+    '--- the capture keeps WM_SETCURSOR from arriving, so the pointer is put
+    '--- up here for as long as the drag lasts
+    pvSetCursor
+    '--- the header the pointer is over is where the column lands if it is
+    '--- dropped now, and the mark on it moves with the pointer -- once per
+    '--- header crossed, not once per pixel the pointer travels
+    If lX >= 0 And lX < picGrid.ScaleWidth Then
+        pvColAtX lX, oTarget
+    End If
+    If Not oTarget Is m_oDropCol Then
+        Set m_oDropCol = oTarget
+        pvInvalidateHeaders
+    End If
+End Sub
+
+'--- the marked header is the new position, and the client can refuse it.
+'--- Nothing moves until then: the drag is a gesture over the headers, not a
+'--- column travelling under the pointer
+Private Sub pvEndColDrag(ByVal bCancel As Boolean)
+    Dim oCol            As JSColumn
+    Dim oTarget         As JSColumn
+    Dim oCancel         As JSRetBoolean
+    Dim lNewPos         As Long
+
+    Set oCol = m_oDragCol
+    Set oTarget = m_oDropCol
+    Set m_oDragCol = Nothing
+    Set m_oDropCol = Nothing
+    If Not m_bDragging Then
+        Exit Sub
+    End If
+    m_bDragging = False
+    Call ReleaseCapture
+    '--- let go of it outside the grid and it stays where it was: only a drop
+    '--- on a header is a drop on a position
+    If bCancel Or oTarget Is Nothing Then
+        GoTo QH
+    End If
+    lNewPos = oTarget.ColPosition
+    If lNewPos = oCol.ColPosition Then
+        GoTo QH
+    End If
+    Set oCancel = New JSRetBoolean
+    RaiseEvent BeforeColMove(oCol, lNewPos, oCancel)
+    If Not oCancel.Value Then
+        frMoveCol oCol, lNewPos
+        RaiseEvent AfterColMove
+    End If
+QH:
+    '--- the header that was inverted has to come back either way
+    pvInvalidate
+End Sub
+
+'--- a double-click on the divider fits the column to what it holds, and the
+'--- client hears about it the way it hears about a drag: the width proposed,
+'--- the column still on its old one, and a refusal leaving it there
+Friend Sub frAutoSizeCol(oCol As JSColumn)
+    Dim oCancel         As JSRetBoolean
+    Dim lWidth          As Long
+
+    lWidth = pvAutoSizeWidth(oCol.Index)
+    If lWidth < MIN_COL_W Then
+        lWidth = MIN_COL_W
+    End If
+    m_lSizeStartW = pvColWidth(oCol)
+    oCol.frWidthPx = lWidth
+    lWidth = oCol.Width
+    oCol.frWidthPx = m_lSizeStartW
+    Set oCancel = New JSRetBoolean
+    RaiseEvent ColResize(oCol.Index, lWidth, oCancel)
+    If Not oCancel.Value Then
+        oCol.Width = lWidth
+    End If
+    pvInvalidate
+End Sub
+
+Private Sub pvEndColSize(ByVal bCancel As Boolean)
+    Dim oCol            As JSColumn
+    Dim oCancel         As JSRetBoolean
+    Dim lWidth          As Long
+    Dim lNewWidth       As Long
+
+    Set oCol = m_oSizeCol
+    Set m_oSizeCol = Nothing
+    Call ReleaseCapture
+    '--- the column is put back to the width it was grabbed at before the
+    '--- client is asked: probed on the original, which reports the width it
+    '--- proposes in NewColWidth while Column.Width still answers the old one,
+    '--- so a handler reading the column sees what it would keep on a Cancel
+    lWidth = pvColWidth(oCol)
+    lNewWidth = oCol.Width
+    oCol.frWidthPx = m_lSizeStartW
+    If Not bCancel Then
+        Set oCancel = New JSRetBoolean
+        RaiseEvent ColResize(oCol.Index, lNewWidth, oCancel)
+        bCancel = oCancel.Value
+    End If
+    If Not bCancel Then
+        oCol.frWidthPx = lWidth
+    End If
+    pvInvalidate
 End Sub
 
 Private Function pvColAtX(ByVal lX As Long, oCol As JSColumn) As Long
@@ -4865,6 +5208,15 @@ Private Sub pvOnLButtonDown(ByVal lX As Long, ByVal lY As Long, ByVal lShift As 
 
     lTopGbox = pvGroupByBoxHeight()
     lTopHdr = pvRowsTop()
+    '--- the divider takes the click before the header under it does, or every
+    '--- resize would sort the column it started on
+    Set m_oSizeCol = pvColDividerAt(lX, lY)
+    If Not m_oSizeCol Is Nothing Then
+        m_lSizeStartX = lX
+        m_lSizeStartW = pvColWidth(m_oSizeCol)
+        Call SetCapture(picGrid.hWnd)
+        Exit Sub
+    End If
     If lY < lTopGbox Then
         '--- group-by box: a chip stands for its column, so clicking one sorts
         '--- exactly as clicking that column's header does
@@ -4877,12 +5229,14 @@ Private Sub pvOnLButtonDown(ByVal lX As Long, ByVal lY As Long, ByVal lShift As 
         End If
     ElseIf lY < lTopHdr Then
         '--- column header band
+        '--- the press only remembers the header: what it turns out to be is
+        '--- decided when the button comes up, since a header dragged onto
+        '--- another column is a move rather than a click that sorts
         lPos = pvColAtX(lX, oCol)
         If Not oCol Is Nothing Then
-            RaiseEvent ColumnHeaderClick(oCol)
-            If m_bAutomaticSort Then
-                pvAutoSort oCol
-            End If
+            Set m_oDragCol = oCol
+            m_lDragStartX = lX
+            m_lDragStartY = lY
         End If
     ElseIf m_lRowHeight > 0 Then
         '--- data area cell
@@ -4895,9 +5249,10 @@ Private Sub pvOnLButtonDown(ByVal lX As Long, ByVal lY As Long, ByVal lShift As 
             '--- The click belongs to the editor from there on: the button is
             '--- still down over the grid, and without this the first move
             '--- would drag a selection out of the cell being edited
-            '--- Ctrl+click is a selection gesture and nothing else: it picks
-            '--- the row up or puts it down, and no editor opens under it
-            If (lShift And vbCtrlMask) = 0 Then
+            '--- Ctrl and Shift make the click a selection gesture and nothing
+            '--- else -- one picks the row up or puts it down, the other runs
+            '--- the block out to it -- and no editor opens under either
+            If (lShift And (vbCtrlMask Or vbShiftMask)) = 0 Then
                 m_bClickOpenedEdit = pvBeginEdit(lRow, lPos, False, lX, lY)
             End If
         End If
@@ -4999,11 +5354,16 @@ Private Sub pvUpdateSelection(ByVal lRow As Long, ByVal lShift As Long, ByVal bC
         Else
             pvAddSel lRow
         End If
+        '--- the row the click lands on is about to become the current one, so
+        '--- what it says here is whether the marquee arrives on a row that is
+        '--- in the selection or one that has just been taken out of it
+        m_bCurRowDeselected = Not pvIsRowSelected(lRow)
         m_lSelAnchor = lRow
         pvInvalidate SkipScroll:=True
         RaiseEvent SelectionChange
     ElseIf m_bMultiSelect And (lShift And vbShiftMask) <> 0 Then
         pvSetRangeSel m_lSelAnchor, lRow
+        m_bCurRowDeselected = False
     Else
         '--- re-selecting the row that already is the whole selection changes
         '--- nothing, and the original stays quiet about it -- a click that only
@@ -5015,6 +5375,7 @@ Private Sub pvUpdateSelection(ByVal lRow As Long, ByVal lShift As Long, ByVal bC
         m_oSelectedItems.Clear
         pvAddSel lRow
         m_lSelAnchor = lRow
+        m_bCurRowDeselected = False
         pvInvalidate SkipScroll:=True
         If Not bSame Then
             RaiseEvent SelectionChange

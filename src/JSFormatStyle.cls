@@ -34,7 +34,7 @@ Private m_bFontUnderline            As Boolean
 Private m_bFontStrikeThru           As Boolean
 Private m_cyFontSize                As Currency
 Private m_sFontName                 As String
-Private m_nFontCharset              As Integer
+Private m_lFontCharset              As Long
 Private m_eTextAlignment            As jgexAlignmentConstants
 Private m_oBackgroundPicture        As Picture
 Private m_oPicture                  As Picture
@@ -127,11 +127,11 @@ End Property
 
 Public Property Get FontCharset() As Integer
 Attribute FontCharset.VB_Description = "Returns/sets the character set used in the font."
-    FontCharset = m_nFontCharset
+    FontCharset = m_lFontCharset
 End Property
 
 Public Property Let FontCharset(ByVal nValue As Integer)
-    m_nFontCharset = nValue
+    m_lFontCharset = nValue
 End Property
 
 Public Property Get TextAlignment() As jgexAlignmentConstants
@@ -213,7 +213,7 @@ Attribute Reset.VB_Description = "Clears all properties in a JSFormatStyle objec
         m_cyFontSize = .Size
         m_sFontName = .Name
         '--- original defaults to the system locale charset (e.g. 204 Cyrillic)
-        m_nFontCharset = .Charset
+        m_lFontCharset = .Charset
     End With
     m_eTextAlignment = jgexAlignLeft
     Set m_oBackgroundPicture = Nothing

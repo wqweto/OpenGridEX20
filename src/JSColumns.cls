@@ -104,7 +104,7 @@ Private Sub pvReindex()
 
     For lIdx = 1 To m_cItems.Count
         Set oItem = m_cItems.Item(lIdx)
-        oItem.frSetIndex lIdx
+        oItem.frIndex = lIdx
     Next
 End Sub
 

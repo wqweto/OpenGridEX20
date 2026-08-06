@@ -1125,3 +1125,54 @@ one row read the same as a sweep of two.
 - `pvVisibleColsInWidth` is `pvColsFitFrom`, beside a new `pvColsFitBefore`
   counting the other way, which is what the two page directions ask for. Both
   answer at least one, so a page always moves
+
+### Added (columns under the mouse: sizing, auto-size and moving)
+
+- A column is resized by dragging the divider on its header, for as long as the
+  button is down. The divider takes the press before the header under it does,
+  or every resize would sort the column it started on, and `AllowSizing` False
+  leaves the press to the header. The grid takes the capture and `WM_CANCELMODE`
+  -- a message box going up under the drag -- puts the width back without asking
+- `ColResize` is raised once, when the button comes up, with `Column.Width`
+  still the width the drag started from, and the new width applied only if the
+  client does not cancel: probed off the original, which reports the same way.
+  Ten pixels is as narrow as a drag can make a column, at 96dpi and at 120dpi
+  alike -- scenarios `076`/`077`, recorded from the original at both
+- Double-clicking a divider sizes the column to what it holds, and so does
+  `JSColumn.AutoSize`: the widest of the values on the page in the data font,
+  plus the two pixels a cell starts its text at and the three it clips at, and
+  the caption in the header's own font with the room that one leaves it.
+  Scrolled-away values are not measured -- scenarios `078`/`079`/`080`
+- A header dragged onto another column moves it there, raising `BeforeColMove`
+  with the new position and a cancel, then `AfterColMove`. A drop outside the
+  client area, or back on the column it started from, moves nothing.
+  `JSColumn.ColPosition` set by a client renumbers through the same path, so
+  neither route leaves a gap in the positions
+- The header being dragged paints inverted, a three-pixel red rule marks the
+  boundary the column would land on if it were dropped now, and the pointer
+  carries the four-way mover. The mover and the sizer are put up from the drag
+  itself: a capture keeps `WM_SETCURSOR` from ever arriving
+- `ColumnHeaderClick` and the automatic sort moved from the press to the
+  release. A press is still a click for as long as the pointer stays inside the
+  double-click box around it -- `SM_CXDOUBLECLK`/`SM_CYDOUBLECLK`, the slack the
+  shell gives a second click -- and once it leaves, the press is a move, which
+  takes the header click with it
+- Ctrl+click on the current row takes it out of the selection: it keeps the
+  focus rect and loses the selection colour, which the original does and a
+  current row painted selected unconditionally could not
+
+### Fixed (flicker)
+
+- The band erased itself before the navigator painted it. `pvInvalidate` asked
+  for an erase on the outer control, and that window's branch of the subclass
+  had no `WM_ERASEBKGND` case at all, so VB filled the band and
+  `UserControl_Paint` painted it again -- two paints per update. Both ends are
+  fixed. The grid surface had answered the message all along and in practice
+  never sees one: every invalidation on it asks for no erase
+- A column dragged over the headers repaints the strip above the rows --
+  `pvInvalidateHeaders`, group-by box included -- and only when the header under
+  the pointer changes, rather than the whole grid on every mouse move
+- A cell fills its own rectangle and stops one pixel short of its right edge
+  wherever a vertical gridline stands. The row had been filled in one go across
+  the whole block, so every rule was cleared and drawn again on each repaint,
+  which is what made the column boundaries shimmer

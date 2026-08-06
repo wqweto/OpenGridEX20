@@ -1,0 +1,23 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "column-resize-min",
+    "width": 400,
+    "height": 160,
+    "apply": "before-show",
+    "props": {
+        "GroupByBoxVisible": false,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500 },
+            { "Caption": "Beta", "Width": 1500 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "a1", "b1" ],
+            [ "a2", "b2" ]
+        ]
+    },
+    "input": [
+        { "drag": [ [ 100, 8 ], [ 60, 8 ], [ 20, 8 ], [ 4, 8 ], [ -40, 8 ] ] }
+    ]
+}

@@ -67,6 +67,7 @@ Private Const MODULE_NAME As String = "frmMain"
 '=========================================================================
 
 Private Const WM_HSCROLL            As Long = &H114
+Private Const WM_CANCELMODE         As Long = &H1F
 Private Const WM_ERASEBKGND         As Long = &H14
 Private Const WM_VSCROLL            As Long = &H115
 Private Const WM_KEYDOWN            As Long = &H100
@@ -75,6 +76,7 @@ Private Const WM_LBUTTONUP          As Long = &H202
 Private Const WM_MOUSEMOVE          As Long = &H200
 Private Const WM_CHAR               As Long = &H102
 Private Const MK_LBUTTON            As Long = &H1
+Private Const MK_SHIFT              As Long = &H4
 Private Const MK_CONTROL            As Long = &H8
 Private Const SB_LINEUP             As Long = 0
 Private Const SB_LINEDOWN           As Long = 1
@@ -92,6 +94,7 @@ Private Const GW_HWNDNEXT           As Long = 2
 Private Const GWL_STYLE             As Long = -16
 Private Const WS_VSCROLL            As Long = &H200000
 Private Const WS_VISIBLE            As Long = &H10000000
+Private Const SM_CXDOUBLECLK        As Long = 36
 
 Private Declare Function SendMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long
 Private Declare Function GetParent Lib "user32" (ByVal hWnd As Long) As Long
@@ -102,6 +105,7 @@ Private Declare Function GetClientRect Lib "user32" (ByVal hWnd As Long, lpRect 
 Private Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long) As Long
 Private Declare Function GetFocus Lib "user32" () As Long
 Private Declare Function IsWindow Lib "user32" (ByVal hWnd As Long) As Long
+Private Declare Function GetSystemMetrics Lib "user32" (ByVal nIndex As Long) As Long
 
 Private Type RECT
     Left                    As Long
@@ -149,6 +153,8 @@ Private Sub Form_Load()
     pvTestHScroll
     pvTestEditorFollowsScroll
     pvTestEditorScrollsIn
+    pvTestColumnSizing
+    pvTestColumnMove
     pvTestScrollProps
     pvTestItemCountInvalidate
     pvTestEditLeaveCell
@@ -649,7 +655,7 @@ Private Sub pvTestEditorFollowsScroll()
         .AllowEdit = True
         '--- same geometry as pvTestEditLeaveCell: data from y=52, rows 19px,
         '--- so (50, 80) is the second row
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 80)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(50, 80)
         hEdit = .hWndEdit
         Assert "Editor: the editor opened", hEdit <> 0
         Assert "Editor: and is shown", pvIsShown(hEdit)
@@ -710,13 +716,13 @@ Private Sub pvTestEditorScrollsIn()
         .AllowEdit = True
         '--- the second column hangs off the right edge at this width
         AssertEquals "EditorScroll: starts on the first column", 1, .LeftCol
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(150, 80)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(150, 80)
         AssertEquals "EditorScroll: the part-shown column scrolled in", 2, .LeftCol
         Call GetWindowRect(.hWndEdit, uRect)
         Assert "EditorScroll: so the editor opened whole", uRect.Right - uRect.Left > 90
         '--- and a row below the last one on show comes up to meet it
         .FirstItem = 1
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 60)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(50, 60)
         AssertEquals "EditorScroll: a row above the view scrolls to it", 1, .FirstItem
     End With
     Unload oForm
@@ -725,6 +731,145 @@ End Sub
 Private Function pvIsShown(ByVal hWnd As Long) As Boolean
     pvIsShown = (GetWindowLong(hWnd, GWL_STYLE) And WS_VISIBLE) <> 0
 End Function
+
+'--- the divider on a column's right edge resizes it: the grab takes the click
+'--- before the header under it does, the column follows the pointer while the
+'--- button is down, and the client hears the width once at the end and can
+'--- refuse it. Geometry as everywhere else here: group-by box 0..32, header
+'--- 33..51, A=0..99 and B=100..199 at 1500 twips a column
+Private Sub pvTestColumnSizing()
+    Dim oForm           As frmWeak
+    Dim lWidth          As Long
+    Dim lPixel          As Long
+
+    Set oForm = New frmWeak
+    Load oForm
+    lPixel = Screen.TwipsPerPixelX
+    With oForm.GridEX1
+        .Columns.Add("A").Width = 1500
+        .Columns.Add("B").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 5
+        .Rebind
+        lWidth = .Columns.Item(1).Width
+        oForm.EventLog = vbNullString
+        '--- grabbing the divider is not a click on the header it sits in
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(100, 40)
+        AssertEquals "ColSize: the grab does not click the header", "", oForm.EventLog
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(140, 40)
+        AssertEquals "ColSize: the column follows the pointer", lWidth + 40 * lPixel, .Columns.Item(1).Width
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(120, 40)
+        AssertEquals "ColSize: and back again", lWidth + 20 * lPixel, .Columns.Item(1).Width
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(120, 40)
+        AssertEquals "ColSize: the client hears the width once, at the end", _
+            "Resize(1," & lWidth + 20 * lPixel & ");", oForm.EventLog
+        AssertEquals "ColSize: and the column keeps it", lWidth + 20 * lPixel, .Columns.Item(1).Width
+        '--- a client that refuses it puts the column back where it was
+        oForm.CancelResize = True
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(120, 40)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(160, 40)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(160, 40)
+        AssertEquals "ColSize: a refused resize puts it back", lWidth + 20 * lPixel, .Columns.Item(1).Width
+        oForm.CancelResize = False
+        '--- and one that is cancelled out from under the drag as well
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(120, 40)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(160, 40)
+        SendMessage .hWnd, WM_CANCELMODE, 0, 0
+        AssertEquals "ColSize: WM_CANCELMODE abandons the drag", lWidth + 20 * lPixel, .Columns.Item(1).Width
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(180, 40)
+        AssertEquals "ColSize: and the pointer no longer drags it", lWidth + 20 * lPixel, .Columns.Item(1).Width
+        '--- a column that refuses to be sized is not grabbed at all
+        .Columns.Item(1).AllowSizing = False
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(120, 40)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(160, 40)
+        AssertEquals "ColSize: AllowSizing False leaves the width alone", lWidth + 20 * lPixel, .Columns.Item(1).Width
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(160, 40)
+        '--- AutoSize fits the column to the widest of what it holds: the
+        '--- values on the page, or the caption when that is wider
+        .Columns.Item(1).AllowSizing = True
+        .Columns.Item(2).Width = 3000
+        oForm.EventLog = vbNullString
+        .Columns.Item(2).AutoSize
+        lWidth = .Columns.Item(2).Width
+        Assert "AutoSize: a column of short values shrinks to them", lWidth < 3000
+        Assert "AutoSize: and the client hears one ColResize", InStr(oForm.EventLog, "Resize(2,") > 0
+        .Columns.Item(2).Caption = "a caption wider than any value in it"
+        .Columns.Item(2).AutoSize
+        Assert "AutoSize: a caption wider than the values wins", .Columns.Item(2).Width > lWidth
+        '--- and a value wider than the caption wins in its turn, which is what
+        '--- says the rows were measured at all
+        lWidth = .Columns.Item(2).Width
+        .Columns.Item(2).Caption = "B"
+        oForm.SetSeed 1, 2, "a value wider than any caption over it, by some way"
+        .Refetch
+        .Columns.Item(2).AutoSize
+        Assert "AutoSize: a value wider than the caption wins", .Columns.Item(2).Width > lWidth
+    End With
+    Unload oForm
+End Sub
+
+'--- dragging a header past another moves the column, and the client is asked
+'--- first: a release inside the double-click box around the press is still a
+'--- click that sorts, and only one outside it turns the press into a move
+Private Sub pvTestColumnMove()
+    Dim oForm           As frmWeak
+    Dim lSlack          As Long
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("A").Width = 1500
+        .Columns.Add("B").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 5
+        .Rebind
+        AssertEquals "ColMove: A starts first", 1, .Columns.Item(1).ColPosition
+        lSlack = GetSystemMetrics(SM_CXDOUBLECLK) \ 2
+        '--- a pointer that wanders no further than the double-click box has
+        '--- not started a move: the hand shakes and the click still sorts
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(50, 40)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(50 + lSlack, 40)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(50 + lSlack, 40)
+        AssertEquals "ColMove: a click alone moves nothing", 1, .Columns.Item(1).ColPosition
+        AssertEquals "ColMove: and says nothing about a move", "", _
+            Replace(Replace(oForm.EventLog, "HdrClick(A);", ""), "Click;", "")
+        '--- one pixel further out and the header is being repositioned, which
+        '--- takes the header click with it even when it lands where it started
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(50, 40)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(50 + lSlack + 1, 40)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(50 + lSlack + 1, 40)
+        AssertEquals "ColMove: a drop back in the same header moves nothing", 1, .Columns.Item(1).ColPosition
+        AssertEquals "ColMove: and is no header click", "", oForm.EventLog
+        '--- pressing on A and letting go over B moves A after it
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(50, 40)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(120, 40)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(150, 40)
+        AssertEquals "ColMove: A took B's place", 2, .Columns.Item(1).ColPosition
+        AssertEquals "ColMove: and B took A's", 1, .Columns.Item(2).ColPosition
+        Assert "ColMove: the client was asked first", InStr(oForm.EventLog, "BeforeMove(A,2);") > 0
+        Assert "ColMove: and told afterwards", InStr(oForm.EventLog, "AfterMove;") > 0
+        '--- a header that started moving is not a header that was clicked
+        AssertEquals "ColMove: a move is no header click", 0, InStr(oForm.EventLog, "HdrClick(")
+        '--- a client that refuses it leaves the columns where they were
+        oForm.CancelMove = True
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(150, 40)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(80, 40)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(50, 40)
+        AssertEquals "ColMove: a refused move leaves it in place", 2, .Columns.Item(1).ColPosition
+        oForm.CancelMove = False
+        '--- and AllowColumnDrag False keeps the headers where they are
+        .AllowColumnDrag = False
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(150, 40)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(80, 40)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(50, 40)
+        AssertEquals "ColMove: AllowColumnDrag False moves nothing", 2, .Columns.Item(1).ColPosition
+    End With
+    Unload oForm
+End Sub
 
 Private Sub pvTestEditLeaveCell()
     Dim oForm           As frmWeak
@@ -751,7 +896,7 @@ Private Sub pvTestEditLeaveCell()
         '--- lands past the end of the short cell text, which puts the caret
         '--- there and makes the typing an append
         AssertEquals "LeaveCell: no editor, no handle", 0, .hWndEdit
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 60)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(50, 60)
         hEdit = GetFocus()
         Assert "LeaveCell: the editor opened and took the focus", hEdit <> 0 And hEdit <> .hWnd
         AssertEquals "LeaveCell: hWndEdit is that editor", hEdit, .hWndEdit
@@ -838,13 +983,13 @@ Private Sub pvTestScrollProps()
         '--- ContinuousScroll: with it off the contents wait for the thumb to
         '--- be released, with it on they follow the drag
         AssertEquals "ContinuousScroll: default", False, .ContinuousScroll
-        SendMessage .hWnd, WM_VSCROLL, pvMakeLong(SB_THUMBTRACK, 20), 0
+        SendMessage .hWnd, WM_VSCROLL, MakeDWord(SB_THUMBTRACK, 20), 0
         AssertEquals "ContinuousScroll off: track does not scroll", 1, .FirstItem
-        SendMessage .hWnd, WM_VSCROLL, pvMakeLong(SB_THUMBPOSITION, 20), 0
+        SendMessage .hWnd, WM_VSCROLL, MakeDWord(SB_THUMBPOSITION, 20), 0
         Assert "ContinuousScroll off: release scrolls", .FirstItem > 1
         .FirstItem = 1
         .ContinuousScroll = True
-        SendMessage .hWnd, WM_VSCROLL, pvMakeLong(SB_THUMBTRACK, 20), 0
+        SendMessage .hWnd, WM_VSCROLL, MakeDWord(SB_THUMBTRACK, 20), 0
         Assert "ContinuousScroll on: track scrolls", .FirstItem > 1
         '--- FrozenColumns pins the leftmost columns, so LeftCol may go
         '--- further right than it could without them
@@ -1303,19 +1448,19 @@ Private Sub pvTestNavigator()
         GetClientRect lHwnd, uRect
         lY = uRect.Bottom - 9
         .Row = 3
-        SendMessage lHwnd, WM_LBUTTONDOWN, 0, pvMakeLong(70, lY)
+        SendMessage lHwnd, WM_LBUTTONDOWN, 0, MakeDWord(70, lY)
         AssertEquals "Navigator: prev steps back", 2, .Row
-        SendMessage lHwnd, WM_LBUTTONDOWN, 0, pvMakeLong(170, lY)
+        SendMessage lHwnd, WM_LBUTTONDOWN, 0, MakeDWord(170, lY)
         AssertEquals "Navigator: next steps forward", 3, .Row
-        SendMessage lHwnd, WM_LBUTTONDOWN, 0, pvMakeLong(188, lY)
+        SendMessage lHwnd, WM_LBUTTONDOWN, 0, MakeDWord(188, lY)
         AssertEquals "Navigator: last jumps to the end", .RowCount, .Row
-        SendMessage lHwnd, WM_LBUTTONDOWN, 0, pvMakeLong(55, lY)
+        SendMessage lHwnd, WM_LBUTTONDOWN, 0, MakeDWord(55, lY)
         AssertEquals "Navigator: first jumps to the start", 1, .Row
         '--- already at the first row, so prev must not move
-        SendMessage lHwnd, WM_LBUTTONDOWN, 0, pvMakeLong(70, lY)
+        SendMessage lHwnd, WM_LBUTTONDOWN, 0, MakeDWord(70, lY)
         AssertEquals "Navigator: prev clamps at the first row", 1, .Row
         '--- a click between the buttons changes nothing
-        SendMessage lHwnd, WM_LBUTTONDOWN, 0, pvMakeLong(120, lY)
+        SendMessage lHwnd, WM_LBUTTONDOWN, 0, MakeDWord(120, lY)
         AssertEquals "Navigator: click off a button is ignored", 1, .Row
     End With
     Unload oForm
@@ -1335,22 +1480,24 @@ Private Sub pvTestMouse()
         '--- geometry (MS Sans Serif 8.25): group-by box 0..32, header
         '--- 33..51, data from y=52; row height 19px; A=0..99, B=100..199
         oForm.EventLog = vbNullString
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 80)
-        SendMessage .hWnd, WM_LBUTTONUP, 0, pvMakeLong(50, 80)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(50, 80)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(50, 80)
         AssertEquals "Mouse: click sets Row 2", 2, .Row
         AssertEquals "Mouse: click sets Col 1", 1, .Col
         Assert "Mouse: Click event fired", InStr(oForm.EventLog, "Click;") > 0
         '--- click a cell in the second column, which hangs off the right edge
         '--- here: opening its editor scrolls it fully in, so the columns move
         '--- under the clicks that follow and the view is put back first
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(150, 80)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(150, 80)
         AssertEquals "Mouse: click sets Col 2", 2, .Col
         AssertEquals "Mouse: a part-shown column scrolls in to be edited", 2, .LeftCol
         .LeftCol = 1
         '--- click the first column header
         oForm.EventLog = vbNullString
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
-        AssertEquals "Mouse: header click fires ColumnHeaderClick", "HdrClick(A);", oForm.EventLog
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(50, 40)
+        AssertEquals "Mouse: the press alone says nothing", "", oForm.EventLog
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(50, 40)
+        Assert "Mouse: the release fires ColumnHeaderClick", InStr(oForm.EventLog, "HdrClick(A);") > 0
         '--- AutomaticSort off by default, so the click above sorted nothing
         AssertEquals "AutoSort: off leaves the sort keys alone", 0, .SortKeys.Count
     End With
@@ -1371,7 +1518,8 @@ Private Sub pvTestAutomaticSort()
         .AutomaticSort = True
         '--- same geometry as pvTestMouse: header band 33..51, A=0..99
         '--- an unsorted column sorts ascending and becomes the only key
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(50, 40)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(50, 40)
         AssertEquals "AutoSort: one key after the first click", 1, .SortKeys.Count
         AssertEquals "AutoSort: on the column clicked", 1, .SortKeys.Item(1).ColIndex
         AssertEquals "AutoSort: ascending first", jgexSortAscending, .SortKeys.Item(1).SortOrder
@@ -1380,15 +1528,18 @@ Private Sub pvTestAutomaticSort()
         AssertEquals "AutoSort: the column reports the key's order", jgexSortAscending, .Columns.Item(1).SortOrder
         AssertEquals "AutoSort: an unsorted column reports none", jgexSortNone, .Columns.Item(2).SortOrder
         '--- clicking it again flips to descending, never back to unsorted
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(50, 40)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(50, 40)
         AssertEquals "AutoSort: still one key", 1, .SortKeys.Count
         AssertEquals "AutoSort: descending on the second click", jgexSortDescending, .SortKeys.Item(1).SortOrder
         AssertEquals "AutoSort: the column follows it down", jgexSortDescending, .Columns.Item(1).SortOrder
         '--- and a third click comes back to ascending
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(50, 40)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(50, 40)
         AssertEquals "AutoSort: ascending again on the third", jgexSortAscending, .SortKeys.Item(1).SortOrder
         '--- another column replaces the key rather than adding to it
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(150, 40)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(150, 40)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(150, 40)
         AssertEquals "AutoSort: the new column is the only key", 1, .SortKeys.Count
         AssertEquals "AutoSort: keyed on the second column", 2, .SortKeys.Item(1).ColIndex
         AssertEquals "AutoSort: ascending on a fresh column", jgexSortAscending, .SortKeys.Item(1).SortOrder
@@ -1404,22 +1555,24 @@ Private Sub pvTestAutomaticSort()
         '--- which is what the original's own object model dump reports
         AssertEquals "AutoSort: a grouped column reports the group's order", jgexSortAscending, .Columns.Item(1).SortOrder
         AssertEquals "AutoSort: with no sort key behind it", 0, .SortKeys.Count
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(50, 40)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(50, 40)
         AssertEquals "AutoSort: group flipped to descending", jgexSortDescending, .Groups.Item(1).SortOrder
         AssertEquals "AutoSort: no sort key added for it", 0, .SortKeys.Count
         AssertEquals "AutoSort: the column follows the group down", jgexSortDescending, .Columns.Item(1).SortOrder
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(50, 40)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(50, 40)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(50, 40)
         AssertEquals "AutoSort: group back to ascending", jgexSortAscending, .Groups.Item(1).SortOrder
         '--- the chip in the group-by box stands for the same column: it sits
         '--- at x=8, y=7, sized off the caption, so (30, 15) lands inside it
         oForm.EventLog = vbNullString
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(30, 15)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(30, 15)
         AssertEquals "GBox: chip click fires GroupByBoxHeaderClick", "GBoxClick(1);", oForm.EventLog
         AssertEquals "GBox: chip click flips the group", jgexSortDescending, .Groups.Item(1).SortOrder
         AssertEquals "GBox: no sort key added for it", 0, .SortKeys.Count
         '--- the empty part of the box is not a chip
         oForm.EventLog = vbNullString
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(300, 15)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(300, 15)
         AssertEquals "GBox: a click off the chips does nothing", vbNullString, oForm.EventLog
         AssertEquals "GBox: and leaves the order alone", jgexSortDescending, .Groups.Item(1).SortOrder
         '--- ungrouping hands the column back to the sort keys
@@ -1429,10 +1582,6 @@ Private Sub pvTestAutomaticSort()
     End With
     Unload oForm
 End Sub
-
-Private Function pvMakeLong(ByVal lLo As Long, ByVal lHi As Long) As Long
-    pvMakeLong = (lLo And &HFFFF&) Or (lHi * &H10000)
-End Function
 
 Private Sub pvTestKeyPressDrag()
     Dim oForm           As frmWeak
@@ -1451,7 +1600,7 @@ Private Sub pvTestKeyPressDrag()
         AssertEquals "KeyPress: WM_CHAR raises KeyPress(65)", "Press(65);", oForm.EventLog
         '--- left-button drag over rows extends the selection range from the
         '--- mouse-down anchor (row 1 after bind) to the row under the cursor
-        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, pvMakeLong(30, 80)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(30, 80)
         Assert "Drag: row under cursor selected", .RowSelected(2)
         Assert "Drag: anchor row still selected", .RowSelected(1)
         Assert "Drag: row past cursor not selected", Not .RowSelected(4)
@@ -1460,23 +1609,31 @@ Private Sub pvTestKeyPressDrag()
         '--- a selection
         .Row = 1
         .SelectedItems.Clear
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(30, 60)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(30, 60)
         Assert "Drag: the click opened an editor", .hWndEdit <> 0
-        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, pvMakeLong(30, 120)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(30, 120)
         AssertEquals "Drag: an editing click does not drag a selection", 1, .SelectedItems.Count
-        SendMessage .hWnd, WM_LBUTTONUP, 0, pvMakeLong(30, 120)
-        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, pvMakeLong(30, 120)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(30, 120)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeDWord(30, 120)
         Assert "Drag: and the button coming up gives it back", .SelectedItems.Count > 1
         '--- Ctrl+click picks rows up and puts them down, and opens nothing
         .SelectedItems.Clear
-        SendMessage .hWnd, WM_LBUTTONDOWN, 0, pvMakeLong(30, 60)
-        SendMessage .hWnd, WM_LBUTTONUP, 0, pvMakeLong(30, 60)
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(30, 60)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(30, 60)
         Assert "Ctrl+click: a plain click opens the editor", .hWndEdit <> 0
-        SendMessage .hWnd, WM_LBUTTONDOWN, MK_CONTROL, pvMakeLong(30, 100)
+        SendMessage .hWnd, WM_LBUTTONDOWN, MK_CONTROL, MakeDWord(30, 100)
         AssertEquals "Ctrl+click: opens no editor", 0, .hWndEdit
         AssertEquals "Ctrl+click: and takes the row into the selection", 2, .SelectedItems.Count
-        SendMessage .hWnd, WM_LBUTTONDOWN, MK_CONTROL, pvMakeLong(30, 100)
+        SendMessage .hWnd, WM_LBUTTONDOWN, MK_CONTROL, MakeDWord(30, 100)
         AssertEquals "Ctrl+click: again puts it back down", 1, .SelectedItems.Count
+        '--- Shift+click runs the block out to the row it lands on, and leaves
+        '--- no editor behind either
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(30, 60)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(30, 60)
+        Assert "Shift+click: a plain click opens the editor", .hWndEdit <> 0
+        SendMessage .hWnd, WM_LBUTTONDOWN, MK_SHIFT, MakeDWord(30, 120)
+        AssertEquals "Shift+click: opens no editor", 0, .hWndEdit
+        Assert "Shift+click: and runs the selection out to it", .SelectedItems.Count > 1
     End With
     Unload oForm
 End Sub

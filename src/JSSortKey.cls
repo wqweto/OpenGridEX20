@@ -26,8 +26,8 @@ DefObj A-Z
 '=========================================================================
 
 Private m_pOwner                    As GridEX
-Private m_nIndex                    As Integer
-Private m_nColIndex                 As Integer
+Private m_lIndex                    As Long
+Private m_lColIndex                 As Long
 Private m_eSortOrder                As jgexSortOrderConstants
 
 '=========================================================================
@@ -36,16 +36,16 @@ Private m_eSortOrder                As jgexSortOrderConstants
 
 Public Property Get Index() As Integer
 Attribute Index.VB_Description = "Returns a value that represents the index of the JSSortKey in the JSSortKeys collection."
-    Index = m_nIndex
+    Index = m_lIndex
 End Property
 
 Public Property Get ColIndex() As Integer
 Attribute ColIndex.VB_Description = "Returns/sets the index of the sorted column."
-    ColIndex = m_nColIndex
+    ColIndex = m_lColIndex
 End Property
 
 Public Property Let ColIndex(ByVal nValue As Integer)
-    m_nColIndex = nValue
+    m_lColIndex = nValue
     If Not m_pOwner Is Nothing Then
         m_pOwner.frNotifySortChanged
     End If
@@ -65,23 +65,23 @@ Public Property Let SortOrder(ByVal eValue As jgexSortOrderConstants)
     End If
 End Property
 
+Friend Property Let frIndex(ByVal lIndex As Long)
+    m_lIndex = lIndex
+End Property
+
 '=========================================================================
 ' Methods
 '=========================================================================
 
-Friend Sub frInit(ByVal oCtl As GridEX, ByVal nIndex As Integer, ByVal nColIndex As Integer, ByVal eSortOrder As jgexSortOrderConstants)
+Friend Sub frInit(ByVal oCtl As GridEX, ByVal lIndex As Long, ByVal lColIndex As Long, ByVal eSortOrder As jgexSortOrderConstants)
     SetWeakRef m_pOwner, oCtl
-    m_nIndex = nIndex
-    m_nColIndex = nColIndex
+    m_lIndex = lIndex
+    m_lColIndex = lColIndex
     m_eSortOrder = eSortOrder
 End Sub
 
 Friend Sub frTerminate()
     SetWeakRef m_pOwner, Nothing
-End Sub
-
-Friend Sub frSetIndex(ByVal nIndex As Integer)
-    m_nIndex = nIndex
 End Sub
 
 '=========================================================================

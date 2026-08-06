@@ -28,7 +28,7 @@ DefObj A-Z
 Private m_lIndex                    As Long
 Private m_sText                     As String
 Private m_vValue                    As Variant
-Private m_nIconIndex                As Integer
+Private m_lIconIndex                As Long
 Private m_bVisible                  As Boolean
 
 '=========================================================================
@@ -60,11 +60,11 @@ End Property
 
 Public Property Get IconIndex() As Integer
 Attribute IconIndex.VB_Description = "Returns/sets the index of the JSGridImage that is linked to the value."
-    IconIndex = m_nIconIndex
+    IconIndex = m_lIconIndex
 End Property
 
 Public Property Let IconIndex(ByVal nValue As Integer)
-    m_nIconIndex = nValue
+    m_lIconIndex = nValue
 End Property
 
 Public Property Get Visible() As Boolean
@@ -76,19 +76,19 @@ Public Property Let Visible(ByVal bValue As Boolean)
     m_bVisible = bValue
 End Property
 
+Friend Property Let frIndex(ByVal lIndex As Long)
+    m_lIndex = lIndex
+End Property
+
 '=========================================================================
 ' Methods
 '=========================================================================
 
-Friend Sub frInit(ByVal lIndex As Long, vValue As Variant, sText As String, ByVal nIconIndex As Integer)
+Friend Sub frInit(ByVal lIndex As Long, vValue As Variant, sText As String, ByVal lIconIndex As Long)
     m_lIndex = lIndex
     m_vValue = vValue
     m_sText = sText
-    m_nIconIndex = nIconIndex
-End Sub
-
-Friend Sub frSetIndex(ByVal lIndex As Long)
-    m_lIndex = lIndex
+    m_lIconIndex = lIconIndex
 End Sub
 
 '=========================================================================
@@ -97,5 +97,5 @@ End Sub
 
 Private Sub Class_Initialize()
     m_bVisible = True
-    m_nIconIndex = -1
+    m_lIconIndex = -1
 End Sub

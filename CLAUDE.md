@@ -29,6 +29,7 @@
 - Align API consts data-types at column 45
 - Align module variables data-types at column 37
 - Declare API consts local to a routine if not used in any other routine
+- Group API consts by what they are under a `'---` divider naming the group, sorted by value, no blank lines between groups
 - API declares use "dllname" without the .dll suffix, always Unicode versions (aliased to names without the W suffix)
 - Use LongPtr with API declares i.e. for VB6 use enum hack
 - Separate logical sections inside a procedure with `'---` comments, not blank lines

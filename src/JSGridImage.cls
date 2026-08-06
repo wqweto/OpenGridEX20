@@ -26,7 +26,7 @@ DefObj A-Z
 '=========================================================================
 
 Private m_oPicture                  As Picture
-Private m_nIndex                    As Integer
+Private m_lIndex                    As Long
 
 '=========================================================================
 ' Properties
@@ -39,18 +39,19 @@ End Property
 
 Public Property Get Index() As Integer
 Attribute Index.VB_Description = "Returns a value that represents the index of an object in a collection. "
-    Index = m_nIndex
+    Index = m_lIndex
+End Property
+
+Friend Property Let frIndex(ByVal lIndex As Long)
+    m_lIndex = lIndex
 End Property
 
 '=========================================================================
 ' Methods
 '=========================================================================
 
-Friend Sub frInit(ByVal nIndex As Integer, oPicture As Picture)
-    m_nIndex = nIndex
+Friend Sub frInit(ByVal lIndex As Long, oPicture As Picture)
+    m_lIndex = lIndex
     Set m_oPicture = oPicture
 End Sub
 
-Friend Sub frSetIndex(ByVal nIndex As Integer)
-    m_nIndex = nIndex
-End Sub

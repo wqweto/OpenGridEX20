@@ -26,13 +26,13 @@ DefObj A-Z
 ' Constants and member variables
 '=========================================================================
 
-Private m_nCopies                   As Integer
+Private m_lCopies                   As Long
 Private m_bCollate                  As Boolean
-Private m_nPrintQuality             As Integer
+Private m_lPrintQuality             As Long
 Private m_eColorMode                As jgexPPColorModeConstants
 Private m_eOrientation              As jgexPPOrientationConstants
 Private m_ePaperBin                 As jgexPPPaperBinConstants
-Private m_nPaperSize                As Integer
+Private m_lPaperSize                As Long
 Private m_lPaperWidth               As Long
 Private m_lPaperHeight              As Long
 Private m_lLeftMargin               As Long
@@ -63,11 +63,11 @@ Private m_bPageSetupCanceled        As Boolean
 
 Public Property Get Copies() As Integer
 Attribute Copies.VB_Description = "Returns/sets the number of copies to be printed."
-    Copies = m_nCopies
+    Copies = m_lCopies
 End Property
 
 Public Property Let Copies(ByVal nValue As Integer)
-    m_nCopies = nValue
+    m_lCopies = nValue
 End Property
 
 Public Property Get Collate() As Boolean
@@ -81,11 +81,11 @@ End Property
 
 Public Property Get PrintQuality() As Integer
 Attribute PrintQuality.VB_Description = "Returns/sets the printer resolution."
-    PrintQuality = m_nPrintQuality
+    PrintQuality = m_lPrintQuality
 End Property
 
 Public Property Let PrintQuality(ByVal nValue As Integer)
-    m_nPrintQuality = nValue
+    m_lPrintQuality = nValue
 End Property
 
 Public Property Get ColorMode() As jgexPPColorModeConstants
@@ -131,11 +131,11 @@ End Property
 
 Public Property Get PaperSize() As Integer
 Attribute PaperSize.VB_Description = "Returns/sets the paper size for the current printer. "
-    PaperSize = m_nPaperSize
+    PaperSize = m_lPaperSize
 End Property
 
 Public Property Let PaperSize(ByVal nValue As Integer)
-    m_nPaperSize = nValue
+    m_lPaperSize = nValue
 End Property
 
 Public Property Get PaperWidth() As Long
@@ -391,11 +391,11 @@ End Function
 '=========================================================================
 
 Private Sub Class_Initialize()
-    m_nCopies = 1
+    m_lCopies = 1
     m_eColorMode = jgexPPCMMonochrome
     m_eOrientation = jgexPPPortrait
     m_ePaperBin = jgexPPAuto
-    m_nPrintQuality = -3
+    m_lPrintQuality = -3
     m_lLeftMargin = 1440
     m_lTopMargin = 1440
     m_lRightMargin = 1440

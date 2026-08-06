@@ -21,6 +21,11 @@ Private Declare Function VariantChangeType Lib "oleaut32" (Dest As Variant, Src 
 ' Functions
 '=========================================================================
 
+'--- the lParam shape the window messages take, low word first
+Public Function MakeDWord(ByVal lLoWord As Long, ByVal lHiWord As Long) As Long
+    MakeDWord = (lLoWord And &HFFFF&) Or (lHiWord * &H10000)
+End Function
+
 Public Function C2Obj(Value As Variant) As Object
     If IsObject(Value) Then
         Set C2Obj = Value
@@ -99,6 +104,10 @@ End Function
 '--- every file a test run produces lands in a single output folder next to
 '--- the exe, so the project folder holds sources only and the whole lot can
 '--- be wiped (or gitignored) as one
+Public Function FileExists(sFile As String) As Boolean
+    FileExists = (LenB(Dir$(sFile, vbNormal Or vbHidden Or vbSystem Or vbReadOnly)) <> 0)
+End Function
+
 Public Function OutputFile(sName As String) As String
     Dim sPath           As String
 

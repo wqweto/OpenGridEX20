@@ -25,107 +25,137 @@ Public Const NULL_PTR                   As LongPtr = 0
 Public Const PTR_SIZE                   As Long = 4
 Public Const NULL_PTR                   As Long = 0
 #End If
+'--- IObjectSafety
 Public Const INTERFACESAFE_FOR_UNTRUSTED_CALLER As Long = 1
 Public Const INTERFACESAFE_FOR_UNTRUSTED_DATA As Long = 2
-Public Const OPAQUE                     As Long = 2
-Public Const PS_SOLID                   As Long = 0
-Public Const PATINVERT                  As Long = &H5A0049
-Public Const PATCOPY                    As Long = &HF00021
-Public Const PS_DASH                    As Long = 1
-Public Const PS_DOT                     As Long = 2
-Public Const DT_CENTER                  As Long = 1
-Public Const DT_RIGHT                   As Long = 2
-Public Const DT_VCENTER                 As Long = 4
-Public Const DT_SINGLELINE              As Long = &H20
-Public Const DT_WORDBREAK               As Long = &H10
-Public Const DT_CALCRECT                As Long = &H400
-Public Const DT_NOPREFIX                As Long = &H800
-Public Const DT_NOCLIP                  As Long = &H100
-Public Const GWL_STYLE                  As Long = -16
-Public Const WS_VSCROLL                 As Long = &H200000
-Public Const WS_HSCROLL                 As Long = &H100000
-Public Const SB_VERT                    As Long = 1
-Public Const SB_CTL                     As Long = 2
-Public Const SIF_RANGE                  As Long = 1
-Public Const SIF_PAGE                   As Long = 2
-Public Const SIF_POS                    As Long = 4
-Public Const SWP_NOSIZE                 As Long = 1
-Public Const SWP_NOMOVE                 As Long = 2
-Public Const SWP_NOZORDER               As Long = 4
-Public Const SWP_SHOWWINDOW             As Long = &H40
-Public Const SWP_HIDEWINDOW             As Long = &H80
-Public Const SW_HIDE                    As Long = 0
-Public Const SWP_FRAMECHANGED           As Long = &H20
-Public Const SIF_TRACKPOS               As Long = &H10
-Public Const SM_CXVSCROLL               As Long = 2
-Public Const SM_CYHSCROLL               As Long = 3
-Public Const WM_HSCROLL                 As Long = &H114
-Public Const WM_VSCROLL                 As Long = &H115
-Public Const WM_KEYDOWN                  As Long = &H100
-Public Const WM_LBUTTONDOWN              As Long = &H201
-Public Const WM_LBUTTONUP                As Long = &H202
-Public Const WM_LBUTTONDBLCLK            As Long = &H203
-Public Const WM_MOUSEMOVE                As Long = &H200
-Public Const WM_CHAR                     As Long = &H102
-Public Const MK_LBUTTON                  As Long = &H1
-Public Const MK_RBUTTON                  As Long = &H2
-Public Const MK_SHIFT                    As Long = &H4
-Public Const MK_CONTROL                  As Long = &H8
-Public Const SB_LINEUP                  As Long = 0
-Public Const SB_LINEDOWN                As Long = 1
-Public Const SB_PAGEUP                  As Long = 2
-Public Const SB_PAGEDOWN                As Long = 3
-Public Const SB_THUMBPOSITION           As Long = 4
-Public Const SB_THUMBTRACK              As Long = 5
-Public Const SB_LINELEFT                As Long = 0
-Public Const SB_LINERIGHT               As Long = 1
-Public Const SB_PAGELEFT                As Long = 2
-Public Const SB_PAGERIGHT               As Long = 3
-Public Const SB_LEFT                    As Long = 6
-Public Const SB_RIGHT                   As Long = 7
-Public Const EBMODE_DESIGN              As Long = 0
-Public Const WM_ERASEBKGND              As Long = &H14
-Public Const WM_MOUSEACTIVATE           As Long = &H21
-Public Const WM_CTLCOLORSCROLLBAR       As Long = &H137
-Public Const MA_NOACTIVATE              As Long = 3
-Public Const DFC_SCROLL                 As Long = 3
-Public Const DFCS_SCROLLLEFT            As Long = 2
-Public Const DFCS_SCROLLRIGHT           As Long = 3
-Public Const DFCS_INACTIVE              As Long = &H100
-Public Const DFC_BUTTON                 As Long = 4
-Public Const DFCS_BUTTONPUSH            As Long = &H10
-Public Const LOGPIXELSY                 As Long = 90
-Public Const DFCS_BUTTONCHECK           As Long = &H0
-Public Const DFCS_CHECKED               As Long = &H400
-Public Const DFCS_FLAT                  As Long = &H4000
-Public Const EDGE_SUNKEN                As Long = &HA
-Public Const BF_RECT                    As Long = &HF
-Public Const EM_SETMARGINS              As Long = &HD3
-Public Const EC_LEFTMARGIN              As Long = 1
-Public Const EM_SETSEL                  As Long = &HB1
-Public Const EM_CHARFROMPOS             As Long = &HD7
-Public Const EM_LIMITTEXT               As Long = &HC5
-Public Const WM_SETFONT                 As Long = &H30
-Public Const WM_COMMAND                 As Long = &H111
-Public Const WM_KEYUP                   As Long = &H101
+'--- Windows messages
 Public Const WM_SETTEXT                 As Long = &HC
 Public Const WM_GETTEXT                 As Long = &HD
 Public Const WM_GETTEXTLENGTH           As Long = &HE
+Public Const WM_ERASEBKGND              As Long = &H14
+Public Const WM_CANCELMODE              As Long = &H1F
+Public Const WM_SETCURSOR               As Long = &H20
+Public Const WM_MOUSEACTIVATE           As Long = &H21
+Public Const WM_SETFONT                 As Long = &H30
+Public Const EM_SETSEL                  As Long = &HB1
+Public Const EM_LIMITTEXT               As Long = &HC5
+Public Const EM_SETMARGINS              As Long = &HD3
+Public Const EM_CHARFROMPOS             As Long = &HD7
+Public Const WM_KEYDOWN                 As Long = &H100
+Public Const WM_KEYUP                   As Long = &H101
+Public Const WM_CHAR                    As Long = &H102
+Public Const WM_COMMAND                 As Long = &H111
+Public Const WM_HSCROLL                 As Long = &H114
+Public Const WM_VSCROLL                 As Long = &H115
+Public Const WM_CTLCOLORSCROLLBAR       As Long = &H137
+Public Const WM_MOUSEMOVE               As Long = &H200
+Public Const WM_LBUTTONDOWN             As Long = &H201
+Public Const WM_LBUTTONUP               As Long = &H202
+Public Const WM_LBUTTONDBLCLK           As Long = &H203
 Public Const EN_CHANGE                  As Long = &H300
-Public Const WS_CHILD                   As Long = &H40000000
-Public Const WS_VISIBLE                 As Long = &H10000000
+'--- Edit control margins
+Public Const EC_LEFTMARGIN              As Long = 1
+'--- Window styles
 Public Const ES_LEFT                    As Long = 0
 Public Const ES_CENTER                  As Long = 1
 Public Const ES_RIGHT                   As Long = 2
 Public Const ES_MULTILINE               As Long = 4
-Public Const ES_AUTOHSCROLL             As Long = &H80
 Public Const ES_AUTOVSCROLL             As Long = &H40
+Public Const ES_AUTOHSCROLL             As Long = &H80
+Public Const WS_HSCROLL                 As Long = &H100000
+Public Const WS_VSCROLL                 As Long = &H200000
+Public Const WS_VISIBLE                 As Long = &H10000000
+Public Const WS_CHILD                   As Long = &H40000000
+'--- Window placement
+Public Const SW_HIDE                    As Long = 0
+Public Const SWP_NOSIZE                 As Long = 1
+Public Const SWP_NOMOVE                 As Long = 2
+Public Const SWP_NOZORDER               As Long = 4
+Public Const SWP_FRAMECHANGED           As Long = &H20
+Public Const SWP_SHOWWINDOW             As Long = &H40
+Public Const SWP_HIDEWINDOW             As Long = &H80
+'--- Window long offsets
+Public Const GWL_STYLE                  As Long = -16
+'--- Mouse keys
+Public Const MK_LBUTTON                 As Long = &H1
+Public Const MK_RBUTTON                 As Long = &H2
+Public Const MK_SHIFT                   As Long = &H4
+Public Const MK_CONTROL                 As Long = &H8
+'--- Mouse activate
+Public Const MA_NOACTIVATE              As Long = 3
+'--- Cursors
+Public Const IDC_SIZEWE                 As Long = 32644
+Public Const IDC_SIZEALL                As Long = 32646
+'--- Scroll bar codes
+Public Const SB_LINELEFT                As Long = 0
+Public Const SB_LINEUP                  As Long = 0
+Public Const SB_LINEDOWN                As Long = 1
+Public Const SB_LINERIGHT               As Long = 1
+Public Const SB_VERT                    As Long = 1
+Public Const SB_CTL                     As Long = 2
+Public Const SB_PAGELEFT                As Long = 2
+Public Const SB_PAGEUP                  As Long = 2
+Public Const SB_PAGEDOWN                As Long = 3
+Public Const SB_PAGERIGHT               As Long = 3
+Public Const SB_THUMBPOSITION           As Long = 4
+Public Const SB_THUMBTRACK              As Long = 5
+Public Const SB_LEFT                    As Long = 6
+Public Const SB_RIGHT                   As Long = 7
+'--- Scroll info flags
+Public Const SIF_RANGE                  As Long = 1
+Public Const SIF_PAGE                   As Long = 2
+Public Const SIF_POS                    As Long = 4
+Public Const SIF_TRACKPOS               As Long = &H10
+'--- System metrics
+Public Const SM_CXVSCROLL               As Long = 2
+Public Const SM_CYHSCROLL               As Long = 3
+Public Const SM_CXDOUBLECLK             As Long = 36
+Public Const SM_CYDOUBLECLK             As Long = 37
+Public Const LOGPIXELSY                 As Long = 90
+'--- DrawText flags
+Public Const DT_CENTER                  As Long = 1
+Public Const DT_RIGHT                   As Long = 2
+Public Const DT_VCENTER                 As Long = 4
+Public Const DT_WORDBREAK               As Long = &H10
+Public Const DT_SINGLELINE              As Long = &H20
+Public Const DT_NOCLIP                  As Long = &H100
+Public Const DT_CALCRECT                As Long = &H400
+Public Const DT_NOPREFIX                As Long = &H800
+Public Const DT_END_ELLIPSIS            As Long = &H8000&
+'--- DrawFrameControl flags
+Public Const DFCS_BUTTONCHECK           As Long = &H0
+Public Const DFCS_SCROLLLEFT            As Long = 2
+Public Const DFCS_SCROLLRIGHT           As Long = 3
+Public Const DFC_SCROLL                 As Long = 3
+Public Const DFC_BUTTON                 As Long = 4
+Public Const DFCS_BUTTONPUSH            As Long = &H10
+Public Const DFCS_INACTIVE              As Long = &H100
+Public Const DFCS_CHECKED               As Long = &H400
+Public Const DFCS_FLAT                  As Long = &H4000
+'--- DrawEdge flags
+Public Const EDGE_SUNKEN                As Long = &HA
+Public Const BF_RECT                    As Long = &HF
+'--- Pens, brushes and raster ops
+Public Const PS_SOLID                   As Long = 0
+Public Const PS_DASH                    As Long = 1
+Public Const OPAQUE                     As Long = 2
+Public Const PS_DOT                     As Long = 2
+Public Const DSTINVERT                  As Long = &H550009
+Public Const PATINVERT                  As Long = &H5A0049
+Public Const PATCOPY                    As Long = &HF00021
+'--- VB extender
+Public Const EBMODE_DESIGN              As Long = 0
 
 Public Declare Function SendMessage Lib "user32" Alias "SendMessageW" (ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long
 Public Declare Function CreateWindowEx Lib "user32" Alias "CreateWindowExW" (ByVal dwExStyle As Long, ByVal lpClassName As Long, ByVal lpWindowName As Long, ByVal dwStyle As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hWndParent As Long, ByVal hMenu As Long, ByVal hInstance As Long, lpParam As Any) As Long
 Public Declare Function DestroyWindow Lib "user32" (ByVal hWnd As Long) As Long
 Public Declare Function SetFocusApi Lib "user32" Alias "SetFocus" (ByVal hWnd As Long) As Long
 Public Declare Function ShowWindow Lib "user32" (ByVal hWnd As Long, ByVal nCmdShow As Long) As Long
+Public Declare Function SetCapture Lib "user32" (ByVal hWnd As Long) As Long
+Public Declare Function ReleaseCapture Lib "user32" () As Long
+Public Declare Function SetCursor Lib "user32" (ByVal hCursor As Long) As Long
+Public Declare Function LoadCursor Lib "user32" Alias "LoadCursorW" (ByVal hInstance As Long, ByVal lpCursorName As Long) As Long
+Public Declare Function ScreenToClient Lib "user32" (ByVal hWnd As Long, lpPoint As POINTAPI) As Long
 Public Declare Function InvalidateRect Lib "user32" (ByVal hWnd As Long, ByVal lpRect As Long, ByVal bErase As Long) As Long
 Public Declare Function UpdateWindow Lib "user32" (ByVal hWnd As Long) As Long
 Public Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (Destination As Any, Source As Any, ByVal Length As Long)
@@ -259,8 +289,6 @@ Public Function GetYLParam(ByVal lParam As Long) As Long
     GetYLParam = nWord
 End Function
 
-'--- metric props are stored internally in pixels and exposed in twips;
-'--- conversion snaps to the nearest whole pixel like the original
 Public Function C2Dbl(vValue As Variant) As Double
     Const VARIANT_ALPHABOOL As Long = 2
     Dim vDest           As Variant

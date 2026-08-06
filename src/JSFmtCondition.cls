@@ -26,11 +26,11 @@ DefObj A-Z
 '=========================================================================
 
 Private m_oFormatStyle              As JSFormatStyle
-Private m_nColIndex                 As Integer
+Private m_lColIndex                 As Long
 Private m_eOperator                 As jgexConditionOperatorConstants
 Private m_vValue1                   As Variant
 Private m_vValue2                   As Variant
-Private m_nIndex                    As Integer
+Private m_lIndex                    As Long
 Private m_sKey                      As String
 
 '=========================================================================
@@ -48,11 +48,11 @@ End Property
 
 Public Property Get ColIndex() As Integer
 Attribute ColIndex.VB_Description = "Returns/sets the index of the column  to be compared."
-    ColIndex = m_nColIndex
+    ColIndex = m_lColIndex
 End Property
 
 Public Property Let ColIndex(ByVal nValue As Integer)
-    m_nColIndex = nValue
+    m_lColIndex = nValue
 End Property
 
 Public Property Get Operator() As jgexConditionOperatorConstants
@@ -84,12 +84,16 @@ End Property
 
 Public Property Get Index() As Integer
 Attribute Index.VB_Description = "Returns a value that represents the index of an object in a collection. "
-    Index = m_nIndex
+    Index = m_lIndex
 End Property
 
 Public Property Get Key() As String
 Attribute Key.VB_Description = "Returns/sets a string that uniquely identifies a member in a collection."
     Key = m_sKey
+End Property
+
+Friend Property Let frIndex(ByVal lIndex As Long)
+    m_lIndex = lIndex
 End Property
 
 '=========================================================================
@@ -98,7 +102,7 @@ End Property
 
 Public Sub SetCondition(ByVal ColIndex As Integer, ByVal Operator As jgexConditionOperatorConstants, ByVal Value1 As Variant, Optional ByVal Value2 As Variant)
 Attribute SetCondition.VB_Description = "Sets the condition parameters."
-    m_nColIndex = ColIndex
+    m_lColIndex = ColIndex
     m_eOperator = Operator
     m_vValue1 = Value1
     If Not IsMissing(Value2) Then
@@ -106,11 +110,8 @@ Attribute SetCondition.VB_Description = "Sets the condition parameters."
     End If
 End Sub
 
-Friend Sub frInit(ByVal nIndex As Integer, sKey As String)
-    m_nIndex = nIndex
+Friend Sub frInit(ByVal lIndex As Long, sKey As String)
+    m_lIndex = lIndex
     m_sKey = sKey
 End Sub
 
-Friend Sub frSetIndex(ByVal nIndex As Integer)
-    m_nIndex = nIndex
-End Sub
