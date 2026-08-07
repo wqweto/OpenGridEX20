@@ -676,6 +676,9 @@ Private m_bClickOpenedEdit          As Boolean
 Private m_oSizeCol                  As JSColumn
 Private m_oDragCol                  As JSColumn
 Private m_oDropCol                  As JSColumn
+Private m_oDragGroup                As JSGroup
+Private m_oDropGroup                As JSGroup
+Private m_bDropAfter                As Boolean
 Private m_lDragStartX               As Long
 Private m_lDragStartY               As Long
 Private m_bDragging                 As Boolean
@@ -1058,16 +1061,10 @@ Attribute LeftCol.VB_Description = "Returns/sets the left-most visible column."
 End Property
 
 Public Property Let LeftCol(ByVal nValue As Integer)
-    Dim lMax            As Long
-
     '--- scrolling stops once the last column reaches the right edge, so a
     '--- value past that clamps -- the frozen block is not scrolled over and
     '--- takes its width out of the strip the rest has to fill
-    lMax = pvVisibleColCount() - pvColsFitFrom(pvScrollableWidth(), pvFrozenCount() + 1) + 1
-    If lMax < 1 Then
-        lMax = 1
-    End If
-    nValue = Clamp(nValue, 1, lMax)
+    nValue = Clamp(nValue, 1, pvMaxLeftCol())
     If m_lLeftCol <> nValue Then
         m_lLeftCol = nValue
         pvInvalidate
@@ -2129,9 +2126,6 @@ End Sub
 
 Friend Sub frNotifyGroupsChanged()
     frNotifySortChanged
-    '--- the rows a group brings with it move the current row inside the block
-    '--- and the view goes after it, which a sort order flipped on a group that
-    '--- is already there does not do
     pvSyncProjection
     pvScrollCurrentToTop
 End Sub
@@ -2504,7 +2498,7 @@ Private Sub pvPaint(ByVal hDC As Long, uClip As RECT)
         lBandH = pvGroupByBoxHeight()
         If pvNeedRepaint(uClip, lY, lBandH) Then
             pvBufferBand hMemDC, lY, lWidth, lBandH
-            pvPaintGroupByBox hMemDC, lY
+            pvPaintGroupByBox hMemDC
             pvBufferFlush hDC, hMemDC, lY, lWidth, lBandH
         End If
         lY = lY + lBandH
@@ -2522,7 +2516,7 @@ Private Sub pvPaint(ByVal hDC As Long, uClip As RECT)
     pvBufferClose
 End Sub
 
-Private Sub pvPaintGroupByBox(ByVal hDC As Long, ByVal lY As Long)
+Private Sub pvPaintGroupByBox(ByVal hDC As Long)
     Dim lBoxH           As Long
     Dim lTotalH         As Long
     Dim uRect           As RECT
@@ -2540,13 +2534,13 @@ Private Sub pvPaintGroupByBox(ByVal hDC As Long, ByVal lY As Long)
     hPrevFont = pvSelectFont(hDC, m_oFont)
     lBoxH = m_lColumnHeaderHeight + 4
     lTotalH = pvGroupByBoxHeight()
-    pvFillRect hDC, 0, lY, picGrid.ScaleWidth, lY + lTotalH, m_clrBackColorGBBox
+    pvFillRect hDC, 0, 0, picGrid.ScaleWidth, lTotalH, m_clrBackColorGBBox
     If m_oGroups.Count > 0 Then
         '--- the grouped columns take the box over, one chip each: a raised
         '--- button carrying the column caption and the same sort arrow its
         '--- header shows, on the rectangle the layout gave it
         uMetrics = FontTextMetrics(m_oColumnHeaderFont, hDC)
-        pvLayoutGroupChips hDC, lY
+        pvLayoutGroupChips hDC:=hDC
         For lIdx = 1 To m_oGroups.Count
             Set oGroup = m_oGroups.Item(lIdx)
             If oGroup.ColIndex >= 1 And oGroup.ColIndex <= m_oColumns.Count Then
@@ -2570,9 +2564,10 @@ Private Sub pvPaintGroupByBox(ByVal hDC As Long, ByVal lY As Long)
                     pvPaintSortGlyph hDC, lLeft + 2 + pvTextWidth(hDC, sCaption) + 4, _
                         lTop + 3 + uMetrics.tmHeight \ 2 + 4, oGroup.SortOrder
                 End If
-                '--- the chip inverts with the column it stands for while that
-                '--- column is on its way somewhere, as its header does
-                If m_oColumns.Item(oGroup.ColIndex) Is m_oDragCol Then
+                '--- the chip inverts while what it stands for is on its way
+                '--- somewhere, as a header does -- whether it is the chip
+                '--- itself being dragged or its column coming from the row
+                If oGroup Is m_oDragGroup Then
                     Call PatBlt(hDC, lLeft, lTop + 1, lChipW - 1, lChipH - 2, DSTINVERT)
                 End If
                 '--- consecutive levels are joined by an elbow: down out of the
@@ -2596,35 +2591,30 @@ Private Sub pvPaintGroupByBox(ByVal hDC As Long, ByVal lY As Long)
     Else
         '--- info box is sized by the info text extent
         Call DrawText(hDC, StrPtr(m_sGroupByBoxInfoText), Len(m_sGroupByBoxInfoText), uRect, DT_SINGLELINE Or DT_CALCRECT)
-        pvFillRect hDC, 4, lY + 5, 12 + uRect.Right, lY + 5 + lBoxH, m_clrBackColorInfoText
-        pvDrawText hDC, m_sGroupByBoxInfoText, 7, lY + 5, 7 + uRect.Right, lY + 5 + lBoxH, m_clrForeColorInfoText, m_clrBackColorInfoText, jgexAlignLeft, 7, 7 + uRect.Right
+        pvFillRect hDC, 4, 5, 12 + uRect.Right, 5 + lBoxH, m_clrBackColorInfoText
+        pvDrawText hDC, m_sGroupByBoxInfoText, 7, 5, 7 + uRect.Right, 5 + lBoxH, m_clrForeColorInfoText, m_clrBackColorInfoText, jgexAlignLeft, 7, 7 + uRect.Right
     End If
-    '--- where a header dragged in here would land: the drop appends, so the
-    '--- mark stands on the right border of the last chip -- or where the first
-    '--- one would start, with nothing in the box yet. Three red pixels, the
-    '--- same as the header row puts on the boundary a column would move to
-    If m_bDropInGBox Then
-        lLeft = CHIP_LEFT
-        lTop = lY + CHIP_TOP
-        If m_oGroups.Count > 0 Then
-            Set oGroup = m_oGroups.Item(m_oGroups.Count)
-            lLeft = oGroup.frChipRect.Right
-            lTop = oGroup.frChipRect.Top
-        End If
+    '--- where the drop would land: on the near or the far border of whichever
+    '--- chip the pointer has reached along the box, or where the first one
+    '--- would start with none in it yet. Three red pixels, the same mark the
+    '--- header row puts on the boundary a column would move to
+    If m_bDropInGBox And pvGBoxDropMark(lLeft, lTop) Then
         lChipH = FontTextMetrics(m_oColumnHeaderFont, hDC).tmHeight + 6
         pvFillRect hDC, lLeft - 2, lTop, lLeft + 1, lTop + lChipH, vbRed
     End If
     Call SelectObject(hDC, hPrevFont)
 End Sub
 
-Private Sub pvLayoutGroupChips(ByVal hDC As Long, ByVal lY As Long)
-    Dim lIdx            As Long
-    Dim oGroup          As JSGroup
+Private Sub pvLayoutGroupChips(Optional ByVal hDC As Long)
+    Dim hOwnDC          As Long
+    Dim hPrevFont       As Long
+    Dim uMetrics        As TEXTMETRICW
+    Dim lChipH          As Long
     Dim lLeft           As Long
     Dim lTop            As Long
-    Dim lChipH          As Long
+    Dim lIdx            As Long
+    Dim oGroup          As JSGroup
     Dim uRect           As RECT
-    Dim uMetrics        As TEXTMETRICW
 
     '--- a chip per group level, sized off its column caption with the room
     '--- the original leaves for the drop affordance, each stepping right past
@@ -2632,11 +2622,20 @@ Private Sub pvLayoutGroupChips(ByVal hDC As Long, ByVal lY As Long)
     '--- original draws. The step is taken off the stored header height rather
     '--- than re-measured, which keeps it in step with the band it sits in.
     '--- Every level keeps the rectangle it landed on so the painter and the
-    '--- hit-test never disagree about where a chip is
+    '--- hit-test never disagree about where a chip is.
+    '--- The painter is holding a DC already and hands it over. A hit-test is
+    '--- not, and takes one out to lay the chips again rather than reading them
+    '--- off the last paint: a control that has not painted yet still hit-tests
+    '--- and a caption or font changed since would leave the rectangles behind
+    If hDC = 0 Then
+        hOwnDC = GetDC(picGrid.hWnd)
+        hDC = hOwnDC
+        hPrevFont = pvSelectFont(hDC, m_oFont)
+    End If
     uMetrics = FontTextMetrics(m_oColumnHeaderFont, hDC)
     lChipH = uMetrics.tmHeight + 6
     lLeft = CHIP_LEFT
-    lTop = lY + CHIP_TOP
+    lTop = CHIP_TOP
     For lIdx = 1 To m_oGroups.Count
         Set oGroup = m_oGroups.Item(lIdx)
         uRect.Left = 0
@@ -2653,6 +2652,10 @@ Private Sub pvLayoutGroupChips(ByVal hDC As Long, ByVal lY As Long)
         End If
         oGroup.frChipRect = uRect
     Next
+    If hOwnDC <> 0 Then
+        Call SelectObject(hDC, hPrevFont)
+        Call ReleaseDC(picGrid.hWnd, hOwnDC)
+    End If
 End Sub
 
 Private Sub pvPaintHeaders(ByVal hDC As Long, ByVal lY As Long)
@@ -2665,6 +2668,7 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, ByVal lY As Long)
     Dim vOrder          As Variant
     Dim lIdx            As Long
     Dim lMarkX          As Long
+    Dim bMark           As Boolean
 
     lHdrH = m_lColumnHeaderHeight
     lMarkX = -1
@@ -2713,11 +2717,22 @@ Private Sub pvPaintHeaders(ByVal hDC As Long, ByVal lY As Long)
             Call PatBlt(hDC, lX, lY + 1, lW - 1, lHdrH - 2, DSTINVERT)
         End If
         '--- and the boundary it would land on is marked on the header under
-        '--- the pointer: the far side of it, on the side the column comes from
-        If m_bDragging And oCol Is m_oDropCol And Not oCol Is m_oDragCol Then
-            lMarkX = lX
-            If m_oDropCol.ColPosition > m_oDragCol.ColPosition Then
-                lMarkX = lX + lW
+        '--- the pointer: the far side of it, on the side the column comes from.
+        '--- A chip dragged over the row marks the same way, since dropping it
+        '--- there puts its column at that position on the way out of the box
+        '--- and only where the drop would land it somewhere else: a header over
+        '--- the near half of its own neighbour is over the place it is in
+        If m_bDragging And oCol Is m_oDropCol And Not oCol Is pvGetDragColumn() Then
+            If m_oDragCol Is Nothing Then
+                bMark = True
+            Else
+                bMark = pvDropMoves(m_oDragCol.ColPosition, oCol.ColPosition, m_bDropAfter)
+            End If
+            If bMark Then
+                lMarkX = lX
+                If m_bDropAfter Then
+                    lMarkX = lX + lW
+                End If
             End If
         End If
         lX = lX + lW
@@ -3075,12 +3090,11 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         clrHGap = m_clrBackColor
     End If
     lX = lHdrW
-    lPos = 0
     vOrder = pvColOrder()
     For lIdx = 0 To pvOrderMax(vOrder)
         Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
         If oCol.Visible Then
-            lPos = lPos + 1
+            lPos = pvVisiblePosition(vOrder(lIdx))
             lW = pvColWidth(oCol)
             '--- the line the rule closes the row with is left out of the fill:
             '--- it belongs to the rule, which lays down whatever shows through
@@ -3279,15 +3293,8 @@ Private Sub pvPaintGroupRow(ByVal hDC As Long, ByVal lPos As Long, ByVal lRowTop
         clrText = m_clrForeColorRowGroup
     End If
     pvFillRect hDC, 0, lRowTop, lRight, lRowTop + lRowH, clrBack
-    '--- the rules of the levels this group sits inside run through it
     pvPaintIndentRules hDC, lRowTop, lRowH, lIndent
-    '--- the row's last line is the separator shared with whatever follows,
-    '--- so it starts where the records start
     pvLine hDC, pvBlockLeft() - 1, lRowTop + lRowH - 1, lRight, lRowTop + lRowH - 1, m_clrGridLinesColor, pvPenStyle()
-    '--- the line above it starts at this group's own edge instead: a level
-    '--- one group opens the full width, a nested one only its own part. A
-    '--- footer closes a group rather than opening one, so the rule above it
-    '--- belongs to the records and starts where they do
     If lRowTop > lBlockTop Then
         lLineLeft = pvRowHeaderWidth() + lIndent - 1
         If bFooter Then
@@ -3297,9 +3304,6 @@ Private Sub pvPaintGroupRow(ByVal hDC As Long, ByVal lPos As Long, ByVal lRowTop
     End If
     lBoxLeft = pvRowHeaderWidth() + lIndent + (GROUP_INDENT_W - GROUP_BOX_W) \ 2
     lBoxTop = lRowTop + (lRowH - 1 - GROUP_BOX_W) \ 2
-    '--- a footer carries no expand box: it closes the group rather than
-    '--- opening it, and under the totals style it reads across the columns
-    '--- instead of carrying the caption
     If bFooter Then
         If m_eGroupFooterStyle = jgexTotalsGroupFooter Then
             pvPaintGroupTotals hDC, oRowData, lRowTop, lRowH, clrBack, clrText
@@ -3310,11 +3314,6 @@ Private Sub pvPaintGroupRow(ByVal hDC As Long, ByVal lPos As Long, ByVal lRowTop
     End If
     uMetrics = FontTextMetrics(m_oFont, hDC)
     lTextTop = lRowTop + (lRowH - 1 - uMetrics.tmHeight) \ 2
-    '--- the caption is drawn a space past the expand box, plus the two pixel
-    '--- margin text keeps everywhere else -- this tracks the font at any dpi
-    '--- the caption sits two pixels past the expand box behind a leading
-    '--- space, which a prefix supplies itself -- so a prefixed level starts
-    '--- one space earlier and its value still lands where a plain one does
     lTextLeft = lBoxLeft + GROUP_BOX_W + 2
     If Not oRowData.frGroupPrefixed Then
         lTextLeft = lTextLeft + pvTextWidth(hDC, " ")
@@ -3704,9 +3703,6 @@ EH:
     PrintError FUNC_NAME
 End Sub
 
-'--- everything above the rows repaints on its own: the group-by box and the
-'--- header band. The rows have not changed while a column is dragged over the
-'--- headers, and painting them again is what the eye sees as flicker
 Private Sub pvInvalidateHeaders()
     Dim uRect           As RECT
 
@@ -3719,9 +3715,6 @@ Private Sub pvInvalidateHeaders()
 End Sub
 
 Private Function pvTopHeight() As Long
-    '--- the group-by box grows a staircase step per level past the first, so
-    '--- the room left for rows shrinks with them -- which is what puts a
-    '--- vertical scrollbar on a grouped grid that would otherwise just fit
     pvTopHeight = pvGroupByBoxHeight()
     If m_bColumnHeaders Then
         pvTopHeight = pvTopHeight + m_lColumnHeaderHeight
@@ -3775,6 +3768,19 @@ Private Function pvVisibleColCount() As Long
     For lIdx = 1 To m_oColumns.Count
         If m_oColumns.ItemByPosition(lIdx).Visible Then
             pvVisibleColCount = pvVisibleColCount + 1
+        End If
+    Next
+End Function
+
+'--- Col numbers the visible columns from the first one, not from LeftCol:
+'--- scrolling the block sideways moves a cell but does not rename it, so
+'--- the count has to run over the whole order and not over what is on screen
+Private Function pvVisiblePosition(ByVal lPosition As Long) As Long
+    Dim lIdx            As Long
+
+    For lIdx = 1 To lPosition
+        If m_oColumns.ItemByPosition(lIdx).Visible Then
+            pvVisiblePosition = pvVisiblePosition + 1
         End If
     Next
 End Function
@@ -3869,11 +3875,6 @@ End Sub
 Private Function pvTextWidth(ByVal hDC As Long, sText As String) As Long
     Dim uSize           As SIZEAPI
 
-    '--- GetTextExtentPoint32, which is what VB6's own TextWidth calls, not
-    '--- DrawText with DT_CALCRECT: the two agree on the bitmap faces but part
-    '--- company on TrueType, where CALCRECT drops the last glyph's overhang
-    '--- -- "Region" in Segoe UI 14 measures 58 that way against the 59 the
-    '--- original lays its group-by chip out with
     Call GetTextExtentPoint32(hDC, StrPtr(sText), Len(sText), uSize)
     pvTextWidth = uSize.cx
 End Function
@@ -4086,7 +4087,6 @@ Private Sub pvUpdateScrollBars()
     Dim bNeedV          As Boolean
     Dim bNeedH          As Boolean
     Dim uSi             As SCROLLINFO
-    Dim lPage           As Long
 
     If m_bScrollUpdating Then
         Exit Sub
@@ -4168,17 +4168,13 @@ Private Sub pvUpdateScrollBars()
     pvLayoutGrid
     pvLayoutHScroll bNeedH, bNeedV
     If bNeedH Then
-        lPage = pvColsFitFrom(pvScrollableWidth(), pvFrozenCount() + 1)
-        If lPage < 1 Then
-            lPage = 1
-        End If
         '--- the vertical block is done with it by now, and every field this
         '--- one reads is written below
         With uSi
             .cbSize = Len(uSi)
             .fMask = SIF_RANGE Or SIF_PAGE Or SIF_POS
             .nMin = pvFrozenCount() + 1
-            .nMax = pvVisibleColCount() - lPage + 1
+            .nMax = pvMaxLeftCol()
             If .nMax < .nMin Then
                 .nMax = .nMin
             End If
@@ -4324,6 +4320,13 @@ Private Function pvColsFitFrom(ByVal lWidth As Long, ByVal lStart As Long) As Lo
     Next
     If pvColsFitFrom < 1 Then
         pvColsFitFrom = 1
+    End If
+End Function
+
+Private Function pvMaxLeftCol() As Long
+    pvMaxLeftCol = pvVisibleColCount() - pvColsFitBefore(pvScrollableWidth(), m_oColumns.Count + 1) + 1
+    If pvMaxLeftCol < 1 Then
+        pvMaxLeftCol = 1
     End If
 End Function
 
@@ -4555,11 +4558,10 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
     Dim nKeyCode        As Integer
     Dim nShift          As Integer
     Dim nKeyAscii       As Integer
+    Dim oGroup          As JSGroup
     Dim oSizeCol        As JSColumn
 
     If hWnd = UserControl.hWnd Then
-        '--- the outer control is the band: navigator clicks plus the child
-        '--- scrollbar's colour and activation messages
         Select Case wMsg
         Case WM_LBUTTONDOWN
             pvOnNavigatorClick GetXLParam(lParam), GetYLParam(lParam)
@@ -4602,7 +4604,7 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         If Not m_oSizeCol Is Nothing Then
             pvEndColSize bCancel:=True
         End If
-        If Not m_oDragCol Is Nothing Then
+        If Not m_oDragCol Is Nothing Or Not m_oDragGroup Is Nothing Then
             pvEndColDrag bCancel:=True
         End If
     Case WM_TIMER
@@ -4634,10 +4636,17 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         If Not m_oSizeCol Is Nothing Then
             pvEndColSize bCancel:=False
         ElseIf m_bDragging Then
-            '--- once the header has started moving there is no header click:
-            '--- where it is dropped is all the client hears about
+            pvOnColDrag GetXLParam(lParam), GetYLParam(lParam)
             pvEndColDrag bCancel:=False
         Else
+            If Not m_oDragGroup Is Nothing Then
+                Set oGroup = m_oDragGroup
+                Set m_oDragGroup = Nothing
+                RaiseEvent GroupByBoxHeaderClick(oGroup)
+                If m_bAutomaticSort Then
+                    pvAutoSort m_oColumns.Item(oGroup.ColIndex)
+                End If
+            End If
             If Not m_oDragCol Is Nothing Then
                 Set oSizeCol = m_oDragCol
                 Set m_oDragCol = Nothing
@@ -4662,7 +4671,7 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         RaiseEvent MouseMove(IIf(m_oSizeCol Is Nothing, pvMouseButton(wParam), 0), pvMouseShift(wParam), GetXLParam(lParam) * Screen.TwipsPerPixelX, GetYLParam(lParam) * Screen.TwipsPerPixelY)
         If Not m_oSizeCol Is Nothing Then
             pvOnColSize GetXLParam(lParam)
-        ElseIf Not m_oDragCol Is Nothing And (wParam And MK_LBUTTON) <> 0 Then
+        ElseIf (Not m_oDragCol Is Nothing Or Not m_oDragGroup Is Nothing) And (wParam And MK_LBUTTON) <> 0 Then
             pvOnColDrag GetXLParam(lParam), GetYLParam(lParam)
         ElseIf (wParam And MK_LBUTTON) <> 0 Then
             pvOnMouseDrag GetYLParam(lParam)
@@ -4746,9 +4755,6 @@ Private Sub pvOnMouseDrag(ByVal lY As Long)
     End If
 End Sub
 
-'--- a column is resized by the divider on its right, so that is the one the
-'--- grab looks for and the column it belongs to is the one that changes width.
-'--- AllowSizing decides whether it can be grabbed at all
 Private Function pvColDividerAt(ByVal lX As Long, ByVal lY As Long) As JSColumn
     Dim vOrder          As Variant
     Dim lIdx            As Long
@@ -4795,8 +4801,6 @@ Private Function pvSetCursor() As Boolean
     End If
 End Function
 
-'--- the column follows the divider while the button is down, so what the grid
-'--- paints is the width the client will be told about
 Private Sub pvOnColSize(ByVal lX As Long)
     Dim lWidth          As Long
 
@@ -4813,13 +4817,6 @@ Private Sub pvOnColSize(ByVal lX As Long)
     End If
 End Sub
 
-'--- the client hears the width once, when the button comes up, and can refuse
-'--- it. A cancel -- WM_CANCELMODE, a message box going up under the drag --
-'--- puts the column back without asking
-'--- the widest of what the column holds: the values on the page in the data
-'--- font, plus the two pixels a painted cell starts its text at and the three
-'--- it is clipped at, and the caption in the header's own font with the room
-'--- that one leaves it. What is scrolled away is not measured
 Private Function pvAutoSizeWidth(ByVal lColIndex As Long) As Long
     Dim lIdx            As Long
     Dim hDC             As Long
@@ -4855,13 +4852,53 @@ Private Function pvAutoSizeWidth(ByVal lColIndex As Long) As Long
     Call ReleaseDC(picGrid.hWnd, hDC)
 End Function
 
-'--- the press on a header is still a click for as long as the pointer stays
-'--- within the double-click box around it -- the same slack the shell gives a
-'--- second click -- and leaving it is what turns the press into a move
+Private Function pvGBoxDropMark(lLeft As Long, lTop As Long) As Boolean
+    If Not m_oDropGroup Is Nothing Then
+        If m_oDropGroup Is m_oDragGroup Then
+            Exit Function
+        End If
+        '--- a chip over the near half of its own neighbour is over the place it
+        '--- is in already, and the release would leave it there
+        If Not m_oDragGroup Is Nothing Then
+            If Not pvDropMoves(m_oDragGroup.Index, m_oDropGroup.Index, m_bDropAfter) Then
+                Exit Function
+            End If
+        End If
+        lLeft = m_oDropGroup.frChipRect.Left
+        If m_bDropAfter Then
+            lLeft = m_oDropGroup.frChipRect.Right
+        End If
+        lTop = m_oDropGroup.frChipRect.Top
+        pvGBoxDropMark = True
+        Exit Function
+    End If
+    '--- no chip answered, so the box is empty: the mark stands where the first
+    '--- one would start, which is the only place a level can go
+    If Not m_oDragGroup Is Nothing Then
+        Exit Function
+    End If
+    lLeft = CHIP_LEFT
+    lTop = CHIP_TOP
+    pvGBoxDropMark = True
+End Function
+
+Private Function pvGetDragColumn() As JSColumn
+    If Not m_oDragCol Is Nothing Then
+        Set pvGetDragColumn = m_oDragCol
+    ElseIf Not m_oDragGroup Is Nothing Then
+        If m_oDragGroup.ColIndex >= 1 And m_oDragGroup.ColIndex <= m_oColumns.Count Then
+            Set pvGetDragColumn = m_oColumns.Item(m_oDragGroup.ColIndex)
+        End If
+    End If
+End Function
+
 Private Sub pvOnColDrag(ByVal lX As Long, ByVal lY As Long)
-    Dim oTarget         As JSColumn
+    Dim oCancel         As JSRetBoolean
     Dim lScroll         As Long
-    Dim bWasInGBox      As Boolean
+    Dim bNewInGBox      As Boolean
+    Dim oNewGroup       As JSGroup
+    Dim bNewAfter       As Boolean
+    Dim oNewCol         As JSColumn
 
     If Not m_bDragging Then
         If Not m_bAllowColumnDrag Then
@@ -4869,6 +4906,18 @@ Private Sub pvOnColDrag(ByVal lX As Long, ByVal lY As Long)
         End If
         If Abs(lX - m_lDragStartX) <= GetSystemMetrics(SM_CXDOUBLECLK) \ 2 And Abs(lY - m_lDragStartY) <= GetSystemMetrics(SM_CYDOUBLECLK) \ 2 Then
             Exit Sub
+        End If
+        '--- a chip leaving its place is the client's to refuse, which is the
+        '--- whole of what BeforeGroupDrag is for. A refusal ends the gesture
+        '--- rather than pausing it: the button is still down over a box that
+        '--- is not going to change
+        If Not m_oDragGroup Is Nothing Then
+            Set oCancel = New JSRetBoolean
+            RaiseEvent BeforeGroupDrag(m_oDragGroup, oCancel)
+            If oCancel.Value Then
+                Set m_oDragGroup = Nothing
+                Exit Sub
+            End If
         End If
         m_bDragging = True
         Call SetCapture(picGrid.hWnd)
@@ -4892,37 +4941,47 @@ Private Sub pvOnColDrag(ByVal lX As Long, ByVal lY As Long)
             LeftCol = m_lLeftCol + m_lDragScroll
         End If
     End If
-    '--- the group-by box is a drop target of its own: a header let go in it
-    '--- groups the grid by that column, which is what its info text invites.
-    '--- Nothing in the header row is marked while the pointer is up there
-    bWasInGBox = m_bDropInGBox
-    m_bDropInGBox = False
     If lScroll = 0 Then
-        If m_bGroupByBoxVisible And lY < pvGroupByBoxHeight() Then
-            m_bDropInGBox = True
-        Else
-            pvColAtX lX, oTarget
+        If m_bGroupByBoxVisible And lY >= 0 And lY < pvGroupByBoxHeight() Then
+            bNewInGBox = True
+            pvGroupDropTarget lX, oNewGroup, bNewAfter
+        ElseIf lY >= 0 And lY < picGrid.ScaleHeight Then
+            '--- everything under the box answers for the header it stands in
+            '--- the column of, the rows as much as the headers themselves --
+            '--- a column being carried about is somewhere in the order the
+            '--- whole way down. Off the control is off it, and there the
+            '--- pointer is walking the block sideways instead
+            pvColAtX lX, oNewCol, bNewAfter
         End If
     End If
-    If Not oTarget Is m_oDropCol Or bWasInGBox <> m_bDropInGBox Then
-        Set m_oDropCol = oTarget
+    If Not oNewCol Is m_oDropCol Or Not oNewGroup Is m_oDropGroup _
+            Or bNewInGBox <> m_bDropInGBox Or bNewAfter <> m_bDropAfter Then
+        Set m_oDropCol = oNewCol
+        Set m_oDropGroup = oNewGroup
+        m_bDropInGBox = bNewInGBox
+        m_bDropAfter = bNewAfter
         pvInvalidateHeaders
     End If
 End Sub
 
-'--- the marked header is the new position, and the client can refuse it.
-'--- Nothing moves until then: the drag is a gesture over the headers, not a
-'--- column travelling under the pointer
 Private Sub pvEndColDrag(ByVal bCancel As Boolean)
     Dim oCol            As JSColumn
-    Dim oTarget         As JSColumn
+    Dim oTargetCol      As JSColumn
+    Dim oGroup          As JSGroup
+    Dim oTargetGroup    As JSGroup
+    Dim bAfter          As Boolean
     Dim oCancel         As JSRetBoolean
     Dim lNewPos         As Long
 
     Set oCol = m_oDragCol
-    Set oTarget = m_oDropCol
+    Set oTargetCol = m_oDropCol
+    Set oGroup = m_oDragGroup
+    Set oTargetGroup = m_oDropGroup
+    bAfter = m_bDropAfter
     Set m_oDragCol = Nothing
     Set m_oDropCol = Nothing
+    Set m_oDragGroup = Nothing
+    Set m_oDropGroup = Nothing
     If Not m_bDragging Then
         Exit Sub
     End If
@@ -4935,16 +4994,24 @@ Private Sub pvEndColDrag(ByVal bCancel As Boolean)
     If bCancel Then
         GoTo QH
     End If
+    If Not oGroup Is Nothing Then
+        If m_bDropInGBox Then
+            If Not oTargetGroup Is Nothing Then
+                pvMoveGroup oGroup, oTargetGroup, bAfter
+            End If
+        Else
+            pvDeleteGroup oGroup, oTargetCol, bAfter
+        End If
+        GoTo QH
+    End If
     If m_bDropInGBox Then
-        pvAddGroup oCol
+        pvAddGroup oCol, oTargetGroup, bAfter
         GoTo QH
     End If
-    '--- let go of it outside the grid and it stays where it was: only a drop
-    '--- on a header is a drop on a position
-    If oTarget Is Nothing Then
+    If oTargetCol Is Nothing Or oTargetCol Is oCol Then
         GoTo QH
     End If
-    lNewPos = oTarget.ColPosition
+    lNewPos = pvDropPosition(oCol.ColPosition, oTargetCol.ColPosition, bAfter)
     If lNewPos = oCol.ColPosition Then
         GoTo QH
     End If
@@ -4956,16 +5023,26 @@ Private Sub pvEndColDrag(ByVal bCancel As Boolean)
     End If
 QH:
     m_bDropInGBox = False
+    m_bDropAfter = False
     '--- the header that was inverted has to come back either way
     pvInvalidate
 End Sub
 
-'--- the group the drop would add, offered to the client before it is added: the
-'--- original names the operation jgexGroupInsert and hands over a JSGroup that
-'--- is not in the collection yet, with the position it would take. A drop with
-'--- levels already in the box appends -- where between two chips the pointer
-'--- has to be to land between them is not probed
-Private Sub pvAddGroup(oCol As JSColumn)
+Private Function pvDropMoves(ByVal lOld As Long, ByVal lTarget As Long, ByVal bAfter As Boolean) As Boolean
+    pvDropMoves = (lOld <> lTarget) And (pvDropPosition(lOld, lTarget, bAfter) <> lOld)
+End Function
+
+Private Function pvDropPosition(ByVal lOld As Long, ByVal lTarget As Long, ByVal bAfter As Boolean) As Long
+    pvDropPosition = lTarget
+    If bAfter Then
+        pvDropPosition = pvDropPosition + 1
+    End If
+    If lOld < pvDropPosition Then
+        pvDropPosition = pvDropPosition - 1
+    End If
+End Function
+
+Private Sub pvAddGroup(oCol As JSColumn, oTargetGroup As JSGroup, ByVal bAfter As Boolean)
     Dim oGroup          As JSGroup
     Dim oCancel         As JSRetBoolean
     Dim lNewPos         As Long
@@ -4977,6 +5054,12 @@ Private Sub pvAddGroup(oCol As JSColumn)
         Exit Sub
     End If
     lNewPos = m_oGroups.Count + 1
+    If Not oTargetGroup Is Nothing Then
+        lNewPos = oTargetGroup.Index
+        If bAfter Then
+            lNewPos = lNewPos + 1
+        End If
+    End If
     Set oGroup = New JSGroup
     oGroup.frInit Me, lNewPos, oCol.Index, jgexSortAscending
     Set oCancel = New JSRetBoolean
@@ -4984,8 +5067,71 @@ Private Sub pvAddGroup(oCol As JSColumn)
     If oCancel.Value Then
         Exit Sub
     End If
-    m_oGroups.Add oCol.Index, jgexSortAscending
+    m_oGroups.Add oCol.Index, jgexSortAscending, Index:=lNewPos
     RaiseEvent AfterGroupChange
+End Sub
+
+Private Sub pvMoveGroup(oGroup As JSGroup, oTargetGroup As JSGroup, ByVal bAfter As Boolean)
+    Dim oCancel         As JSRetBoolean
+    Dim lOldPos         As Long
+    Dim lNewPos         As Long
+    Dim eSortOrder      As jgexSortOrderConstants
+    Dim lColIndex       As Long
+
+    If oGroup Is Nothing Or oTargetGroup Is Nothing Then
+        Exit Sub
+    End If
+    If oTargetGroup Is oGroup Then
+        Exit Sub
+    End If
+    lOldPos = oGroup.Index
+    lNewPos = pvDropPosition(lOldPos, oTargetGroup.Index, bAfter)
+    If lNewPos = lOldPos Then
+        Exit Sub
+    End If
+    Set oCancel = New JSRetBoolean
+    RaiseEvent BeforeGroupChange(oGroup, jgexGroupMove, lNewPos, oCancel)
+    If oCancel.Value Then
+        Exit Sub
+    End If
+    lColIndex = oGroup.ColIndex
+    eSortOrder = oGroup.SortOrder
+    m_oGroups.Remove lOldPos
+    m_oGroups.Add lColIndex, eSortOrder, Index:=lNewPos
+    RaiseEvent AfterGroupChange
+End Sub
+
+Private Sub pvDeleteGroup(oGroup As JSGroup, oTargetCol As JSColumn, ByVal bAfter As Boolean)
+    Dim oCancel         As JSRetBoolean
+    Dim oCol            As JSColumn
+    Dim lNewPos         As Long
+
+    If oGroup Is Nothing Then
+        Exit Sub
+    End If
+    Set oCancel = New JSRetBoolean
+    RaiseEvent BeforeGroupChange(oGroup, jgexGroupDelete, oGroup.Index, oCancel)
+    If oCancel.Value Then
+        Exit Sub
+    End If
+    If oGroup.ColIndex >= 1 And oGroup.ColIndex <= m_oColumns.Count Then
+        Set oCol = m_oColumns.Item(oGroup.ColIndex)
+    End If
+    m_oGroups.Remove oGroup.Index
+    RaiseEvent AfterGroupChange
+    If oTargetCol Is Nothing Or oCol Is Nothing Or oTargetCol Is oCol Then
+        Exit Sub
+    End If
+    lNewPos = pvDropPosition(oCol.ColPosition, oTargetCol.ColPosition, bAfter)
+    If lNewPos = oCol.ColPosition Then
+        Exit Sub
+    End If
+    Set oCancel = New JSRetBoolean
+    RaiseEvent BeforeColMove(oCol, lNewPos, oCancel)
+    If Not oCancel.Value Then
+        frColMove oCol, lNewPos
+        RaiseEvent AfterColMove
+    End If
 End Sub
 
 Private Sub pvEndColSize(ByVal bCancel As Boolean)
@@ -4997,10 +5143,6 @@ Private Sub pvEndColSize(ByVal bCancel As Boolean)
     Set oCol = m_oSizeCol
     Set m_oSizeCol = Nothing
     Call ReleaseCapture
-    '--- the column is put back to the width it was grabbed at before the
-    '--- client is asked: probed on the original, which reports the width it
-    '--- proposes in NewColWidth while Column.Width still answers the old one,
-    '--- so a handler reading the column sees what it would keep on a Cancel
     lWidth = pvColWidth(oCol)
     lNewWidth = oCol.Width
     oCol.frWidthPx = m_lSizeStartW
@@ -5015,47 +5157,67 @@ Private Sub pvEndColSize(ByVal bCancel As Boolean)
     pvInvalidate
 End Sub
 
-Private Function pvColAtX(ByVal lX As Long, oCol As JSColumn) As Long
+'--- bAfter tells which half of the column the point is in, which is what a drop
+'--- on it means: the left half goes in front of it, the right half behind
+Private Function pvColAtX(ByVal lX As Long, oCol As JSColumn, Optional bAfter As Boolean) As Long
     Dim lCum            As Long
-    Dim lPos            As Long
     Dim oItem           As JSColumn
     Dim vOrder          As Variant
     Dim lIdx            As Long
+    Dim lW              As Long
 
     lCum = pvBlockLeft()
     vOrder = pvColOrder()
     For lIdx = 0 To pvOrderMax(vOrder)
         Set oItem = m_oColumns.ItemByPosition(vOrder(lIdx))
-        lPos = lPos + 1
-        lCum = lCum + pvColWidth(oItem)
+        lW = pvColWidth(oItem)
+        lCum = lCum + lW
         If lX < lCum Then
             Set oCol = oItem
-            pvColAtX = lPos
+            bAfter = (lX >= lCum - lW \ 2)
+            pvColAtX = pvVisiblePosition(vOrder(lIdx))
             Exit Function
         End If
     Next
 End Function
 
-Private Function pvGroupAtPoint(ByVal lX As Long, ByVal lY As Long, oGroup As JSGroup) As Long
+'--- for a drop the box is one band cut at the chips' left edges rather than a
+'--- staircase of rectangles: wherever in it the pointer is, it is somewhere
+'--- along the order, and the step a chip is drawn on has nothing to say about
+'--- that. So y is not asked, the cut before the first chip belongs to it as
+'--- much as the run past the last one belongs to the last, and which half of
+'--- the chip the pointer has reached decides which side of it as ever
+Private Sub pvGroupDropTarget(ByVal lX As Long, oGroup As JSGroup, bAfter As Boolean)
     Dim lIdx            As Long
     Dim oItem           As JSGroup
-    Dim hDC             As Long
-    Dim hPrevFont       As Long
 
-    '--- laid out again rather than read off the last paint: a control that
-    '--- has not painted yet still hit-tests, and a caption or font changed
-    '--- since would otherwise leave the rectangles behind. It costs one text
-    '--- measurement per group level, on a click
-    hDC = GetDC(picGrid.hWnd)
-    hPrevFont = pvSelectFont(hDC, m_oFont)
-    pvLayoutGroupChips hDC, 0
-    Call SelectObject(hDC, hPrevFont)
-    Call ReleaseDC(picGrid.hWnd, hDC)
+    pvLayoutGroupChips
+    For lIdx = 1 To m_oGroups.Count
+        Set oItem = m_oGroups.Item(lIdx)
+        If lIdx > 1 And lX < oItem.frChipRect.Left Then
+            Exit For
+        End If
+        Set oGroup = oItem
+    Next
+    If Not oGroup Is Nothing Then
+        bAfter = (lX >= (oGroup.frChipRect.Left + oGroup.frChipRect.Right) \ 2)
+    End If
+End Sub
+
+'--- a click picks the chip it is on and nothing else, the box's own background
+'--- included: the slack a drop is given is no reason to sort by a level the
+'--- pointer was never over
+Private Function pvGroupAtPoint(ByVal lX As Long, ByVal lY As Long, oGroup As JSGroup, Optional bAfter As Boolean) As Long
+    Dim lIdx            As Long
+    Dim oItem           As JSGroup
+
+    pvLayoutGroupChips
     For lIdx = 1 To m_oGroups.Count
         Set oItem = m_oGroups.Item(lIdx)
         With oItem.frChipRect
             If lX >= .Left And lX < .Right And lY >= .Top And lY < .Bottom And .Right > .Left Then
                 Set oGroup = oItem
+                bAfter = (lX >= (.Left + .Right) \ 2)
                 pvGroupAtPoint = lIdx
                 Exit For
             End If
@@ -5093,30 +5255,17 @@ Private Function pvBeginEdit(ByVal lPos As Long, ByVal lCol As Long, ByVal bSele
     If oCol.EditType <> jgexEditTextBox And oCol.EditType <> jgexEditCheckBox Then
         Exit Function
     End If
-    '--- the client gets its veto before the editor appears
-    Set oCancel = New JSRetBoolean
-    RaiseEvent BeforeColEdit(oCol.Index, oCancel)
-    If oCancel.Value Then
-        Exit Function
-    End If
     If Not pvCellRect(lPos, oCol.Index, lX, lY, lW) Then
-        Exit Function
-    End If
-    If oCol.EditType = jgexEditCheckBox Then
-        '--- a checkbox has no editor to show: the click is the edit, so the
-        '--- value flips there and then and the client hears one Change.
-        '--- Anywhere in the cell counts -- 064 clicks well left of the box and
-        '--- still toggles, and a point a row above it toggles at 144dpi too
-        Value(oCol.Index) = Not pvIsChecked(pvRowDataAt(lPos), oCol.Index)
-        pvInvalidate SkipScroll:=True
-        RaiseEvent Change
-        pvBeginEdit = True
         Exit Function
     End If
     '--- the cell opens the box, so it has to be all the way inside the view
     '--- first: a click on a row or a column hanging off the edge scrolls it
     '--- in, and the click is carried along with it so the caret still lands
-    '--- where it was put
+    '--- where it was put. The scroll goes before the veto rather than after
+    '--- it -- the original raises BeforeColEdit from where the cell has
+    '--- landed, so LeftColChange comes first and a refusal still leaves the
+    '--- column in view (073/074 at 144dpi, where the third column only half
+    '--- fits and the click on it scrolls the strip)
     If lClickX >= 0 Then
         lClickX = lClickX - lX
         lClickY = lClickY - lY
@@ -5129,6 +5278,23 @@ Private Function pvBeginEdit(ByVal lPos As Long, ByVal lCol As Long, ByVal bSele
     If lClickX >= 0 Then
         lClickX = lClickX + lX
         lClickY = lClickY + lY
+    End If
+    '--- the client gets its veto before the editor appears
+    Set oCancel = New JSRetBoolean
+    RaiseEvent BeforeColEdit(oCol.Index, oCancel)
+    If oCancel.Value Then
+        Exit Function
+    End If
+    If oCol.EditType = jgexEditCheckBox Then
+        '--- a checkbox has no editor to show: the click is the edit, so the
+        '--- value flips there and then and the client hears one Change.
+        '--- Anywhere in the cell counts -- 064 clicks well left of the box and
+        '--- still toggles, and a point a row above it toggles at 144dpi too
+        Value(oCol.Index) = Not pvIsChecked(pvRowDataAt(lPos), oCol.Index)
+        pvInvalidate SkipScroll:=True
+        RaiseEvent Change
+        pvBeginEdit = True
+        Exit Function
     End If
     m_bInEditSetup = True
     m_bEditing = True
@@ -5348,14 +5514,6 @@ Private Function pvGroupByBoxHeight() As Long
     If m_bGroupByBoxVisible Then
         pvGroupByBoxHeight = m_lColumnHeaderHeight + 14
         If m_oGroups.Count > 1 Then
-            '--- the box grew to hold the staircase, so the bands below it did
-            '--- move down. The staircase is measured whole and rounded once,
-            '--- not accumulated a truncated half-chip at a time the way the
-            '--- chips themselves step down: at a 25px chip the original's box
-            '--- is 52 high (CLng of 37.5, to even) where per-level truncation
-            '--- would give 51, and 19 and 31px chips agree with both at 42
-            '--- and 60. The chip tops do truncate -- 9, 12 and 15 -- so the
-            '--- two cannot share the half-header step
             pvGroupByBoxHeight = CLng(m_lColumnHeaderHeight * (m_oGroups.Count + 1) / 2) + 14
         End If
     End If
@@ -5369,14 +5527,12 @@ Private Function pvRowsTop() As Long
 End Function
 
 Private Function pvColByPosition(ByVal lPos As Long) As JSColumn
-    Dim vOrder          As Variant
     Dim lIdx            As Long
     Dim lSeen           As Long
     Dim oItem           As JSColumn
 
-    vOrder = pvColOrder()
-    For lIdx = 0 To pvOrderMax(vOrder)
-        Set oItem = m_oColumns.ItemByPosition(vOrder(lIdx))
+    For lIdx = 1 To m_oColumns.Count
+        Set oItem = m_oColumns.ItemByPosition(lIdx)
         If oItem.Visible Then
             lSeen = lSeen + 1
             If lSeen = lPos Then
@@ -5552,10 +5708,14 @@ Private Sub pvOnLButtonDown(ByVal lX As Long, ByVal lY As Long, ByVal lShift As 
         '--- exactly as clicking that column's header does
         lPos = pvGroupAtPoint(lX, lY, oGroup)
         If Not oGroup Is Nothing Then
-            RaiseEvent GroupByBoxHeaderClick(oGroup)
-            If m_bAutomaticSort Then
-                pvAutoSort m_oColumns.Item(oGroup.ColIndex)
-            End If
+            '--- the press only remembers the chip, as a press on a header only
+            '--- remembers the header: what it turns out to be is decided when
+            '--- the button comes up, since a chip dragged out of its place is a
+            '--- move rather than a click that sorts
+            Set m_oDragGroup = oGroup
+            m_lDragStartX = lX
+            m_lDragStartY = lY
+            pvInvalidateHeaders
         End If
     ElseIf lY < lTopHdr Then
         '--- column header band

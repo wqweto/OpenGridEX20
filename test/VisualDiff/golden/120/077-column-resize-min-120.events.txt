@@ -1,6 +1,6 @@
-MouseDown(Button=1, X=1476, Y=96)
-MouseMove(Button=0, X=696, Y=96)
-MouseMove(Button=0, X=216, Y=96)
-MouseMove(Button=0, X=-504, Y=96)
+MouseDown(Button=1, X=1476, Y=120)
+MouseMove(Button=0, X=876, Y=120)
+MouseMove(Button=0, X=276, Y=120)
+MouseMove(Button=0, X=-624, Y=120)
 ColResize(ColIndex=1, NewColWidth=120)
 Column.Width=1500

@@ -19,5 +19,5 @@
         ]
     },
     "calls": [ { "name": "Value", "args": [ 1 ], "value": "zz" } ],
-    "input": [ { "click": [ 40, 52 ] } ]
+    "input": [ { "click": [ 600, 780 ] } ]
 }

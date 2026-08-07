@@ -1338,3 +1338,81 @@ vertical lines only. One capture showed three things.
   answers `Empty` and `DataSetRowBookmark` writes nothing, where the original
   raises "Subscript out of range" -- a deliberate divergence, since the paint
   path asks that question off counts that may have moved under it
+
+### Added (the group by box takes drops, and chips travel)
+
+- A chip can be picked up and put down: dropped on another chip it takes that
+  place in the order (`jgexGroupMove`), dropped anywhere off the box it stops
+  being a level at all (`jgexGroupDelete`), and a header under it says where its
+  column goes on the way out. `BeforeGroupDrag` gates the gesture, which is what
+  that event is for -- it had never been raised by anything
+- Which half of the target the pointer is over decides which side of it the drop
+  goes, for chips and for column headers alike, and the red mark stands on that
+  side. A drop that would put the thing back where it already is -- the near
+  half of either neighbour, or the target being the dragged thing itself --
+  marks nothing and does nothing
+- `GroupByBoxHeaderClick` is raised on the release, the way `ColumnHeaderClick`
+  is: until the button comes up a press on a chip is still a move waiting to
+  happen, and the old press-time click meant a chip had already sorted by the
+  time it was dropped somewhere else
+
+### Fixed (what counts as a drop target)
+
+- `pvColAtX` answers for any y it is handed, so the header row is bounded at
+  both ends now. A chip taken off the top of the control used to resolve
+  whatever column its x crossed and carry that column along with the delete;
+  above the control is off it, not in the band the coordinates would put it in
+- The drop is read off the release rather than off the last move before it.
+  Which half of the target the pointer is over cannot be decided by anything
+  else, and letting go past the client edge is a cancel rather than a drop
+  wherever the pointer was last seen inside
+- `pvMoveGroup` took the shift for the removed level off twice -- once in
+  `pvDropPosition` and again after `m_oGroups.Remove` -- so a chip dragged
+  rightwards landed a place short, which with two chips is where it started.
+  Only the leftward reorder had a test, and leftward never subtracts
+
+### Fixed (a horizontally scrolled block)
+
+- `Col` numbers the visible columns from the first one, not from `LeftCol`.
+  `pvColAtX`, `pvColByPosition` and the paint loop each counted over the render
+  order, whose scrollable part starts at `LeftCol`, so once the block was
+  scrolled the current cell matched no column and was painted as part of the
+  selected row instead of being lifted out of it -- and a click reported a `Col`
+  that named a different cell than it had before the scroll. New
+  `pvVisiblePosition` counts from position 1; at `LeftCol = 1` the two
+  numberings agree, which is why only the narrow 144dpi goldens caught it
+- `BeforeColEdit` is raised from where the cell has landed. `pvBeginEdit`
+  scrolled the cell into view after asking the client for its veto, so the
+  original's `LeftColChange` came first and ours came second
+
+### Fixed (harness)
+
+- Scenario mouse coordinates are twips and are converted at send time
+  (`TwipsDWord`), so a scenario points at the same place at every DPI instead of
+  at whatever a fixed pixel lands on. Eight event logs had recorded the drift
+- `CaptureWindowClient` hides the caret before it captures. A blinking caret is
+  in the shot or not depending on when the capture falls, for the original as
+  much as for us, and it had been read as a rendering difference
+
+### Changed (where a drop lands)
+
+- The group by box is cut at the chips' left edges and nowhere else. It used to
+  hit-test as the staircase of rectangles it is drawn as, so the drop target
+  depended on which step the pointer was level with; now y is not asked at all,
+  the run before the first chip belongs to it as much as the run past the last
+  belongs to the last, and an empty box takes a first level anywhere along it
+- Everything below the box answers for the header it stands in the column of,
+  the rows as much as the header row itself -- a column being carried about is
+  somewhere in the order the whole way down. Off the control is still off it,
+  and there the pointer walks the block sideways instead
+
+### Fixed (the end of the horizontal scroll)
+
+- `LeftCol` stops where the last column reaches the right border, which is
+  counted back from that column rather than forward from the first. How many
+  fit from the left says nothing about how many fit at the end once the widths
+  differ: with 100, 100 and 300 in a 350 pixel strip the forward count stopped
+  the scroll at the second column and painted the third fifty pixels past the
+  border with the thumb already at its stop. The scrollbar's own maximum and
+  the `LeftCol` setter had each worked it out separately and now share
+  `pvMaxLeftCol`

@@ -154,11 +154,18 @@ Private Sub Form_Load()
     pvTestUnbound
     pvTestScroll
     pvTestHScroll
+    pvTestHScrollEnd
     pvTestEditorFollowsScroll
     pvTestEditorScrollsIn
     pvTestColumnSizing
     pvTestColumnMove
     pvTestGroupDrag
+    pvTestGroupChipDrag
+    pvTestChipDropRight
+    pvTestChipDropOffControl
+    pvTestDropPastLastChip
+    pvTestChipDropOnRows
+    pvTestDropOnSelf
     pvTestScrollProps
     pvTestItemCountInvalidate
     pvTestEditLeaveCell
@@ -633,6 +640,43 @@ Private Sub pvTestHScroll()
     Unload oForm
 End Sub
 
+'--- how many columns fit from the left says nothing about how many fit at the
+'--- right end once the widths differ. Counting forward stopped the scroll a
+'--- column short, which left the last column painted past the right border
+'--- with the thumb already as far over as it would go
+Private Sub pvTestHScrollEnd()
+    Dim oForm           As frmWeak
+    Dim lIdx            As Long
+    Dim hParent         As Long
+    Dim hBar            As Long
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        For lIdx = 1 To 4
+            .Columns.Add("Col" & lIdx).Width = 480
+        Next
+        .Columns.Add("Wide").Width = 1800
+        .DataMode = jgexUnbound
+        .ItemCount = 3
+        .Rebind
+        '--- four of the narrow ones fit from the left, which put the end of
+        '--- the scroll at 2 and the wide column 20-odd pixels past the border.
+        '--- Counted back from that column, three fit
+        .LeftCol = 99
+        AssertEquals "HScrollEnd: the end leaves the last column inside", 3, .LeftCol
+        hParent = GetParent(.hWnd)
+        hBar = GetWindow(hParent, GW_CHILD)
+        Do While hBar <> 0 And hBar = .hWnd
+            hBar = GetWindow(hBar, GW_HWNDNEXT)
+        Loop
+        .LeftCol = 1
+        SendMessage hParent, WM_HSCROLL, SB_RIGHT, hBar
+        AssertEquals "HScrollEnd: and the bar's own end agrees with it", 3, .LeftCol
+    End With
+    Unload oForm
+End Sub
+
 '--- the editor is a window of its own over the cell, so scrolling the grid
 '--- under it has to take it along, clip it where the cell is half off the
 '--- edge, and put it away once the cell is not on show at all. The host is
@@ -853,7 +897,7 @@ Private Sub pvTestColumnMove()
         oForm.EventLog = vbNullString
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 600)
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1800, 600)
-        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(2250, 600)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(2400, 600)
         AssertEquals "ColMove: A took B's place", 2, .Columns.Item(1).ColPosition
         AssertEquals "ColMove: and B took A's", 1, .Columns.Item(2).ColPosition
         Assert "ColMove: the client was asked first", InStr(oForm.EventLog, "BeforeMove(A,2);") > 0
@@ -939,11 +983,269 @@ Private Sub pvTestGroupDrag()
         oForm.CancelGroup = True
         oForm.EventLog = vbNullString
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 600)
-        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(750, 150)
-        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, 150)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1875, 150)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1875, 150)
         AssertEquals "GroupDrag: a refused group is not added", 1, .Groups.Count
         AssertEquals "GroupDrag: and nothing is announced after it", "BeforeGroup(2,0,2);", oForm.EventLog
         oForm.CancelGroup = False
+    End With
+    Unload oForm
+End Sub
+
+'--- a chip carries its level about: dropped on another chip it goes in front of
+'--- it, dropped on the box it goes to the end, and dropped anywhere else it
+'--- stops being a level at all -- taking its column to the header it landed on
+Private Sub pvTestGroupChipDrag()
+    Dim oForm           As frmWeak
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("A").Width = 1500
+        .Columns.Add("B").Width = 1500
+        .Columns.Add("C").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 5
+        .Rebind
+        .Groups.Add 1, jgexSortAscending
+        .Groups.Add 2, jgexSortAscending
+        AssertEquals "ChipDrag: two levels to start with", 2, .Groups.Count
+        '--- the first chip sits at 8,7 and the second steps right and down, so
+        '--- 450,225 is inside the first and 1500,375 inside the second
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(1500, 375)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(150, 225)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(150, 225)
+        AssertEquals "ChipDrag: still two levels", 2, .Groups.Count
+        AssertEquals "ChipDrag: the second went in front of the first", 2, .Groups.Item(1).ColIndex
+        AssertEquals "ChipDrag: and the first came after it", 1, .Groups.Item(2).ColIndex
+        Assert "ChipDrag: the move was announced", InStr(oForm.EventLog, "BeforeGroup(2,2,1);") > 0
+        '--- one let go over the rows loses its level and its column answers to
+        '--- the header it came down in the column of, which here is the one it
+        '--- is already in, so the level goes and nothing else does. The box is
+        '--- two chips tall, so the drop goes well below it
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(1500, 375)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1875, 1500)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1875, 1500)
+        AssertEquals "ChipDrag: dropped on the rows the level is gone", 1, .Groups.Count
+        Assert "ChipDrag: the delete was announced", InStr(oForm.EventLog, "BeforeGroup(1,1,2);") > 0
+        AssertEquals "ChipDrag: and it landed where it already was", 0, InStr(oForm.EventLog, "BeforeMove(")
+        '--- let go over a header and the level goes with its column landing
+        '--- where the pointer left it. One chip left, so the box is back to a
+        '--- single row and 600 twips down is the header row at either scale
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(450, 225)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(375, 600)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(375, 600)
+        AssertEquals "ChipDrag: the last level is gone too", 0, .Groups.Count
+        Assert "ChipDrag: that delete was announced", InStr(oForm.EventLog, "BeforeGroup(2,1,1);") > 0
+        Assert "ChipDrag: and the column went with it", InStr(oForm.EventLog, "BeforeMove(B,1);") > 0
+        '--- and one taken off the top of the control, where the pointer is
+        '--- still captured and the coordinates simply run out of range
+        .Groups.Add 1, jgexSortAscending
+        oForm.EventLog = vbNullString
+        '--- over a column it is not the one the chip stands for, so a target
+        '--- resolved up there would show as a move
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(450, 225)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1875, -150)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1875, -150)
+        AssertEquals "ChipDrag: dropped above the control it is gone", 0, .Groups.Count
+        Assert "ChipDrag: and that delete was announced too", InStr(oForm.EventLog, "BeforeGroup(1,1,1);") > 0
+        AssertEquals "ChipDrag: with no column moved by a drop off the control", 0, InStr(oForm.EventLog, "BeforeMove(")
+    End With
+    Unload oForm
+End Sub
+
+'--- the leftward reorder never took anything off the drop position, so it kept
+'--- working while the rightward one was landing a place short: pvDropPosition
+'--- already counts the level it is moving as gone, and pvMoveGroup was taking
+'--- that off a second time after the Remove
+Private Sub pvTestChipDropRight()
+    Dim oForm           As frmWeak
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("A").Width = 1500
+        .Columns.Add("B").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 5
+        .Rebind
+        .Groups.Add 1, jgexSortAscending
+        .Groups.Add 2, jgexSortAscending
+        '--- the first chip onto the right half of the second
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(150, 225)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1500, 375)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1500, 375)
+        AssertEquals "ChipRight: still two levels", 2, .Groups.Count
+        AssertEquals "ChipRight: the first went behind the second", 2, .Groups.Item(1).ColIndex
+        AssertEquals "ChipRight: and the second came first", 1, .Groups.Item(2).ColIndex
+        Assert "ChipRight: the move was announced", InStr(oForm.EventLog, "BeforeGroup(1,2,") > 0
+    End With
+    Unload oForm
+End Sub
+
+'--- above the control is off it, not in the band the coordinates would put it
+'--- in: pvColAtX answers for any y it is handed, so a chip taken off the top
+'--- used to resolve whatever column its x crossed and carry it along with the
+'--- delete. Narrow columns here so a target that would really move one is well
+'--- inside the client
+Private Sub pvTestChipDropOffControl()
+    Dim oForm           As frmWeak
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("A").Width = 600
+        .Columns.Add("B").Width = 600
+        .Columns.Add("C").Width = 600
+        .DataMode = jgexUnbound
+        .ItemCount = 5
+        .Rebind
+        .Groups.Add 1, jgexSortAscending
+        '--- x is over the right half of the third column, which would put the
+        '--- grouped first column behind it if the drop resolved a target
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(450, 225)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1650, -150)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1650, -150)
+        AssertEquals "OffControl: the level is gone", 0, .Groups.Count
+        Assert "OffControl: the delete was announced", InStr(oForm.EventLog, "BeforeGroup(1,1,1);") > 0
+        AssertEquals "OffControl: and no column went with it", 0, InStr(oForm.EventLog, "BeforeMove(")
+        AssertEquals "OffControl: the column is where it was", 1, .Columns.Item(1).ColPosition
+    End With
+    Unload oForm
+End Sub
+
+'--- past the last chip is the end of the order. The box is cut at the chips'
+'--- left edges and nowhere else, so its background out there is past all of
+'--- them and stands for the same drop as the far half of that chip: a column
+'--- arriving goes on the end, a chip already inside goes to the back. With no
+'--- chip at all the whole band is the one place a first level can go
+Private Sub pvTestDropPastLastChip()
+    Dim oForm           As frmWeak
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("A").Width = 1500
+        .Columns.Add("B").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 5
+        .Rebind
+        '--- the far end of an empty box, which is as much the first level's
+        '--- place as the near end is
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 600)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1875, 150)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1875, 150)
+        AssertEquals "PastLast: the empty box took it", 1, .Groups.Count
+        AssertEquals "PastLast: as the only level", 1, .Groups.Item(1).ColIndex
+        Assert "PastLast: announced as the first", InStr(oForm.EventLog, "BeforeGroup(1,0,1);") > 0
+        '--- the second column's header onto open box beyond the one chip. One
+        '--- chip means the box is a single row and 600 twips down is the
+        '--- header row at either scale. 1875 is well past the chip and still
+        '--- well inside the client, which past the edge would be a scroll
+        '--- rather than a drop
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(2250, 600)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1875, 150)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1875, 150)
+        AssertEquals "PastLast: the column is grouped", 2, .Groups.Count
+        AssertEquals "PastLast: on the end of the order", 2, .Groups.Item(2).ColIndex
+        Assert "PastLast: the insert was announced there", InStr(oForm.EventLog, "BeforeGroup(2,0,2);") > 0
+        '--- and the first chip let go out there goes to the back of an order
+        '--- it was at the front of
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(150, 225)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1875, 225)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1875, 225)
+        AssertEquals "PastLast: still two levels", 2, .Groups.Count
+        AssertEquals "PastLast: the first went to the back", 2, .Groups.Item(1).ColIndex
+        AssertEquals "PastLast: and the second came first", 1, .Groups.Item(2).ColIndex
+        Assert "PastLast: the move was announced", InStr(oForm.EventLog, "BeforeGroup(1,2,2);") > 0
+        '--- the one that is already last has nowhere to go out there
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(1500, 375)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1875, 375)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1875, 375)
+        AssertEquals "PastLast: the order is left alone", 1, .Groups.Item(2).ColIndex
+        AssertEquals "PastLast: and nothing was announced", 0, InStr(oForm.EventLog, "BeforeGroup(")
+    End With
+    Unload oForm
+End Sub
+
+'--- everything under the box answers for the header it stands in the column of,
+'--- the rows as much as the header row itself: a column being carried about is
+'--- somewhere in the order the whole way down
+Private Sub pvTestChipDropOnRows()
+    Dim oForm           As frmWeak
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("A").Width = 600
+        .Columns.Add("B").Width = 600
+        .Columns.Add("C").Width = 600
+        .DataMode = jgexUnbound
+        .ItemCount = 5
+        .Rebind
+        .Groups.Add 1, jgexSortAscending
+        '--- well down among the rows, over the far half of the third column.
+        '--- The block starts one group level of tree indent in, 16 pixels that
+        '--- do not scale with the DPI while the columns do, so the far half is
+        '--- reached a little later than three 600-twip columns alone would put
+        '--- it and the last column ends well before the client does
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(450, 225)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1860, 1500)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1860, 1500)
+        AssertEquals "OnRows: the level is gone", 0, .Groups.Count
+        Assert "OnRows: the delete was announced", InStr(oForm.EventLog, "BeforeGroup(1,1,1);") > 0
+        AssertEquals "OnRows: and the column went where it was let go", 3, .Columns.Item(1).ColPosition
+        Assert "OnRows: which was announced too", InStr(oForm.EventLog, "BeforeMove(A,3);") > 0
+    End With
+    Unload oForm
+End Sub
+
+'--- a drop that would change nothing does nothing and says nothing: a chip on
+'--- itself, a chip past the only chip there is, a header on itself
+Private Sub pvTestDropOnSelf()
+    Dim oForm           As frmWeak
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("A").Width = 1500
+        .Columns.Add("B").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 5
+        .Rebind
+        .Groups.Add 1, jgexSortAscending
+        '--- the chip picked up and let go on its own right half
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(150, 225)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(450, 225)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(450, 225)
+        AssertEquals "DropSelf: the level is still there", 1, .Groups.Count
+        AssertEquals "DropSelf: and nothing was announced", 0, InStr(oForm.EventLog, "BeforeGroup(")
+        '--- and let go on open box past it, which is the end of an order it is
+        '--- the whole of
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(150, 225)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1500, 225)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1500, 225)
+        AssertEquals "DropSelf: open box moves nothing", 1, .Groups.Count
+        AssertEquals "DropSelf: and says nothing either", 0, InStr(oForm.EventLog, "BeforeGroup(")
+        '--- a header dropped on its own right half is not a move
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(1875, 600)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(2400, 600)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(2400, 600)
+        AssertEquals "DropSelf: the column stayed put", 2, .Columns.Item(2).ColPosition
+        AssertEquals "DropSelf: and no move was announced", 0, InStr(oForm.EventLog, "BeforeMove(")
     End With
     Unload oForm
 End Sub
@@ -1648,13 +1950,16 @@ Private Sub pvTestAutomaticSort()
         '--- at x=8, y=7, sized off the caption, so (30, 15) lands inside it
         oForm.EventLog = vbNullString
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(450, 225)
-        AssertEquals "GBox: chip click fires GroupByBoxHeaderClick", "GBoxClick(1);", oForm.EventLog
+        AssertEquals "GBox: the press alone says nothing", vbNullString, oForm.EventLog
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(450, 225)
+        AssertEquals "GBox: the release fires GroupByBoxHeaderClick", "GBoxClick(1);Click;", oForm.EventLog
         AssertEquals "GBox: chip click flips the group", jgexSortDescending, .Groups.Item(1).SortOrder
         AssertEquals "GBox: no sort key added for it", 0, .SortKeys.Count
         '--- the empty part of the box is not a chip
         oForm.EventLog = vbNullString
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(4500, 225)
-        AssertEquals "GBox: a click off the chips does nothing", vbNullString, oForm.EventLog
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(4500, 225)
+        AssertEquals "GBox: a click off the chips does nothing", "Click;", oForm.EventLog
         AssertEquals "GBox: and leaves the order alone", jgexSortDescending, .Groups.Item(1).SortOrder
         '--- ungrouping hands the column back to the sort keys
         .Groups.Clear

@@ -182,6 +182,10 @@ Private Function pvCaptureStable(ByVal lHwnd As Long, lWidth As Long, lHeight As
 
     '--- captures can race pending paints: capture repeatedly until two
     '--- consecutive shots are identical
+    '--- a caret blinks, so it is not a thing a golden can hold. Ours shows one
+    '--- because the control puts the focus on its editor where the original
+    '--- never takes real focus from posted messages -- the difference is the
+    '--- harness rather than the paint, so the caret goes before anything is shot
     If Not CaptureWindowClient(lHwnd, lWidth, lHeight, baPrev) Then
         Exit Function
     End If
@@ -399,12 +403,14 @@ Private Sub pvRunInput(oList As Object)
         Set oEntry = C2Obj(JsonValue(oList, lIdx))
         Set oPoint = C2Obj(JsonValue(oEntry, "click"))
         If Not oPoint Is Nothing Then
-            '--- a scenario clicks where the capture shows it, so the point is
-            '--- in the host form's client space and travels through the screen
-            '--- to whichever window actually sits under it -- the original's
-            '--- grid is an inner window, ours is the UserControl itself
-            uPt.X = C2Lng(JsonValue(oPoint, 0))
-            uPt.Y = C2Lng(JsonValue(oPoint, 1))
+            '--- a scenario says where it clicks in twips, the unit it states its
+            '--- column widths in: a 1500 twip column is pressed on its divider at
+            '--- 1500 whatever the screen is, where a pixel count only points there
+            '--- on the one scale it was written for. The point is in the host form's
+            '--- client space and travels through the screen to whichever window sits
+            '--- under it -- the original's grid is an inner window, ours is not
+            uPt.X = C2Lng(JsonValue(oPoint, 0)) \ Screen.TwipsPerPixelX
+            uPt.Y = C2Lng(JsonValue(oPoint, 1)) \ Screen.TwipsPerPixelY
             Call ClientToScreen(hWnd, uPt)
             hTarget = WindowFromPoint(uPt.X, uPt.Y)
             Call ScreenToClient(hTarget, uPt)
@@ -415,8 +421,8 @@ Private Sub pvRunInput(oList As Object)
         '--- delivers them: the second press arrives as the double-click
         Set oPoint = C2Obj(JsonValue(oEntry, "dblclick"))
         If Not oPoint Is Nothing Then
-            uPt.X = C2Lng(JsonValue(oPoint, 0))
-            uPt.Y = C2Lng(JsonValue(oPoint, 1))
+            uPt.X = C2Lng(JsonValue(oPoint, 0)) \ Screen.TwipsPerPixelX
+            uPt.Y = C2Lng(JsonValue(oPoint, 1)) \ Screen.TwipsPerPixelY
             Call ClientToScreen(hWnd, uPt)
             hTarget = WindowFromPoint(uPt.X, uPt.Y)
             Call ScreenToClient(hTarget, uPt)
@@ -433,8 +439,8 @@ Private Sub pvRunInput(oList As Object)
             lPts = C2Lng(JsonValue(oPoint, "-1"))
             For lJdx = 0 To lPts - 1
                 Set oStep = C2Obj(JsonValue(oPoint, lJdx))
-                uPt.X = C2Lng(JsonValue(oStep, 0))
-                uPt.Y = C2Lng(JsonValue(oStep, 1))
+                uPt.X = C2Lng(JsonValue(oStep, 0)) \ Screen.TwipsPerPixelX
+                uPt.Y = C2Lng(JsonValue(oStep, 1)) \ Screen.TwipsPerPixelY
                 Call ClientToScreen(hWnd, uPt)
                 If lJdx = 0 Then
                     hTarget = WindowFromPoint(uPt.X, uPt.Y)

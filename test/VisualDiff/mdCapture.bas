@@ -29,6 +29,7 @@ Public Const MK_LBUTTON                     As Long = &H1
 Public Const GW_CHILD                       As Long = 5
 Public Const GW_HWNDNEXT                    As Long = 2
 
+Public Declare Function HideCaret Lib "user32" (ByVal hWnd As Long) As Long
 Private Declare Function GetClientRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
 Private Declare Function GetWindowRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
 Private Declare Function GetWindowDC Lib "user32" (ByVal hWnd As Long) As Long
@@ -237,6 +238,12 @@ Public Function CaptureWindowClient(ByVal hWnd As Long, lWidth As Long, lHeight 
     Dim hPrevBmp        As Long
     Dim uInfo           As BITMAPINFOHEADER
 
+    '--- a caret blinks, so it is no thing for a golden to hold. Ours shows one
+    '--- where the original does not: the control puts the focus on its editor
+    '--- and the original never takes real focus from posted messages. It goes
+    '--- here rather than before the settle loop, since one pump between the
+    '--- two is all the EDIT needs to put it back
+    Call HideCaret(GetFocus())
     '--- blit from the window own client DC at (0,0): no screen coordinate
     '--- mapping involved so DPI virtualization cannot offset the capture
     Call GetClientRect(hWnd, uRect)
