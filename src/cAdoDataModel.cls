@@ -56,14 +56,14 @@ Private m_uFetch                    As UcsFetchCache
 '=========================================================================
 
 Friend Sub frInit(ByVal oCtl As GridEX)
-    SetWeakRef m_pOwner, oCtl
+    AssignWeakRef m_pOwner, oCtl
     Set m_uState.Bookmarks = New VBA.Collection
     m_uState.OrderDirty = True
     m_uState.BookmarksDirty = True
 End Sub
 
 Friend Sub frTerminate()
-    SetWeakRef m_pOwner, Nothing
+    AssignWeakRef m_pOwner, Nothing
     Set m_oRs = Nothing
     Set m_uState.Bookmarks = Nothing
     Erase m_uState.Bookmark

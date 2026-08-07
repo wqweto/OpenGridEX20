@@ -1036,8 +1036,8 @@ one row read the same as a sweep of two.
 - `pvFormatEvent` logs `RowFormat(RowIndex=n)` -- the one carrier whose identity
   is behaviour rather than plumbing. The six goldens carrying a `RowFormat` line
   were re-recorded from the original at 96 and 120dpi and differ by exactly that
-  annotation, pixels untouched. **The 144dpi goldens of 058 and 059 are stale
-  until re-recorded on a 144dpi machine**
+  annotation, pixels untouched. 058 and 059 were re-recorded at 144dpi with the
+  rest of that scale (below)
 - Scenario 075 moves the current row with no edit anywhere near it, and the
   original still raises `RowFormat` for the row landed on, ahead of
   `SelectionChange` and `RowColChange`. So it belongs to becoming current, not
@@ -1114,7 +1114,7 @@ one row read the same as a sweep of two.
 ### Changed (weak references and the horizontal page)
 
 - The eight classes that point back at their owner set and clear that pointer
-  through `mdGlobals.SetWeakRef` rather than each writing it raw. Under the IDE
+  through `mdGlobals.AssignWeakRef` rather than each writing it raw. Under the IDE
   it takes a real reference instead, so Stop never finds a member holding a
   pointer nothing AddRef-ed -- a leak while debugging in place of a crash
 - A horizontal page is what the strip can hold rather than a fixed number of
@@ -1229,3 +1229,112 @@ one row read the same as a sweep of two.
   reaches a line further down. An empty row's cell closes one line short of
   itself whichever gridlines are set, where a record's follows the mode
   (`081`-`083`, recorded from the original at both DPIs)
+
+### Fixed (the 144dpi pass)
+
+- The view follows the current row when the group set changes: `FirstItem`
+  becomes the current row's position, clamped at the last full page. Probed on
+  the original -- `Row` 4 gives 4 and `Row` 9 gives 6 against a five-row view,
+  which is neither ensure-visible nor a preserved screen offset. Only 144dpi
+  shows it, since nothing in the corpus overflows the view at 96 or 120
+- Seven event goldens at 144dpi and one at 96 had recorded a gesture that does
+  not land at that scale -- the divider `076`-`080` press for is 50 pixels to
+  the right, and the third click of `073`/`074` falls on the open editor. What
+  the original logs there is `DragDetect` answering synthetic input, so those
+  scales carry no log for them and are asked about their pixels alone, as
+  `golden\120` already was for `076`-`080`
+- `Samples.vbp` had carried `Startup="frmUnbound1"` since `1a680f6`, where the
+  IDE rewrote it: the smoke runner showed the first sample and sat there until
+  the watchdog killed it, so none of the five had been checked since. The same
+  save put three debug edits into `frmUnbound1.frm`, also reverted
+- `ColMove: and again while it stays out there` expected a second scroll out of
+  a second identical `WM_MOUSEMOVE`, which raises none -- the timer carries it,
+  and a test that never pumps cannot see it fire. It sends the tick itself now
+- The visual suite's watchdog was 20 seconds, which the corpus had grown past at
+  125%: a run was killed partway and read as a failure. Two minutes
+
+### Changed (one bitmap for the paint, band by band)
+
+- The band buffer is allocated once per paint rather than once per band, as tall
+  as the tallest band that goes through it. A page of rows used to create,
+  select, blit and delete a bitmap apiece
+- The line a row shares with the row above is scrolled up out of the previous
+  band rather than read back off the surface. Where that band was skipped the
+  line is stale and provably outside the update region, so `BeginPaint`'s clip
+  drops it
+- Each band paints inside a clip box its own size, so a rule the height of a row
+  ends at the row's edges rather than running the length of the bitmap
+- `pvPaintGroupChips` and `pvChipStagger` folded into their callers, and a
+  group-by box chip inverts with the column it stands for while that column is
+  being dragged, as its header does
+
+### Fixed (dashed rules, and what a gap in one shows)
+
+`026-gridlines-horizontal` was re-recorded with `GridLineStyle` on dashes, which
+the corpus had never carried -- `028` was the only dashed scenario and it sets
+vertical lines only. One capture showed three things.
+
+- GDI's cosmetic `PS_DASH` is 18 on and 6 off where the original's rule is 3 and
+  3, the same trap `PS_DOT` set, so dashes are stamped pixel by pixel
+- The phase is anchored on the right end of the run, not its start: the block
+  begins at x=20 at 96 and at 120dpi alike and the first dash lands at 22 and at
+  23, which only the far end accounts for
+- A row's colour stops one line short of the rule closing it -- the gaps under
+  the current row show the grid background, not the selection. `pvRowContentH`
+  already named that line as the gridline's for text and the marquee; the cell
+  fill now agrees. No golden could have caught it, since solid and dotted rules
+  both cover the line
+- The rule closing a row is laid down with each cell rather than in one run over
+  the finished row, and `pvDottedLine`/`pvDashedLine` are one `pvStampedLine`:
+  `lOn` marks out of every `lPeriod`, counted from `lAnchor`. Parity ignores
+  sign, so a dotted run's `(x + y) Mod 2` is the same test with the cross-axis
+  coordinate for an anchor. `pvLine` picks the anchor, which is the one thing
+  the two patterns disagree about
+
+### Added (a way to test the buffered paint from a remote session)
+
+- The remote-session check in `pvBufferOpen` sits behind `#If FORCE_BUFFER = 0`,
+  and `src\make.bat buffer` passes `/d FORCE_BUFFER=1`. On RDP the buffer is off
+  and the corpus says nothing about the bitmap path at all
+- The comparison is the point: `#If Not FORCE_BUFFER` reads correctly and is
+  wrong, because `Not` is bitwise -- `Not 1` is `-2`, which the preprocessor
+  takes for true, so the override did nothing
+- Verified with two mutations the corpus has to catch, the band blit put a pixel
+  low and the shared line carried from the wrong row. Both are caught, so the
+  bitmap and the scroll are on the path the paint takes
+
+### Added (a header dragged into the group by box)
+
+- A header let go in the group-by box groups the grid by that column, which is
+  the gesture the box's own info text asks for. The original names the operation
+  `jgexGroupInsert` and gates it on `BeforeGroupChange`, handing over a `JSGroup`
+  that is not in the collection yet with the position it would take;
+  `AfterGroupChange` follows once it is in. Neither event had been raised by
+  anything until now
+- Three red pixels stand where the drop would land -- on the right border of the
+  last chip, or where the first one would start with nothing in the box yet --
+  the same mark the header row puts on a boundary a column would move to
+- A drop appends. Where between two chips the pointer has to be to land between
+  them is not probed, and neither is anything the original paints in the box
+  mid-drag: the harness releases at the end of every drag it drives, so a drag
+  in flight is the one thing the corpus cannot capture
+
+### Changed (tests say where they click in twips)
+
+- `ModelTests` drives its mouse messages through `TwipsDWord`, so a press lands
+  on the same part of the grid whatever the screen is: with two 1500 twip
+  columns, 750 is the middle of the first and 2250 the middle of the second.
+  The pixel counts they replace only meant that at one scale, and said nothing
+  about the widths the same test had just set
+- The navigator clicks stay in pixels, and say so: those buttons are laid out
+  off the band height and the text extent, so where they land does not scale
+
+### Changed (mdDataModel answers for its own errors)
+
+- The module had no error handling at all. Every public entry point now carries
+  `On Error GoTo EH` and `RaiseError`, which annotates the error with the
+  procedure it came from and re-raises it -- the same shape `mdJson` uses
+- A row index outside `1..ItemCount` is no longer a fault. `DataRowBookmark`
+  answers `Empty` and `DataSetRowBookmark` writes nothing, where the original
+  raises "Subscript out of range" -- a deliberate divergence, since the paint
+  path asks that question off counts that may have moved under it

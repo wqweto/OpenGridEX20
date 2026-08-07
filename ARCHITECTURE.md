@@ -4,8 +4,8 @@ How the pieces of Open GridEX 2000 fit together, and why they are shaped the
 way they are. `ROADMAP.md` says what is built and in what order; `CHANGELOG.md`
 records what changed; this file explains the standing structure.
 
-Sections other than **Data model** are stubs -- the shape of the thing is
-already in the code, the writing-down has not happened yet.
+Sections other than **Data model** and **Painting** are stubs -- the shape of
+the thing is already in the code, the writing-down has not happened yet.
 
 ## Overview
 
@@ -325,7 +325,8 @@ Known gaps at the time of writing:
 PictureBox and a band carrying `hsbGrid` and the painted record navigator --
 mirroring the original's own window tree. Two windows are subclassed through
 the Modern Subclassing Thunk: the grid surface for painting, input and
-`WM_VSCROLL`, and the outer control because it is the band's parent.
+`WM_VSCROLL`, and the outer control because it is the band's parent. Both
+answer `WM_PAINT` and `WM_ERASEBKGND` themselves (see **Painting**).
 
 Worth covering: why `hWnd` returns `picGrid.hWnd`, why the horizontal
 scrollbar is a child control while the vertical one is a non-client style, and
@@ -334,14 +335,105 @@ typelib.
 
 ## Painting
 
-*Stub.* Direct-to-DC GDI drawing, no double buffer. Bands from the top: the
-group-by box with its chip staircase, the column headers, the rows block, the
-scrollbar band.
+GDI drawing, band by band, each band buffered. Bands from the top: the group-by
+box with its chip staircase, the column headers, one band per row, and the
+scrollbar band on the outer control carrying the painted record navigator.
 
-Worth covering: the paint order and why it is that order, the pixel-exactness
-rules discovered by golden diffing (asymmetric text insets, the XOR marquee's
-per-column checkerboard anchoring, dotted and dashed gridline phase), and the
-`IntersectClipRect` + `DT_NOCLIP` idiom that makes ClearType fringes match.
+### Who owns WM_PAINT
+
+The subclass does, on both windows. VB's `Paint` event is not used: `BeginPaint`
+hands out the DC the surface is painted with *and* `rcPaint`, and the second of
+those is worth as much as the first -- a band the update region does not reach
+is stepped over rather than drawn for GDI to clip away. A drag over the headers
+invalidates the strip above the rows and allocates one bitmap; the rows are
+never touched.
+
+Owning the message means owning what VB used to do before raising the event:
+**it filled the client with `BackColor`**. That fill is where the pixels no
+painter covers came from -- the tree indent inside the header band, the band
+beside the navigator -- and suppressing `WM_ERASEBKGND` never removed it. Each
+band now lays its own background down as its first act.
+
+### The buffer
+
+One bitmap carries the whole paint. `pvBufferOpen` allocates it as tall as the
+tallest band that will go through it -- the group-by box, the header strip, or a
+row plus the line it shares with the row above -- and `pvBufferClose` frees it
+once everything has been painted. Between them `pvBufferBand` puts it over the
+band about to be drawn and `pvBufferFlush` blits that band out. A client-sized
+bitmap held between paints is a lot of memory for a strip of rows; a band-sized
+one held for the length of one paint is not, and it saves a create/select/delete
+per row. `pvBufferOpen` hands back the caller's own DC if the allocation fails,
+so failure degrades to painting direct rather than to not painting.
+
+Painted straight onto the window, a band shows every stage it goes through --
+the fill, then what is drawn over it. That is what the eye reads as flicker, and
+it is why the unit is the band rather than the whole surface: the bitmap stays
+row-sized and a repaint that only dirties one strip only buffers one strip.
+
+`pvBufferBand` sets two things per band. `SetViewportOrgEx(0, -lTop)` keeps every
+painter addressing the client area, and a clip box the size of the band keeps
+what they draw inside it -- a rule the height of a row ends at that row's edges
+rather than running the length of the bitmap.
+
+The **first line** of a band is the line a row shares with the row above, where
+a group row draws its opening rule; every band covers the rest of itself before
+painting anything. That line is never read back off the surface: a band that
+carries straight on from the one before it scrolls it up out of the bitmap,
+which still holds what the previous band left there. When the previous band was
+not painted this pass the line is stale -- and provably outside the update
+region, because a clip that reaches the last line of a band reaches the band,
+so `BeginPaint`'s own clip drops whatever goes there.
+
+### A row is a band
+
+The rows loop takes the height per row and accumulates the top, so rows of
+differing heights need nothing but a taller bitmap. Empty rows are rows in the
+same loop. The strip right of the last column belongs to the row beside it and
+arrives in the same blit; only the background below the block is left to a plain
+`FillRect`.
+
+Two block-wide passes used to follow the rows -- the focus marquee, then the
+column rules over it. Both moved into the row, in the order they had, because a
+band that is blitted has to arrive finished. The rules still close over the
+cells, the horizontal rule and the marquee's dots; a per-row segment reproduces
+a block-long line because solid is phase-free, dotted stamps on absolute parity,
+and `pvDashedVLine` restarts its phase at every row top anyway.
+
+What reaches outside a row is worth knowing, because each item is a pixel bug
+waiting to happen: a group row's opening rule lands on the row above (hence the
+seeded line), and the row header's border pair closes one line *below* its row
+under vertical-only gridlines -- so the row does not draw it and the block draws
+the last one after its rows.
+
+Fills stop one pixel short of a vertical gridline rather than painting over it
+and letting the rule be drawn again. Clearing a rule and redrawing it is
+invisible in a still image and very visible in motion.
+
+### Pixel-exactness
+
+The rules below were all found by golden diffing rather than reasoning, and each
+one is load-bearing:
+
+- text is inset asymmetrically -- two pixels in, three at the clip
+- the XOR marquee is a checkerboard anchored **per column**, not per row: a
+  single row-wide `DrawFocusRect` only agrees with the original on even column
+  boundaries
+- dotted rules are stamped pixel by pixel on absolute parity, because GDI's
+  cosmetic `PS_DOT` renders 3-on/3-off where the original is 1-on/1-off
+- dashed rules restart their phase at every row top, so a row height that is not
+  a multiple of six leaves a run of four across the boundary
+- `IntersectClipRect` + `DT_NOCLIP` is what makes ClearType fringes match:
+  letting `DrawText` clip changes the fringe pixels at the boundary
+- the row header's border pair lands by an empirical table, one entry per
+  `GridLines` value, and an empty row's cell closes one line short of itself
+  whichever mode is set
+
+Chrome is not the grid's palette. The record navigator takes the control's own
+background and the system's button text, whatever `BackColorHeader` and
+`ForeColorHeader` are set to, and the header band's tree indent shows the
+window's background rather than any colour property -- both probed by setting a
+distinct colour on every candidate and reading the original's pixels.
 
 ## Metrics and DPI
 
@@ -359,10 +451,18 @@ metrics that are genuinely fixed pixel counts at every scale.
 runs an in-place native `EDIT` created per session, with a pending row buffer
 between the editor and storage.
 
+The header carries three gestures off the same press, told apart on the button
+*up*: a divider grabbed first is a resize, a pointer that has left the system
+double-click box around the press is a move, and anything else is the click that
+sorts. A move dragged past either edge scrolls the strip a column at a time on a
+timer -- a pointer that has stopped moving sends nothing -- and the drop stays
+cancelled while it is out there.
+
 Worth covering: the event contracts recorded from the original (the update
 trio, two-level Escape, where `SelectionChange` sits relative to
-`RowColChange`), and why the pending buffer stays in the control rather than
-moving into the data model.
+`RowColChange`), why the pending buffer stays in the control rather than moving
+into the data model, and the `ColResize` contract -- raised once on the release,
+with `Column.Width` still the width the drag started from.
 
 ## Object model
 
@@ -398,7 +498,7 @@ Worth covering: why private classes and `Friend` members are free, why
 
 - `test/ModelTests` -- object model, collections, events, snapshot round-trips
 - `test/VisualDiff` -- pixel and event-log diffing against goldens recorded
-  from the original control, at 96, 120 and 144 dpi
+  from the original control: 83 scenarios at 96, 120 and 144 dpi
 - `test/Samples` -- the ported original samples under a smoke runner
 
 Worth covering: the record/verify/selftest cycle, why goldens live per dpi,

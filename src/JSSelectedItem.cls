@@ -54,14 +54,14 @@ Attribute RowType.VB_Description = "Returns the type of a selected row."
     RowType = m_eRowType
 End Property
 
+Friend Property Let frRowPosition(ByVal lValue As Long)
+    '--- a re-sort moves the row this item stands for, not the row itself
+    m_lRowPosition = lValue
+End Property
+
 '=========================================================================
 ' Methods
 '=========================================================================
-
-Friend Sub frSetPosition(ByVal lValue As Long)
-    '--- a re-sort moves the row this item stands for, not the row itself
-    m_lRowPosition = lValue
-End Sub
 
 Friend Sub frInit(vBookmark As Variant, ByVal lRowIndex As Long, ByVal lRowPosition As Long, ByVal eRowType As jgexRowTypeConstants)
     m_vBookmark = vBookmark

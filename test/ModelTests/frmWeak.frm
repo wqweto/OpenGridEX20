@@ -53,6 +53,7 @@ Private Const MODULE_NAME As String = "frmWeak"
 Public EventLog                     As String
 Public CancelResize                 As Boolean
 Public CancelMove                   As Boolean
+Public CancelGroup                  As Boolean
 '--- what the feed should hand out, by row and column. The original refuses
 '--- a write through JSRowData.Value outside UnboundReadData -- probed: it
 '--- raises &H80040000 "'Value' property can not be change in this context."
@@ -173,6 +174,27 @@ Private Sub GridEX1_ColumnHeaderClick(ByVal Column As JSColumn)
 
     On Error GoTo EH
     EventLog = EventLog & "HdrClick(" & Column.Caption & ");"
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
+Private Sub GridEX1_BeforeGroupChange(ByVal Group As JSGroup, ByVal ChangeOperation As jgexGroupChange, ByVal GroupPosition As Integer, ByVal Cancel As JSRetBoolean)
+    Const FUNC_NAME     As String = "GridEX1_BeforeGroupChange"
+
+    On Error GoTo EH
+    EventLog = EventLog & "BeforeGroup(" & Group.ColIndex & "," & ChangeOperation & "," & GroupPosition & ");"
+    Cancel.Value = CancelGroup
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
+Private Sub GridEX1_AfterGroupChange()
+    Const FUNC_NAME     As String = "GridEX1_AfterGroupChange"
+
+    On Error GoTo EH
+    EventLog = EventLog & "AfterGroup;"
     Exit Sub
 EH:
     PrintError FUNC_NAME

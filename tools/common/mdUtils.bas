@@ -26,6 +26,13 @@ Public Function MakeDWord(ByVal lLoWord As Long, ByVal lHiWord As Long) As Long
     MakeDWord = (lLoWord And &HFFFF&) Or (lHiWord * &H10000)
 End Function
 
+'--- the same lParam from a point in twips, which is the unit a test shares with
+'--- the widths it sets: a 1500 twip column is clicked in the middle at 750
+'--- whatever the screen is, where a pixel count only lands there at one scale
+Public Function TwipsDWord(ByVal lX As Long, ByVal lY As Long) As Long
+    TwipsDWord = MakeDWord(lX \ Screen.TwipsPerPixelX, lY \ Screen.TwipsPerPixelY)
+End Function
+
 Public Function C2Obj(Value As Variant) As Object
     If IsObject(Value) Then
         Set C2Obj = Value

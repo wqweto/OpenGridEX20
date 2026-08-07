@@ -114,6 +114,7 @@ Public Const SM_CYHSCROLL               As Long = 3
 Public Const SM_CXDOUBLECLK             As Long = 36
 Public Const SM_CYDOUBLECLK             As Long = 37
 Public Const LOGPIXELSY                 As Long = 90
+Public Const SM_REMOTESESSION           As Long = &H1000
 '--- DrawText flags
 Public Const DT_CENTER                  As Long = 1
 Public Const DT_RIGHT                   As Long = 2
@@ -182,6 +183,7 @@ Public Declare Function DrawText Lib "user32" Alias "DrawTextW" (ByVal hDC As Lo
 Public Declare Function DrawFocusRect Lib "user32" (ByVal hDC As Long, lpRect As RECT) As Long
 Public Declare Function PatBlt Lib "gdi32" (ByVal hDC As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal dwRop As Long) As Long
 Public Declare Function IntersectClipRect Lib "gdi32" (ByVal hDC As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long) As Long
+Public Declare Function SelectClipRgn Lib "gdi32" (ByVal hDC As Long, ByVal hRgn As Long) As Long
 Public Declare Function SaveDC Lib "gdi32" (ByVal hDC As Long) As Long
 Public Declare Function RestoreDC Lib "gdi32" (ByVal hDC As Long, ByVal nSavedDC As Long) As Long
 Public Declare Function GetDeviceCaps Lib "gdi32" (ByVal hDC As Long, ByVal nIndex As Long) As Long
@@ -473,7 +475,7 @@ Public Function SetTrue(bValue As Boolean) As Boolean
     SetTrue = True
 End Function
 
-Public Function SetWeakRef(oDst As Object, ByVal oSrc As Object) As Object
+Public Function AssignWeakRef(oDst As Object, ByVal oSrc As Object) As Object
     Dim bInIde          As Boolean: Debug.Assert SetTrue(bInIde)
 
     If bInIde Then

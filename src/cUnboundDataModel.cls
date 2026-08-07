@@ -61,7 +61,7 @@ End Type
 '=========================================================================
 
 Friend Sub frInit(ByVal oCtl As GridEX)
-    SetWeakRef m_pOwner, oCtl
+    AssignWeakRef m_pOwner, oCtl
     Set m_uState.Bookmarks = New VBA.Collection
     Set m_oFetchBuffer = New JSRowData
     m_oFetchBuffer.frAllowUpdate = True
@@ -70,7 +70,7 @@ Friend Sub frInit(ByVal oCtl As GridEX)
 End Sub
 
 Friend Sub frTerminate()
-    SetWeakRef m_pOwner, Nothing
+    AssignWeakRef m_pOwner, Nothing
     Set m_uState.Bookmarks = Nothing
     Set m_oFetchBuffer = Nothing
     Erase m_aRecord

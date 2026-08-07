@@ -71,14 +71,14 @@ gridline is ever drawn and the golden's full colour histogram
 | partial | 2 | 2% |
 | weak | 0 | 0% |
 | unverified | 0 | 0% |
-| consumed (no pixels of its own) | 1 | 1% |
+| consumed (no pixels of its own) | 3 | 2% |
 | n/a (state only) | 1 | 1% |
-| **not implemented** | **57** | **45%** |
+| **not implemented** | **55** | **44%** |
 | **total** | **126** | |
 
-**67 of 126 (53%) are read by the paint path**; **57 (45%) are not implemented**
+**69 of 126 (55%) are read by the paint path**; **55 (44%) are not implemented**
 -- they store and return their value, and round-trip through the snapshot
-corpus, but the renderer never looks at them -- and the remaining 2 are read by
+corpus, but the renderer never looks at them -- and the remaining 4 are read by
 the engine without painting anything themselves.
 
 **Every property the renderer reads is proven** against the original at two or
@@ -87,8 +87,11 @@ their range that exists (below). Two more cannot be proven by a picture and are
 pinned by `ModelTests` instead: `ContinuousScroll` only shows up mid-drag, and
 `Redraw` suppresses painting rather than changing it. `Col` is state with no
 pixels of its own and `JSColumn.IsGrouped` is read by the engine rather than the
-renderer -- both are listed to record that, not as gaps. The 57 that remain are
-unimplemented, each owned by a later milestone.
+renderer -- both are listed to record that, not as gaps. `AllowColumnDrag` and
+`JSColumn.AllowSizing` gate gestures rather than pixels: what they permit is
+pinned by `ModelTests` at both values, and what the gesture then draws is pinned
+by the corpus. The 55 that remain are unimplemented, each owned by a later
+milestone.
 
 The two partials are enums implemented over part of their range, which the
 two-value bar would otherwise score as fully verified:
@@ -118,7 +121,7 @@ Not-implemented properties by owning milestone:
 | M10 styling extras | 36 |
 | M6 card view | 12 |
 | M5 editing | 4 |
-| **unowned** | **5** |
+| **unowned** | **3** |
 
 The two partials sit outside this table -- `ColumnType`'s missing icon modes are
 M10's and `EditType`'s missing dropdown/combo editors are M5's, but neither
@@ -133,13 +136,14 @@ much bigger milestone than its one-line roadmap entry suggests.
 
 Card view was the other gap this matrix exposed and now has its own milestone
 (M6), placed before the paint gate because it *adds* twelve paint properties.
-Five remain unowned: the drag/resize affordances (`AllowColumnDrag`,
-`AllowRowSizing`, `DetectRowDrag`, `JSColumn.AllowSizing`) and `Options`.
+Three remain unowned: `AllowRowSizing`, `DetectRowDrag` and `Options`. The
+column half of the drag/resize affordances landed with M5 -- `AllowColumnDrag`
+gates the header move, `JSColumn.AllowSizing` the divider resize.
 
 ### The matrix
 
 Scenario names refer to `test\VisualDiff\scenarios\NNN-*.json`, numbered in
-creation order; all 66 are verified at 96, 120 and 144 dpi. The `Commit` column
+creation order; all 83 are verified at 96, 120 and 144 dpi. The `Commit` column
 records where the property started affecting pixels,
 not where it was first stored -- every member was declared in the M2 storage
 commit, so that hash carries no information about painting.
@@ -148,7 +152,7 @@ commit, so that hash carries no information about painting.
 |---|---|---|---|---|---|
 | `AllowAddNew` | `Boolean` | **not impl** | M5 | -- | -- |
 | `AllowCardSizing` | `Boolean` | **not impl** | M6 | -- | -- |
-| `AllowColumnDrag` | `Boolean` | **not impl** | unowned | -- | -- |
+| `AllowColumnDrag` | `Boolean` | consumed | M5 | [`b7edc16`](../../commit/b7edc1683e79f44c5c52502b24625a32a1553296) | `ModelTests` `pvTestColumnMove` (True/False) -- a drag is not a picture |
 | `AllowRowSizing` | `Boolean` | **not impl** | unowned | -- | -- |
 | `AutomaticArrange` | `Boolean` | **not impl** | M6 | -- | -- |
 | `BackColor` | `OLE_COLOR` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `022-colors-rows` (`0xC0FFC0`) vs default |
@@ -175,7 +179,7 @@ commit, so that hash carries no information about painting.
 | `EditMode` | `jgexEditModeConstants` | **not impl** | M5 | -- | -- |
 | `EmptyRows` | `Boolean` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `008-empty-rows` (True) vs default False |
 | `Enabled` | `Boolean` | **not impl** | M10 | -- | -- |
-| `FirstItem` | `Long` | verified | M3d | [`e95c15e`](../../commit/e95c15e1b1d35f09c9bbe557228ddc1329ed6c6f) | `016-scrolled` sets 4 in its `post` block; 1 elsewhere |
+| `FirstItem` | `Long` | verified | M3d | [`e95c15e`](../../commit/e95c15e1b1d35f09c9bbe557228ddc1329ed6c6f) | `016-scrolled` sets 4 in its `post` block; 1 elsewhere, except where a group set overflows the view and the control puts the current row at the top (`041`/`044`/`065`/`066` at 144dpi) |
 | `FmtConditions` | `JSFmtConditions` | **not impl** | M10 | -- | -- |
 | `Font` | `Font` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `009-font-large`, `020-font-tahoma`, `019-font-segoeui`, `065`/`066` (Tahoma 12 and Segoe UI 14) + default |
 | `ForeColor` | `OLE_COLOR` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `022-colors-rows` (`0xFF0000`) vs default -- also drives the marquee XOR mask |
@@ -198,7 +202,7 @@ commit, so that hash carries no information about painting.
 | `ImageWidth` | `Integer` | **not impl** | M10 | -- | -- |
 | `ItemCount` | `Long` | verified | M3a | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | row counts 2/3/5/6/14/16 across the corpus |
 | `JSColumn.AggregateFunction` | `jgexAggregateFunctionConstants` | verified | M4 | -- | `054-group-footer-totals` (sum) and `056-group-footer-aggregates` (count/avg/min/max); `ModelTests` covers stddev and value count |
-| `JSColumn.AllowSizing` | `Boolean` | **not impl** | unowned | -- | -- |
+| `JSColumn.AllowSizing` | `Boolean` | consumed | M5 | [`b7edc16`](../../commit/b7edc1683e79f44c5c52502b24625a32a1553296) | `ModelTests` `pvTestColumnSizing` (True/False); `076`/`077` pin the resize itself |
 | `JSColumn.ButtonStyle` | `jgexButtonStyleConstants` | **not impl** | M5 | -- | -- |
 | `JSColumn.Caption` | `String` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | distinct captions in every scenario |
 | `JSColumn.CardCaption` | `Boolean` | **not impl** | M6 | -- | -- |
@@ -292,7 +296,8 @@ clearing the weak block cost three captures instead of seven -- recording is the
 slow part of the loop, so scenarios are packed deliberately.
 
 The corpus is recorded and verified at **96, 120 and 144 dpi** throughout -- all
-66 scenarios at each. Three scales is the working minimum here, not a luxury:
+83 scenarios at each, the third scale re-recorded on a 144dpi machine rather
+than every run. Three scales is the working minimum here, not a luxury:
 two of them cannot separate a constant from a metric-derived term, and every
 rule that broke during the 125% and 150% passes had been fitted on a pair. The
 record navigator's box width is the worked example -- `7 * tmAveCharWidth + 11`

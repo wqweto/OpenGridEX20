@@ -6,6 +6,7 @@
     "apply": "before-show",
     "props": {
         "GridLines": 2,
+        "GridLineStyle": 1,
         "RowHeaders": true,
         "Columns": [
             { "Caption": "First", "Width": 1200 },

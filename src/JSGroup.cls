@@ -82,14 +82,14 @@ End Property
 '=========================================================================
 
 Friend Sub frInit(ByVal oCtl As GridEX, ByVal lIndex As Long, ByVal lColIndex As Long, ByVal eSortOrder As jgexSortOrderConstants)
-    SetWeakRef m_pOwner, oCtl
+    AssignWeakRef m_pOwner, oCtl
     m_lIndex = lIndex
     m_lColIndex = lColIndex
     m_eSortOrder = eSortOrder
 End Sub
 
 Friend Sub frTerminate()
-    SetWeakRef m_pOwner, Nothing
+    AssignWeakRef m_pOwner, Nothing
 End Sub
 
 '=========================================================================

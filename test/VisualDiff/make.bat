@@ -32,8 +32,10 @@ exit /b 0
 :verify
 set "LAYER=%~1"
 if exist VisualDiff.out.txt del VisualDiff.out.txt
-rem --- watchdog: a wedged run must not hang the loop
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\run.ps1" -Exe VisualDiff\VisualDiff.exe -Arguments "verify %MASK%" -Layer "%LAYER%" -TimeoutMs 20000 %SAMEDESK%
+rem --- watchdog: a wedged run must not hang the loop. Well clear of what the
+rem --- whole corpus takes -- 20s used to be, until the corpus grew past it and
+rem --- a run was killed mid-scenario and read as a failure
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\run.ps1" -Exe VisualDiff\VisualDiff.exe -Arguments "verify %MASK%" -Layer "%LAYER%" -TimeoutMs 120000 %SAMEDESK%
 if not exist VisualDiff.out.txt (
     echo FAILED: VisualDiff.out.txt not produced ^(%~2^)
     exit /b 1

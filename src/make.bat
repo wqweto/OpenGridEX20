@@ -5,7 +5,14 @@ pushd "%~dp0"
 
 powershell -NoProfile -Command "Get-ChildItem *.vbp,*.ctl,*.cls,*.bas | ForEach-Object { $t = [IO.File]::ReadAllText($_.FullName, [Text.Encoding]::Default); $f = $t -replace '(?<!\r)\n', ([string][char]13 + [char]10); if ($f -ne $t) { [IO.File]::WriteAllText($_.FullName, $f, [Text.Encoding]::Default); Write-Host ('Fixed ' + $_.Name) } }"
 
-"%VB6%" /make OpenGridEX20.vbp /out errors.log
+rem --- "buffer" compiles the remote-session check out of pvBufferOpen, so the
+rem --- buffered paint path can be exercised from a remote session, where it
+rem --- otherwise switches itself off and leaves the corpus verifying the
+rem --- direct path instead
+set "CONDCOMP="
+if /I "%~1"=="buffer" set "CONDCOMP=/d FORCE_BUFFER=1"
+
+"%VB6%" /make OpenGridEX20.vbp %CONDCOMP% /out errors.log
 if errorlevel 1 (
     type errors.log
     exit /b 1

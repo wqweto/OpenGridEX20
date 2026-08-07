@@ -84,7 +84,7 @@ End Sub
 '=========================================================================
 
 Friend Sub frInit(ByVal oCtl As GridEX)
-    SetWeakRef m_pOwner, oCtl
+    AssignWeakRef m_pOwner, oCtl
 End Sub
 
 Friend Sub frTerminate()
@@ -97,7 +97,7 @@ Friend Sub frTerminate()
         Set oItem = m_cItems.Item(lIdx)
         oItem.frTerminate
     Next
-    SetWeakRef m_pOwner, Nothing
+    AssignWeakRef m_pOwner, Nothing
 End Sub
 
 Private Sub pvNotify()
