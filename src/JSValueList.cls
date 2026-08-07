@@ -104,11 +104,22 @@ End Sub
 
 Private Function pvFindByValue(Value As Variant) As Long
     Dim lIdx            As Long
+    Dim oItem           As JSValueItem
+    Dim vItem           As Variant
 
-    For lIdx = 1 To m_cItems.Count
-        If m_cItems.Item(lIdx).Value = Value Then
-            pvFindByValue = lIdx
-            Exit For
+    '--- an object or an array in either hand has no = to compare with, and
+    '--- Null propagates through one: those never match rather than raise
+    If IsObject(Value) Or IsArray(Value) Or IsNull(Value) Then
+        Exit Function
+    End If
+    For Each oItem In m_cItems
+        lIdx = lIdx + 1
+        vItem = oItem.Value
+        If Not IsObject(vItem) And Not IsArray(vItem) And Not IsNull(vItem) Then
+            If vItem = Value Then
+                pvFindByValue = lIdx
+                Exit For
+            End If
         End If
     Next
 End Function
@@ -117,8 +128,8 @@ Private Sub pvReindex()
     Dim lIdx            As Long
     Dim oItem           As JSValueItem
 
-    For lIdx = 1 To m_cItems.Count
-        Set oItem = m_cItems.Item(lIdx)
+    For Each oItem In m_cItems
+        lIdx = lIdx + 1
         oItem.frIndex = lIdx
     Next
 End Sub

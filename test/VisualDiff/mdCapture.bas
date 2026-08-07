@@ -57,7 +57,6 @@ Public Declare Function GetClassName Lib "user32" Alias "GetClassNameW" (ByVal h
 Public Declare Function IsWindowVisible Lib "user32" (ByVal hWnd As Long) As Long
 '--- GDI+
 Private Declare Function GdiplusStartup Lib "gdiplus" (token As Long, inputbuf As Any, ByVal outputbuf As Long) As Long
-Private Declare Function GdiplusShutdown Lib "gdiplus" (ByVal token As Long) As Long
 Private Declare Function GdipCreateBitmapFromHBITMAP Lib "gdiplus" (ByVal hBitmap As Long, ByVal hPalette As Long, hGdipBmp As Long) As Long
 Private Declare Function GdipDisposeImage Lib "gdiplus" (ByVal image As Long) As Long
 Private Declare Function GdipSaveImageToFile Lib "gdiplus" (ByVal image As Long, ByVal fileName As Long, clsidEncoder As Any, encoderParams As Any) As Long
@@ -126,6 +125,12 @@ Private Type BITMAP
     bmBitsPixel             As Integer
     bmBits                  As Long
 End Type
+
+'=========================================================================
+' Constants and member variables
+'=========================================================================
+
+Private m_hGdipToken                As Long
 
 '=========================================================================
 ' Error management
@@ -402,9 +407,22 @@ Public Function SavePng(sFile As String, ByVal lWidth As Long, ByVal lHeight As 
     End If
 End Function
 
-Public Function LoadPng(sFile As String, lWidth As Long, lHeight As Long, baBits() As Byte) As Boolean
+'--- started once and left running for the life of the process: the runner is
+'--- short-lived and the token dies with it, where a startup/shutdown pair per
+'--- file cycled GDI+ a couple of hundred times over a corpus pass
+Private Function pvEnsureGdiplus() As Boolean
     Dim uStartup(0 To 3) As Long
-    Dim hToken          As Long
+
+    If m_hGdipToken = 0 Then
+        uStartup(0) = 1
+        If GdiplusStartup(m_hGdipToken, uStartup(0), 0) <> 0 Then
+            m_hGdipToken = 0
+        End If
+    End If
+    pvEnsureGdiplus = (m_hGdipToken <> 0)
+End Function
+
+Public Function LoadPng(sFile As String, lWidth As Long, lHeight As Long, baBits() As Byte) As Boolean
     Dim hGdipBmp        As Long
     Dim hBmp            As Long
     Dim uBmp            As BITMAP
@@ -414,8 +432,7 @@ Public Function LoadPng(sFile As String, lWidth As Long, lHeight As Long, baBits
     If LenB(Dir$(sFile)) = 0 Then
         Exit Function
     End If
-    uStartup(0) = 1
-    If GdiplusStartup(hToken, uStartup(0), 0) <> 0 Then
+    If Not pvEnsureGdiplus() Then
         Exit Function
     End If
     If GdipCreateBitmapFromFile(StrPtr(sFile), hGdipBmp) = 0 Then
@@ -440,26 +457,24 @@ Public Function LoadPng(sFile As String, lWidth As Long, lHeight As Long, baBits
         End If
         Call GdipDisposeImage(hGdipBmp)
     End If
-    Call GdiplusShutdown(hToken)
 End Function
 
 Public Function SaveBitmapAsPng(ByVal hDib As Long, ByVal sFile As String) As Boolean
-    Dim uStartup(0 To 3) As Long
-    Dim hToken          As Long
     Dim hBitmap         As Long
     Dim uEncoder(0 To 3) As Long
 
-    uStartup(0) = 1
-    If GdiplusStartup(hToken, uStartup(0), 0) <> 0 Then
+    If Not pvEnsureGdiplus() Then
         Exit Function
     End If
     If GdipCreateBitmapFromHBITMAP(hDib, 0, hBitmap) = 0 Then
-        uEncoder(0) = &H557CF406: uEncoder(1) = &H11D31A04      '--- {557CF406-1A04-11D3-9A73-0000F81EF32E}
-        uEncoder(2) = &H739A&: uEncoder(3) = &H2EF31EF8
+        '--- the PNG encoder, {557CF406-1A04-11D3-9A73-0000F81EF32E}
+        uEncoder(0) = &H557CF406
+        uEncoder(1) = &H11D31A04
+        uEncoder(2) = &H739A&
+        uEncoder(3) = &H2EF31EF8
         If GdipSaveImageToFile(hBitmap, StrPtr(sFile), uEncoder(0), ByVal 0) = 0 Then
             SaveBitmapAsPng = True
         End If
         Call GdipDisposeImage(hBitmap)
     End If
-    Call GdiplusShutdown(hToken)
 End Function

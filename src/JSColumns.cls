@@ -89,23 +89,52 @@ End Function
 
 Public Sub Remove(ByVal vntIndexKey As Variant)
 Attribute Remove.VB_Description = "Removes a specific JSColumn from the collection."
+    Dim oCol            As JSColumn
+    Dim lPos            As Long
+    Dim oItem           As JSColumn
+
+    '--- the removed column is detached: a client can hold it past the
+    '--- control's lifetime and its weak owner pointer must not dangle.
+    '--- The columns behind its position close the hole, the way frColMove
+    '--- keeps the positions a permutation of the indexes
+    Set oCol = m_cItems.Item(vntIndexKey)
+    lPos = oCol.ColPosition
+    oCol.frTerminate
     m_cItems.Remove vntIndexKey
+    For Each oItem In m_cItems
+        If oItem.ColPosition > lPos Then
+            oItem.frColPosition = oItem.ColPosition - 1
+        End If
+    Next
     pvReindex
+    pvNotify
 End Sub
 
 Public Sub Clear()
 Attribute Clear.VB_Description = "Removes all objects in a collection."
+    Dim oItem           As JSColumn
+
+    For Each oItem In m_cItems
+        oItem.frTerminate
+    Next
     Set m_cItems = New Collection
+    pvNotify
 End Sub
 
 Private Sub pvReindex()
     Dim lIdx            As Long
     Dim oItem           As JSColumn
 
-    For lIdx = 1 To m_cItems.Count
-        Set oItem = m_cItems.Item(lIdx)
+    For Each oItem In m_cItems
+        lIdx = lIdx + 1
         oItem.frIndex = lIdx
     Next
+End Sub
+
+Private Sub pvNotify()
+    If Not m_pOwner Is Nothing Then
+        m_pOwner.frNotifySortChanged
+    End If
 End Sub
 
 '=========================================================================
@@ -117,11 +146,9 @@ Friend Sub frInit(ByVal oCtl As GridEX)
 End Sub
 
 Friend Sub frTerminate()
-    Dim lIdx            As Long
     Dim oItem           As JSColumn
 
-    For lIdx = 1 To m_cItems.Count
-        Set oItem = m_cItems.Item(lIdx)
+    For Each oItem In m_cItems
         oItem.frTerminate
     Next
     AssignWeakRef m_pOwner, Nothing

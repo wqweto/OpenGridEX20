@@ -74,15 +74,21 @@ End Sub
 
 Public Sub Clear()
 Attribute Clear.VB_Description = "Removes all the JSFormatStyle objects from the collection."
-    Dim lIdx            As Long
     Dim oStyle          As JSFormatStyle
+    Dim cDoomed         As Collection
+    Dim vName           As Variant
 
-    '--- Clear keeps the built-in system styles (matches the original)
-    For lIdx = m_cItems.Count To 1 Step -1
-        Set oStyle = m_cItems.Item(lIdx)
+    '--- Clear keeps the built-in system styles (matches the original). The
+    '--- doomed ones are collected first and removed by their name key, since
+    '--- removing while enumerating is not the collection's to support
+    Set cDoomed = New Collection
+    For Each oStyle In m_cItems
         If Not oStyle.frIsSystem Then
-            m_cItems.Remove lIdx
+            cDoomed.Add oStyle.Name
         End If
+    Next
+    For Each vName In cDoomed
+        m_cItems.Remove vName
     Next
 End Sub
 

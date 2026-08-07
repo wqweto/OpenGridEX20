@@ -1416,3 +1416,73 @@ vertical lines only. One capture showed three things.
   border with the thumb already at its stop. The scrollbar's own maximum and
   the `LeftCol` setter had each worked it out separately and now share
   `pvMaxLeftCol`
+
+### Fixed (two review sweeps, the control)
+
+- A plain click no longer leaves the pressed header or chip inverted: every
+  path that clears the press without a drag's own repaint -- the click branch
+  of the release, a cancel on a press, a refused drag -- invalidates the bands
+- `BeforeColumnDrag` is raised as a header press turns into a drag, the gate
+  the typelib always declared and nothing ever raised; a veto ends the gesture
+- `EnsureVisible` honours its `Col` argument now that the machinery exists,
+  `Row` clamps to the block the way `Col` clamps to its columns, and an
+  out-of-range position can no longer plant a phantom selected item
+- Runtime property changes repaint: 28 visual setters invalidate and
+  `GroupFooterStyle` refreshes the groups its rows come from -- before this a
+  `GridLines` change at runtime showed nothing until something else painted
+- The width math measures from `pvBlockLeft`, so the tree indent counts:
+  the scrollbar appears when grouping pushes the columns past the edge,
+  auto-resize fits beside the indent, and the last magic `18`s are gone
+- `pvMaxLeftCol` answers in column-position space, so a hidden column no
+  longer shears the scrollbar range against `LeftCol`
+- A group level whose column is gone has no chip and takes no drop, and
+  `pvEndEdit` writes the committed text into the row it was typed into even
+  when a `BeforeColUpdate` handler moves the current row
+
+### Fixed (two review sweeps, the models)
+
+- The three date sort types compare chronologically through the new `C2Date`
+  instead of as the text a date renders at the locale -- sorting, group
+  boundaries and Min/Max all took the fix at once
+- What a client keeps outlives what it was taken from: `Remove` and `Clear` on
+  the columns, groups and sort keys detach the items they drop, so a held one
+  answers for itself instead of dereferencing a freed control; removing a
+  column also closes the hole in the position space and notifies the control
+- `JSSelectedItems` resolves whichever of a row's three names the caller
+  hands its public Adds into the other two, and `RemoveBookmark` removes by
+  key -- `=` on an ADO byte-array bookmark was a type mismatch
+- A record cut off by a smaller `ItemCount` stops existing: growing back
+  exposes a fresh row rather than resurrecting the dead one's bookmark
+- `pvWriteFields` writes only the cells the buffer marks dirty, which is what
+  keeps a commit from fighting optimistic locking on a wide table
+- `RefreshRowIndex` re-sorts only when sort keys exist, the same guard the
+  update path applies; ADO's `Resync` moved behind a named constant and a
+  proper handler
+- Both models carry the `mdDataModel` error convention now: `RaiseError`
+  chains on every `IDataModel` member and `frInit`, a logging `PrintError` on
+  `frTerminate` where raising out of teardown would crash
+- `MakeDWord` survives a sign-bit high word, `AssignWeakRef` is the Sub it
+  behaved as, a non-byte array keys no bookmark instead of raising, and
+  `JSRowData.PreviewRowVisible` defaults False
+
+### Changed (walking collections)
+
+- Indexed `For lIdx = 1 To Count` walks over `VBA.Collection`s are `For Each`
+  throughout src -- `Item(i)` walks to position i, so the old loops were
+  quadratic. Position-space walks through `ItemByPosition` stay indexed, since
+  their iteration order is the point
+
+### Fixed (harness)
+
+- `AssertEquals` fails one assert on a value it cannot compare -- a Null or an
+  array used to raise through `Form_Load` and silently skip every test after
+  the bad one
+- GDI+ starts once per process instead of a startup/shutdown pair per PNG,
+  and two stray `- Copy` files left `test\Samples`
+
+### Changed (documents)
+
+- `ARCHITECTURE`, `ROADMAP`, `PROPERTIES` and `README` caught up with the
+  code: the closed dirty-flag gap, the detach discipline, the three-scale
+  corpus, the M10/unowned property counts reconciled at 36/3, and the group-by
+  drop work in the M5 summary

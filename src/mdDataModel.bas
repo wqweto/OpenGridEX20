@@ -95,7 +95,7 @@ End Sub
 
 Public Sub DataInitFetch(uFetch As UcsFetchCache, oCtl As GridEX)
     Const FUNC_NAME     As String = "DataInitFetch"
-    Dim lIdx            As Long
+    Dim oCol            As JSColumn
 
     On Error GoTo EH
     '--- the whole cache goes: only a rebind or a change to the columns
@@ -113,9 +113,9 @@ Public Sub DataInitFetch(uFetch As UcsFetchCache, oCtl As GridEX)
         ReDim .IsFetchData(1 To .ColCount) As Boolean
         ReDim .IsFetchIcon(1 To .ColCount) As Boolean
         '--- asked once here, not once per cell on every paint
-        For lIdx = 1 To .ColCount
-            .IsFetchData(lIdx) = oCtl.Columns.Item(lIdx).FetchData
-            .IsFetchIcon(lIdx) = oCtl.Columns.Item(lIdx).FetchIcon
+        For Each oCol In oCtl.Columns
+            .IsFetchData(oCol.Index) = oCol.FetchData
+            .IsFetchIcon(oCol.Index) = oCol.FetchIcon
         Next
     End With
     Exit Sub
@@ -196,8 +196,8 @@ End Sub
 Public Sub DataReadSortKeys(uRowSet As UcsRowSet, oCtl As GridEX)
     Const FUNC_NAME     As String = "DataReadSortKeys"
     Dim lIdx            As Long
-    Dim lCol            As Long
-    Dim lOrder          As Long
+    Dim oGroup          As JSGroup
+    Dim oKey            As JSSortKey
 
     On Error GoTo EH
     '--- grouping sorts too: the group columns lead, in order, and the sort
@@ -211,21 +211,13 @@ Public Sub DataReadSortKeys(uRowSet As UcsRowSet, oCtl As GridEX)
         ReDim .SortCol(1 To .SortKeyCount) As Long
         ReDim .SortDir(1 To .SortKeyCount) As Long
         ReDim .SortType(1 To .SortKeyCount) As Long
-        For lIdx = 1 To .SortKeyCount
-            If lIdx <= .GroupColCount Then
-                lCol = oCtl.Groups.Item(lIdx).ColIndex
-                lOrder = oCtl.Groups.Item(lIdx).SortOrder
-            Else
-                lCol = oCtl.SortKeys.Item(lIdx - .GroupColCount).ColIndex
-                lOrder = oCtl.SortKeys.Item(lIdx - .GroupColCount).SortOrder
-            End If
-            If lCol >= 1 And lCol <= oCtl.Columns.Count Then
-                .SortCol(lIdx) = lCol
-                .SortType(lIdx) = oCtl.Columns.Item(lCol).SortType
-            End If
-            '--- the enum is +1/-1 already, so the direction multiplies
-            '--- straight into the comparison result
-            .SortDir(lIdx) = IIf(lOrder = jgexSortDescending, -1, 1)
+        For Each oGroup In oCtl.Groups
+            lIdx = lIdx + 1
+            pvReadSortKey uRowSet, oCtl, lIdx, oGroup.ColIndex, oGroup.SortOrder
+        Next
+        For Each oKey In oCtl.SortKeys
+            lIdx = lIdx + 1
+            pvReadSortKey uRowSet, oCtl, lIdx, oKey.ColIndex, oKey.SortOrder
         Next
         If .ItemCount > 0 Then
             ReDim .Key(1 To .SortKeyCount, 1 To .ItemCount) As Variant
@@ -234,6 +226,18 @@ Public Sub DataReadSortKeys(uRowSet As UcsRowSet, oCtl As GridEX)
     Exit Sub
 EH:
     RaiseError FUNC_NAME
+End Sub
+
+Private Sub pvReadSortKey(uRowSet As UcsRowSet, oCtl As GridEX, ByVal lIdx As Long, ByVal lCol As Long, ByVal lOrder As Long)
+    With uRowSet
+        If lCol >= 1 And lCol <= oCtl.Columns.Count Then
+            .SortCol(lIdx) = lCol
+            .SortType(lIdx) = oCtl.Columns.Item(lCol).SortType
+        End If
+        '--- the enum is +1/-1 already, so the direction multiplies straight
+        '--- into the comparison result
+        .SortDir(lIdx) = IIf(lOrder = jgexSortDescending, -1, 1)
+    End With
 End Sub
 
 '--- everything from the seeded order to the finished projection. The caller
@@ -504,14 +508,19 @@ End Function
 
 Public Function DataGetRowIndex(uState As UcsDataState, vBookmark As Variant) As Long
     Const FUNC_NAME     As String = "DataGetRowIndex"
+    Dim sKey            As String
     Dim vRetVal         As Variant
 
     On Error GoTo EH
     If DataIsBlank(vBookmark) Then
         Exit Function
     End If
+    sKey = DataBookmarkKey(vBookmark)
+    If LenB(sKey) = 0 Then
+        Exit Function
+    End If
     DataEnsureBookmarks uState
-    If SearchCollection(uState.Bookmarks, DataBookmarkKey(vBookmark), RetVal:=vRetVal) Then
+    If SearchCollection(uState.Bookmarks, sKey, RetVal:=vRetVal) Then
         DataGetRowIndex = C2Lng(vRetVal)
     End If
     Exit Function
@@ -598,8 +607,10 @@ Public Sub DataEnsureBookmarks(uState As UcsDataState)
     For lIdx = 1 To uState.ItemCount
         If Not DataIsBlank(uState.Bookmark(lIdx)) Then
             sKey = DataBookmarkKey(uState.Bookmark(lIdx))
-            If Not SearchCollection(uState.Bookmarks, sKey) Then
-                uState.Bookmarks.Add lIdx, sKey
+            If LenB(sKey) <> 0 Then
+                If Not SearchCollection(uState.Bookmarks, sKey) Then
+                    uState.Bookmarks.Add lIdx, sKey
+                End If
             End If
         End If
     Next
@@ -709,6 +720,8 @@ Public Function DataCompareValues(vValue1 As Variant, vValue2 As Variant, ByVal 
     Select Case eSortType
     Case jgexSortTypeNumeric
         DataCompareValues = Sgn(C2Dbl(vValue1) - C2Dbl(vValue2))
+    Case jgexSortTypeDate, jgexSortTypeDateTime, jgexSortTypeTime
+        DataCompareValues = Sgn(C2Date(vValue1) - C2Date(vValue2))
     Case Else
         DataCompareValues = StrComp(C2Str(vValue1), C2Str(vValue2), vbTextCompare)
     End Select
@@ -727,10 +740,13 @@ Public Function DataBookmarkKey(vValue As Variant) As String
     '--- the original: True resolves CInt(-1), a Date resolves its CDbl, "7"
     '--- does not resolve 7. An ADO client-side cursor hands its bookmarks
     '--- out as byte arrays, which no scalar coercion can key on, so those
-    '--- key on their bytes
-    If IsArray(vValue) Then
+    '--- key on their bytes -- and an array of anything else keys on nothing
+    '--- at all, a question with no answer rather than a type mismatch
+    If VarType(vValue) = vbArray + vbByte Then
         baData = vValue
         DataBookmarkKey = "B" & ToHex(baData)
+    ElseIf IsArray(vValue) Then
+        Exit Function
     ElseIf VarType(vValue) = vbString Then
         DataBookmarkKey = "S" & vValue
     Else

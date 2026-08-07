@@ -21,9 +21,11 @@ Private Declare Function VariantChangeType Lib "oleaut32" (Dest As Variant, Src 
 ' Functions
 '=========================================================================
 
-'--- the lParam shape the window messages take, low word first
 Public Function MakeDWord(ByVal lLoWord As Long, ByVal lHiWord As Long) As Long
-    MakeDWord = (lLoWord And &HFFFF&) Or (lHiWord * &H10000)
+    MakeDWord = (lLoWord And &HFFFF&) Or ((lHiWord And &H7FFF&) * &H10000)
+    If (lHiWord And &H8000&) <> 0 Then
+        MakeDWord = MakeDWord Or &H80000000
+    End If
 End Function
 
 '--- the same lParam from a point in twips, which is the unit a test shares with

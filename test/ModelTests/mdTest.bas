@@ -36,14 +36,42 @@ Public Sub Assert(sName As String, ByVal bCond As Boolean)
 End Sub
 
 Public Sub AssertEquals(sName As String, vExpected As Variant, vActual As Variant)
-    If vExpected = vActual Then
+    Dim bEqual          As Boolean
+
+    '--- the comparison stays the lenient Variant =, which is what lets a
+    '--- Long assert against an Integer property -- but a value it cannot
+    '--- compare (a Null, an array) has to fail this one assert rather than
+    '--- raise through Form_Load and silently skip every test after it
+    On Error GoTo EH
+    bEqual = (vExpected = vActual)
+    If bEqual Then
         m_lPassed = m_lPassed + 1
         Print #m_lFile, "PASS " & sName
     Else
         m_lFailed = m_lFailed + 1
-        Print #m_lFile, "FAIL " & sName & " expected=<" & vExpected & "> actual=<" & vActual & ">"
+        Print #m_lFile, "FAIL " & sName & " expected=<" & pvToText(vExpected) & "> actual=<" & pvToText(vActual) & ">"
     End If
+    Exit Sub
+EH:
+    m_lFailed = m_lFailed + 1
+    Print #m_lFile, "FAIL " & sName & " not comparable: expected=<" & pvToText(vExpected) & "> actual=<" & pvToText(vActual) & ">"
 End Sub
+
+Private Function pvToText(vValue As Variant) As String
+    On Error GoTo EH
+    If IsObject(vValue) Then
+        pvToText = "#object"
+    ElseIf IsArray(vValue) Then
+        pvToText = "#array"
+    ElseIf IsNull(vValue) Then
+        pvToText = "#null"
+    Else
+        pvToText = vValue & vbNullString
+    End If
+    Exit Function
+EH:
+    pvToText = "#?"
+End Function
 
 Public Sub TestsDone()
     If m_lFailed = 0 Then

@@ -2,16 +2,16 @@
 
 ## General guidelines
 
-- Keep CHANGELOG.md current
+- Update CHANGELOG.md when preparing a commit, not as work lands
 - Don't need DAO binding implemented
 - This is source-compatible implementation
 - In next version this will be translated VB6->VC6 for performance
 - Keep all API declares/consts as public in `mdGlobals.bas`
+- All VB6 source files are ASCII (cp1251) with CRLF line endings
 
 ## Coding Style for this project
 
 - Declare all helper procedures `Private`
-- Use `On Error GoTo EH` where needed; in the handler `Debug.Print "Critical error: " & Err.Description & " [" & FUNC_NAME & "]"`
 - Never pass `Source` to `Err.Raise` i.e. `Err.Raise ERR_NUMBER, , ERR_DESCRIPTION`
 - One blank line between procedures
 - One blank line between the `Dim` block and the first executable line inside a procedure; no other blank lines inside a procedure body
@@ -54,3 +54,5 @@
 - Classes have Methods section, standard modules have Functions section
 - Keep API section ordered by consts first, then declares, types last
 - Always use named params for optional parameters and boolean flags
+- Instead of `For lIdx = 1 To m_cItems.Count` prefer `For Each` loops as these are significantly faster with `VBA.Collections`
+- Don't use any error handler in `Class_Terminate` (or methods called by it) as this will clear current values in `Err` object

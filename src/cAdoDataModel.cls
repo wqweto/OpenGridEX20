@@ -32,6 +32,7 @@ Attribute VB_Exposed = False
 '=========================================================================
 Option Explicit
 DefObj A-Z
+Private Const MODULE_NAME As String = "cAdoDataModel"
 
 Implements IDataModel
 
@@ -40,6 +41,7 @@ Implements IDataModel
 '=========================================================================
 
 Private Const GROW_BY                   As Long = 64
+Private Const adAffectCurrent           As Long = 1
 Private Const adBookmark                As Long = &H2000
 
 Private m_pOwner                    As GridEX
@@ -52,14 +54,32 @@ Private m_uRowSet                   As UcsRowSet
 Private m_uFetch                    As UcsFetchCache
 
 '=========================================================================
+' Error management
+'=========================================================================
+
+Private Sub RaiseError(sFunction As String)
+    PopRaiseError PushError, MODULE_NAME, sFunction
+End Sub
+
+Private Sub PrintError(sFunction As String)
+    PopPrintError PushError, MODULE_NAME, sFunction
+End Sub
+
+'=========================================================================
 ' Methods
 '=========================================================================
 
 Friend Sub frInit(ByVal oCtl As GridEX)
+    Const FUNC_NAME     As String = "frInit"
+
+    On Error GoTo EH
     AssignWeakRef m_pOwner, oCtl
     Set m_uState.Bookmarks = New VBA.Collection
     m_uState.OrderDirty = True
     m_uState.BookmarksDirty = True
+    Exit Sub
+EH:
+    RaiseError FUNC_NAME
 End Sub
 
 Friend Sub frTerminate()
@@ -111,7 +131,6 @@ Private Sub pvBind()
 End Sub
 
 Private Sub pvBindFields()
-    Dim lIdx            As Long
     Dim oCol            As JSColumn
 
     DataInitFetch m_uFetch, m_pOwner
@@ -127,25 +146,24 @@ Private Sub pvBindFields()
         Exit Sub
     End If
     ReDim m_aField(1 To m_lFieldCount) As Object
-    For lIdx = 1 To m_lFieldCount
-        Set oCol = m_pOwner.Columns.Item(lIdx)
-        If Not m_uFetch.IsFetchData(lIdx) Then
+    For Each oCol In m_pOwner.Columns
+        If Not m_uFetch.IsFetchData(oCol.Index) Then
             If LenB(oCol.DataField) <> 0 Then
-                Set m_aField(lIdx) = pvFindField(oCol.DataField)
+                Set m_aField(oCol.Index) = pvFindField(oCol.DataField)
             End If
         End If
     Next
 End Sub
 
 Private Function pvFindField(sName As String) As Object
-    Dim lIdx            As Long
+    Dim oField          As Object
 
     '--- walked rather than looked up: the Fields collection raises on a name
     '--- it does not hold, and the control has to stay usable under Break on
     '--- All Errors
-    For lIdx = 0 To m_oRs.Fields.Count - 1
-        If StrComp(m_oRs.Fields(lIdx).Name, sName, vbTextCompare) = 0 Then
-            Set pvFindField = m_oRs.Fields(lIdx)
+    For Each oField In m_oRs.Fields
+        If StrComp(oField.Name, sName, vbTextCompare) = 0 Then
+            Set pvFindField = oField
             Exit Function
         End If
     Next
@@ -188,15 +206,29 @@ End Function
 Private Sub pvWriteFields(oData As JSRowData)
     Dim lIdx            As Long
 
-    '--- every bound column is written, not only the ones the editor touched:
-    '--- JSRowData carries no per-cell dirty flag yet, and adding one is what
-    '--- would stop this fighting optimistic locking on a wide table. A
-    '--- FetchData or unbound column has nowhere to go and is dropped
+    '--- only the cells the buffer marks dirty go back, which is what keeps
+    '--- this from fighting optimistic locking on a wide table: a column the
+    '--- edit never touched is not this write's to disturb. A FetchData or
+    '--- unbound column has nowhere to go and is dropped either way
     For lIdx = 1 To m_lFieldCount
         If Not m_aField(lIdx) Is Nothing Then
-            m_aField(lIdx).Value = oData.Value(lIdx)
+            If oData.frCellDirty(lIdx) Then
+                m_aField(lIdx).Value = oData.Value(lIdx)
+            End If
         End If
     Next
+End Sub
+
+Private Sub pvResyncCurrent()
+    Const FUNC_NAME     As String = "pvResyncCurrent"
+
+    '--- a provider that cannot re-read the current record refuses Resync,
+    '--- and the refresh degrades to whatever the cursor already holds
+    On Error GoTo EH
+    m_oRs.Resync adAffectCurrent
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
 End Sub
 
 '--- ordering
@@ -304,96 +336,186 @@ End Function
 '=========================================================================
 
 Private Property Get IDataModel_RowCount() As Long
+    Const FUNC_NAME     As String = "IDataModel_RowCount"
+
+    On Error GoTo EH
     pvEnsureOrder
     IDataModel_RowCount = m_uRowSet.VisibleCount
+    Exit Property
+EH:
+    RaiseError FUNC_NAME
 End Property
 
 Private Property Get IDataModel_ItemCount() As Long
+    Const FUNC_NAME     As String = "IDataModel_ItemCount"
+
+    On Error GoTo EH
     IDataModel_ItemCount = m_uState.ItemCount
+    Exit Property
+EH:
+    RaiseError FUNC_NAME
 End Property
 
 Private Property Get IDataModel_Version() As Long
+    Const FUNC_NAME     As String = "IDataModel_Version"
+
+    On Error GoTo EH
     IDataModel_Version = m_uRowSet.Version
+    Exit Property
+EH:
+    RaiseError FUNC_NAME
 End Property
 
 Private Property Get IDataModel_RowIndex(ByVal lRowPosition As Long) As Long
+    Const FUNC_NAME     As String = "IDataModel_RowIndex"
+
+    On Error GoTo EH
     pvEnsureOrder
     IDataModel_RowIndex = DataRowIndexAt(m_uRowSet, lRowPosition)
+    Exit Property
+EH:
+    RaiseError FUNC_NAME
 End Property
 
 Private Property Get IDataModel_RowBookmark(ByVal lRowIndex As Long) As Variant
+    Const FUNC_NAME     As String = "IDataModel_RowBookmark"
+
+    On Error GoTo EH
     AssignVariant IDataModel_RowBookmark, DataRowBookmark(m_uState, lRowIndex)
+    Exit Property
+EH:
+    RaiseError FUNC_NAME
 End Property
 
 Private Property Let IDataModel_RowBookmark(ByVal lRowIndex As Long, vValue As Variant)
+    Const FUNC_NAME     As String = "IDataModel_RowBookmark"
+
+    On Error GoTo EH
     DataSetRowBookmark m_uState, lRowIndex, vValue
+    Exit Property
+EH:
+    RaiseError FUNC_NAME
 End Property
 
 Private Property Get IDataModel_RowExpanded(ByVal lRowPosition As Long) As Boolean
+    Const FUNC_NAME     As String = "IDataModel_RowExpanded"
+
+    On Error GoTo EH
     pvEnsureOrder
     IDataModel_RowExpanded = DataRowExpanded(m_uRowSet, lRowPosition)
+    Exit Property
+EH:
+    RaiseError FUNC_NAME
 End Property
 
 Private Property Let IDataModel_RowExpanded(ByVal lRowPosition As Long, ByVal bValue As Boolean)
+    Const FUNC_NAME     As String = "IDataModel_RowExpanded"
+
+    On Error GoTo EH
     pvEnsureOrder
     DataSetRowExpanded m_uRowSet, lRowPosition, bValue
+    Exit Property
+EH:
+    RaiseError FUNC_NAME
 End Property
 
 Private Sub IDataModel_SetAllExpanded(ByVal bValue As Boolean)
+    Const FUNC_NAME     As String = "IDataModel_SetAllExpanded"
+
+    On Error GoTo EH
     pvEnsureOrder
     DataSetAllExpanded m_uRowSet, bValue
+    Exit Sub
+EH:
+    RaiseError FUNC_NAME
 End Sub
 
 Private Sub IDataModel_Terminate()
+    Const FUNC_NAME     As String = "IDataModel_Terminate"
+
+    On Error GoTo EH
     frTerminate
+    Exit Sub
+EH:
+    RaiseError FUNC_NAME
 End Sub
 
 Private Sub IDataModel_RefreshGroups(ByVal bAllCollapsed As Boolean)
+    Const FUNC_NAME     As String = "IDataModel_RefreshGroups"
+
+    On Error GoTo EH
     m_uState.OrderDirty = True
     If bAllCollapsed Then
         pvEnsureOrder
         DataSetAllExpanded m_uRowSet, False
     End If
+    Exit Sub
+EH:
+    RaiseError FUNC_NAME
 End Sub
 
 Private Sub IDataModel_RefreshSort()
+    Const FUNC_NAME     As String = "IDataModel_RefreshSort"
+
+    On Error GoTo EH
     m_uState.OrderDirty = True
+    Exit Sub
+EH:
+    RaiseError FUNC_NAME
 End Sub
 
 Private Sub IDataModel_RefreshRowIndex(ByVal lRowIndex As Long)
+    Const FUNC_NAME     As String = "IDataModel_RefreshRowIndex"
+
+    On Error GoTo EH
     '--- the recordset is the cache, so there is nothing of ours to drop --
     '--- the record just has to be re-read from the source
     If lRowIndex >= 1 And lRowIndex <= m_uState.ItemCount Then
         pvSeek lRowIndex
-        On Error Resume Next
-        m_oRs.Resync 1
-        On Error GoTo 0
+        pvResyncCurrent
         m_lCurRowIndex = 0
         '--- only that record's fetch columns: the rest of the cache is
         '--- still good and refetching it would be gratuitous
         DataInvalidateFetchRow m_uFetch, lRowIndex
-        m_uState.OrderDirty = True
+        '--- only a value that is a sort or group key can move the record,
+        '--- the same guard the update path applies: with no keys the order
+        '--- cannot change and a re-sort would be wasted work
+        If m_uRowSet.SortKeyCount > 0 Then
+            m_uState.OrderDirty = True
+        End If
     End If
+    Exit Sub
+EH:
+    RaiseError FUNC_NAME
 End Sub
 
 Private Sub IDataModel_Refresh()
+    Const FUNC_NAME     As String = "IDataModel_Refresh"
+
+    On Error GoTo EH
     '--- a full refresh rebinds: the recordset may be a different object, and
     '--- its order is what defines RowIndex
     pvBind
     m_uState.OrderDirty = True
     m_uState.BookmarksDirty = True
+    Exit Sub
+EH:
+    RaiseError FUNC_NAME
 End Sub
 
 Private Function IDataModel_GetRowData(ByVal lRowPosition As Long) As JSRowData
+    Const FUNC_NAME     As String = "IDataModel_GetRowData"
     Dim oData           As JSRowData
     Dim lColCount       As Long
     Dim lRowIndex       As Long
     Dim lIdx            As Long
-    Dim eFunc           As jgexAggregateFunctionConstants
-    Dim aValues()       As Variant
-    Dim lCount          As Long
     Dim bPrefixed       As Boolean
+    Dim oCol            As JSColumn
+    Dim eFunc           As jgexAggregateFunctionConstants
+    Dim lCount          As Long
+    Dim aValues()       As Variant
 
+    On Error GoTo EH
     pvEnsureOrder
     lColCount = m_pOwner.Columns.Count
     Set oData = New JSRowData
@@ -423,23 +545,27 @@ Private Function IDataModel_GetRowData(ByVal lRowPosition As Long) As JSRowData
         '--- values, so painting one is painting an ordinary row
         If m_uRowSet.GroupRow(-lRowIndex).Footer Then
             If m_uRowSet.GroupFooterStyle = jgexTotalsGroupFooter Then
-                For lIdx = 1 To lColCount
-                    eFunc = m_pOwner.Columns.Item(lIdx).AggregateFunction
+                For Each oCol In m_pOwner.Columns
+                    eFunc = oCol.AggregateFunction
                     If eFunc <> jgexAggregateNone Then
-                        lCount = pvGroupValues(-lRowIndex, lIdx, aValues)
-                        oData.frSetValue lIdx, DataAggregate(aValues, lCount, eFunc, _
-                            m_pOwner.Columns.Item(lIdx).SortType)
+                        lCount = pvGroupValues(-lRowIndex, oCol.Index, aValues)
+                        oData.frSetValue oCol.Index, DataAggregate(aValues, lCount, eFunc, oCol.SortType)
                     End If
                 Next
             End If
         End If
     End If
     Set IDataModel_GetRowData = oData
+    Exit Function
+EH:
+    RaiseError FUNC_NAME
 End Function
 
 Private Sub IDataModel_UpdateRowData(oData As JSRowData)
+    Const FUNC_NAME     As String = "IDataModel_UpdateRowData"
     Dim lRowIndex       As Long
 
+    On Error GoTo EH
     lRowIndex = oData.RowIndex
     If lRowIndex < 0 Then
         '--- a record that does not exist yet. There is no UnboundAddNew
@@ -478,12 +604,17 @@ Private Sub IDataModel_UpdateRowData(oData As JSRowData)
             m_uState.OrderDirty = True
         End If
     End If
+    Exit Sub
+EH:
+    RaiseError FUNC_NAME
 End Sub
 
 Private Sub IDataModel_Delete(ByVal lRowPosition As Long)
+    Const FUNC_NAME     As String = "IDataModel_Delete"
     Dim lRowIndex       As Long
     Dim lIdx            As Long
 
+    On Error GoTo EH
     pvEnsureOrder
     lRowIndex = IDataModel_RowIndex(lRowPosition)
     If lRowIndex = 0 Then
@@ -503,27 +634,50 @@ Private Sub IDataModel_Delete(ByVal lRowPosition As Long)
     m_lCurRowIndex = 0
     m_uState.BookmarksDirty = True
     m_uState.OrderDirty = True
+    Exit Sub
+EH:
+    RaiseError FUNC_NAME
 End Sub
 
 Private Function IDataModel_GetRowPosition(ByVal lRowIndex As Long) As Long
+    Const FUNC_NAME     As String = "IDataModel_GetRowPosition"
+
+    On Error GoTo EH
     pvEnsureOrder
     IDataModel_GetRowPosition = DataGetRowPosition(m_uState, m_uRowSet, lRowIndex)
+    Exit Function
+EH:
+    RaiseError FUNC_NAME
 End Function
 
 Private Function IDataModel_GetRowIndex(vBookmark As Variant) As Long
+    Const FUNC_NAME     As String = "IDataModel_GetRowIndex"
+
+    On Error GoTo EH
     IDataModel_GetRowIndex = DataGetRowIndex(m_uState, vBookmark)
+    Exit Function
+EH:
+    RaiseError FUNC_NAME
 End Function
 
 Private Function IDataModel_GetRecordCount(ByVal lRowIndex As Long) As Long
+    Const FUNC_NAME     As String = "IDataModel_GetRecordCount"
+
+    On Error GoTo EH
     pvEnsureOrder
     IDataModel_GetRecordCount = DataGetRecordCount(m_uRowSet, lRowIndex)
+    Exit Function
+EH:
+    RaiseError FUNC_NAME
 End Function
 
 Private Function IDataModel_GetSubTotal(ByVal lRowIndex As Long, ByVal lColIndex As Long, ByVal eFunc As jgexAggregateFunctionConstants) As Variant
+    Const FUNC_NAME     As String = "IDataModel_GetSubTotal"
     Dim aValues()       As Variant
     Dim lCount          As Long
     Dim eSortType       As jgexSortTypeConstants
 
+    On Error GoTo EH
     pvEnsureOrder
     If lRowIndex < 0 Then
         eSortType = jgexSortTypeString
@@ -533,16 +687,31 @@ Private Function IDataModel_GetSubTotal(ByVal lRowIndex As Long, ByVal lColIndex
         lCount = pvGroupValues(-lRowIndex, lColIndex, aValues)
         IDataModel_GetSubTotal = DataAggregate(aValues, lCount, eFunc, eSortType)
     End If
+    Exit Function
+EH:
+    RaiseError FUNC_NAME
 End Function
 
 Private Function IDataModel_GetBookmarks(ByVal lRowIndex As Long) As Variant
+    Const FUNC_NAME     As String = "IDataModel_GetBookmarks"
+
+    On Error GoTo EH
     pvEnsureOrder
     IDataModel_GetBookmarks = DataGetBookmarks(m_uState, m_uRowSet, lRowIndex)
+    Exit Function
+EH:
+    RaiseError FUNC_NAME
 End Function
 
 Private Function IDataModel_GetRowIndexes(ByVal lRowIndex As Long) As Variant
+    Const FUNC_NAME     As String = "IDataModel_GetRowIndexes"
+
+    On Error GoTo EH
     pvEnsureOrder
     IDataModel_GetRowIndexes = DataGetRowIndexes(m_uRowSet, lRowIndex)
+    Exit Function
+EH:
+    RaiseError FUNC_NAME
 End Function
 
 '=========================================================================

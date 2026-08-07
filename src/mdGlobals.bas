@@ -283,9 +283,11 @@ Public Function Clamp(ByVal lValue As Long, ByVal lMin As Long, ByVal lMax As Lo
     End If
 End Function
 
-'--- the lParam shape the window messages take, low word first
 Public Function MakeDWord(ByVal lLoWord As Long, ByVal lHiWord As Long) As Long
-    MakeDWord = (lLoWord And &HFFFF&) Or (lHiWord * &H10000)
+    MakeDWord = (lLoWord And &HFFFF&) Or ((lHiWord And &H7FFF&) * &H10000)
+    If (lHiWord And &H8000&) <> 0 Then
+        MakeDWord = MakeDWord Or &H80000000
+    End If
 End Function
 
 '--- the halves as LOWORD and HIWORD give them: unsigned
@@ -316,8 +318,6 @@ Public Function C2Dbl(vValue As Variant) As Double
     Const VARIANT_ALPHABOOL As Long = 2
     Dim vDest           As Variant
 
-    '--- a lenient numeric conversion for sorting: anything that cannot be
-    '--- read as a number compares as zero rather than raising
     If VarType(vValue) = vbDouble Then
         C2Dbl = vValue
     ElseIf VariantChangeType(vDest, vValue, VARIANT_ALPHABOOL, vbDouble) = 0 Then
@@ -329,8 +329,6 @@ Public Function C2Str(vValue As Variant) As String
     Const VARIANT_ALPHABOOL As Long = 2
     Dim vDest           As Variant
 
-    '--- the same leniency as C2Dbl, for the comparisons and the keys that
-    '--- want text: anything that cannot be read as one comes back empty
     If VarType(vValue) = vbString Then
         C2Str = vValue
     ElseIf VariantChangeType(vDest, vValue, VARIANT_ALPHABOOL, vbString) = 0 Then
@@ -346,6 +344,17 @@ Public Function C2Lng(vValue As Variant) As Long
         C2Lng = vValue
     ElseIf VariantChangeType(vDest, vValue, VARIANT_ALPHABOOL, vbLong) = 0 Then
         C2Lng = vDest
+    End If
+End Function
+
+Public Function C2Date(vValue As Variant) As Date
+    Const VARIANT_ALPHABOOL As Long = 2
+    Dim vDest           As Variant
+
+    If VarType(vValue) = vbDate Then
+        C2Date = vValue
+    ElseIf VariantChangeType(vDest, vValue, VARIANT_ALPHABOOL, vbDate) = 0 Then
+        C2Date = vDest
     End If
 End Function
 
@@ -475,7 +484,7 @@ Public Function SetTrue(bValue As Boolean) As Boolean
     SetTrue = True
 End Function
 
-Public Function AssignWeakRef(oDst As Object, ByVal oSrc As Object) As Object
+Public Sub AssignWeakRef(oDst As Object, ByVal oSrc As Object)
     Dim bInIde          As Boolean: Debug.Assert SetTrue(bInIde)
 
     If bInIde Then
@@ -483,4 +492,4 @@ Public Function AssignWeakRef(oDst As Object, ByVal oSrc As Object) As Object
     Else
         Call CopyMemory(oDst, oSrc, PTR_SIZE)
     End If
-End Function
+End Sub

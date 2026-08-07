@@ -84,8 +84,8 @@ Private Sub pvReindex()
     Dim lIdx            As Long
     Dim oItem           As JSGridImage
 
-    For lIdx = 1 To m_cItems.Count
-        Set oItem = m_cItems.Item(lIdx)
+    For Each oItem In m_cItems
+        lIdx = lIdx + 1
         oItem.frIndex = lIdx
     Next
 End Sub

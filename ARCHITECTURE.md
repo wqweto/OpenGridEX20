@@ -171,7 +171,9 @@ repaint use them without the event firing again.
 Buffers are **not reused across populations**: repopulating a position mints a
 fresh wrapper. A client holding a `GetRowData` result across a scroll is then
 left with a read-only snapshot of the row that used to be there, rather than a
-wrapper that silently repoints at a different record.
+wrapper that silently repoints at a different record. The pending row is the
+one exception -- the wrapper carrying uncommitted writes keeps its instance
+across a repopulation, or a scroll would drop the edit.
 
 They are deliberately **not** detached. The orphaning discipline elsewhere in
 the object model exists because those classes reach the control through a raw,
@@ -262,10 +264,13 @@ affected entries.
 ### Weak references
 
 The control holds its model; the model holds the control **weakly**, as a raw
-pointer written with `CopyMemory` and zeroed in `Class_Terminate`. Every class
-in the object model that points back at the control does the same -- releasing
-a control that was never `AddRef`-ed takes the process down, and `Groups.Clear`
-is enough to reach it.
+pointer written with `CopyMemory` and zeroed whenever the holder is detached:
+its own `Class_Terminate`, the control's teardown -- and, for collection items,
+`Remove` and `Clear`, which detach what they drop on the way out. Every class
+in the object model that points back at the control follows the same
+discipline, because releasing a control that was never `AddRef`-ed takes the
+process down, and a `JSGroup` a client kept across `Groups.Clear` used to be
+exactly that crash.
 
 `JSRowData` is the exception that needs none of this: it holds no pointer to
 the control, weak or otherwise, so there is nothing to zero and nothing to
@@ -308,8 +313,6 @@ lines out of the control.
 
 Known gaps at the time of writing:
 
-- `UpdateRowData` writes every bound column rather than only edited ones, because
-  `JSRowData` carries no per-cell dirty flag
 - an edit commit suppresses `UnboundUpdate` through a flag on the control
   rather than an argument on `UpdateRowData`. The original reports only
   `AfterUpdate` for a commit, and the interface has no way to say "write this
@@ -398,7 +401,8 @@ column rules over it. Both moved into the row, in the order they had, because a
 band that is blitted has to arrive finished. The rules still close over the
 cells, the horizontal rule and the marquee's dots; a per-row segment reproduces
 a block-long line because solid is phase-free, dotted stamps on absolute parity,
-and `pvDashedVLine` restarts its phase at every row top anyway.
+and a dashed rule restarts its phase at every row top anyway -- `pvLine` anchors
+`pvStampedLine` there.
 
 What reaches outside a row is worth knowing, because each item is a pixel bug
 waiting to happen: a group row's opening rule lands on the row above (hence the
@@ -494,12 +498,13 @@ Worth covering: why private classes and `Friend` members are free, why
 
 ## Testing
 
-*Stub.* Three harnesses:
+*Stub.* Four harnesses:
 
 - `test/ModelTests` -- object model, collections, events, snapshot round-trips
 - `test/VisualDiff` -- pixel and event-log diffing against goldens recorded
   from the original control: 83 scenarios at 96, 120 and 144 dpi
 - `test/Samples` -- the ported original samples under a smoke runner
+- `test/Snapshot` -- smoke: both controls dump their object model to JSON
 
 Worth covering: the record/verify/selftest cycle, why goldens live per dpi,
 what the `.events.txt` logs deliberately leave out, and the practice of probing

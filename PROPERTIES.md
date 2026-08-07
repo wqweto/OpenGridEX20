@@ -130,7 +130,7 @@ property is unimplemented.
 M3d has none left: `Col`, `ColumnAutoResize`, `ContinuousScroll`, `FrozenColumns`
 and `Redraw` closed the milestone.
 
-**M10 is by far the largest single block of unimplemented painting** -- 38
+**M10 is by far the largest single block of unimplemented painting** -- 36
 properties, mostly the `JSFormatStyle` font and picture families -- which is a
 much bigger milestone than its one-line roadmap entry suggests.
 
@@ -225,7 +225,7 @@ commit, so that hash carries no information about painting.
 | `JSColumn.MinRowsInCardView` | `Long` | **not impl** | M6 | -- | -- |
 | `JSColumn.ShowCaptionInCardView` | `Boolean` | **not impl** | M6 | -- | -- |
 | `JSColumn.SortOrder` | `jgexSortOrderConstants` | verified | M4 | -- | the same expression the header arrow paints by: `035-sorted-column` (ascending) vs `037-sorted-descending`; `ModelTests` pvTestAutomaticSort reads it back off keys and groups |
-| `JSColumn.SortType` | `jgexSortTypeConstants` | verified | M4 | -- | `037-sorted-descending` sorts Beta as numeric; string default in `035-sorted-column` |
+| `JSColumn.SortType` | `jgexSortTypeConstants` | verified | M4 | -- | `037-sorted-descending` sorts Beta as numeric; string default in `035-sorted-column`; the three date types sort chronologically, pinned by `ModelTests` pvTestSorting |
 | `JSColumn.TextAlignment` | `jgexAlignmentConstants` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | 1 in `006-unbound-rows`, 2 in `019-font-segoeui`, default 0 elsewhere |
 | `JSColumn.TotalRowFormat` | `String` | verified | M4 | -- | `055-group-footer-prefix-format` (`0.00`) vs unformatted in `054-group-footer-totals` |
 | `JSColumn.TotalRowPrefix` | `String` | verified | M4 | -- | `055-group-footer-prefix-format` (`Sum=`) vs no prefix in `054-group-footer-totals` |

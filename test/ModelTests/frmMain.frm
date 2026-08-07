@@ -170,6 +170,8 @@ Private Sub Form_Load()
     pvTestItemCountInvalidate
     pvTestEditLeaveCell
     pvTestSorting
+    pvTestSelectionApi
+    pvTestDetachedItems
     pvTestGrouping
     pvTestGroupCaption
     pvTestGroupFooter
@@ -411,7 +413,7 @@ Private Sub pvTestRowData()
     Assert "RowData: distinct instance per call", Not oRD Is oRD2
     Assert "RowData: distinct rows distinct wrappers", Not oRD Is GridEX2.GetRowData(2)
     AssertEquals "RowData: ColCount", 2, oRD.ColCount
-    AssertEquals "RowData: PreviewRowVisible default", True, oRD.PreviewRowVisible
+    AssertEquals "RowData: PreviewRowVisible default", False, oRD.PreviewRowVisible
     AssertEquals "RowData: RowType default", jgexRowTypeRecord, oRD.RowType
     '--- Value is read-only outside the fill the control asks for. Probed on
     '--- the original: it raises vbObjectError with "'Value' property can not
@@ -517,6 +519,12 @@ Private Sub pvTestUnbound()
         '--- the store survives both Refetch and Rebind. It used to be cleared
         '--- here, which was a divergence the data model closes
         AssertEquals "Unbound: Rebind keeps the bookmark", "bk3", .RowBookmark(3)
+        '--- but not a shrink: a record cut off by a smaller ItemCount stops
+        '--- existing, and growing back exposes a fresh row rather than
+        '--- resurrecting the dead one's bookmark
+        .ItemCount = 2
+        .ItemCount = 3
+        AssertEquals "Unbound: a regrown row comes back clean", Empty, .RowBookmark(3)
         '--- navigation state events with previous row/col in the args
         oForm.EventLog = vbNullString
         .Row = 2
@@ -673,6 +681,21 @@ Private Sub pvTestHScrollEnd()
         .LeftCol = 1
         SendMessage hParent, WM_HSCROLL, SB_RIGHT, hBar
         AssertEquals "HScrollEnd: and the bar's own end agrees with it", 3, .LeftCol
+        '--- EnsureVisible takes a column as well as a row: the wide column is
+        '--- off the right edge from the start, and asking for it walks the
+        '--- strip over -- while a column already on show moves nothing
+        .LeftCol = 1
+        .EnsureVisible 1, 5
+        Assert "HScrollEnd: EnsureVisible walks the column in", .LeftCol > 1
+        .EnsureVisible 1, CInt(.LeftCol)
+        Assert "HScrollEnd: and leaves one already on show alone", .LeftCol > 1
+        '--- Row past the block lands on its nearest row, as Col does on its
+        '--- last column
+        .Row = 99
+        AssertEquals "HScrollEnd: Row clamps to the last row", 3, .Row
+        .Row = -5
+        AssertEquals "HScrollEnd: and to the first", 1, .Row
+        AssertEquals "HScrollEnd: with the selection on a real row", 1, .SelectedItems.Item(1).RowPosition
     End With
     Unload oForm
 End Sub
@@ -892,7 +915,7 @@ Private Sub pvTestColumnMove()
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(750 + lSlack + Screen.TwipsPerPixelX, 600)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750 + lSlack + Screen.TwipsPerPixelX, 600)
         AssertEquals "ColMove: a drop back in the same header moves nothing", 1, .Columns.Item(1).ColPosition
-        AssertEquals "ColMove: and is no header click", "", oForm.EventLog
+        AssertEquals "ColMove: and is no header click, only the drag's own gate", "BeforeColDrag(A);", oForm.EventLog
         '--- pressing on A and letting go over B moves A after it
         oForm.EventLog = vbNullString
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 600)
@@ -967,6 +990,10 @@ Private Sub pvTestGroupDrag()
         AssertEquals "GroupDrag: the column is grouped", 1, .Groups.Count
         AssertEquals "GroupDrag: by the column dropped", 1, .Groups.Item(1).ColIndex
         AssertEquals "GroupDrag: ascending", jgexSortAscending, .Groups.Item(1).SortOrder
+        '--- the header's own gate, raised as the press turns into a drag the
+        '--- way BeforeGroupDrag is for a chip
+        Assert "GroupDrag: the drag itself was gated", InStr(oForm.EventLog, "BeforeColDrag(A);") > 0
+        Assert "GroupDrag: before anything changed", InStr(oForm.EventLog, "BeforeColDrag(A);") < InStr(oForm.EventLog, "BeforeGroup(1,0,1);")
         '--- the reprojection sits between the two, re-reading the rows and
         '--- taking the view with it, so the pair is asserted in order rather
         '--- than as the whole of the log
@@ -986,8 +1013,20 @@ Private Sub pvTestGroupDrag()
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1875, 150)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1875, 150)
         AssertEquals "GroupDrag: a refused group is not added", 1, .Groups.Count
-        AssertEquals "GroupDrag: and nothing is announced after it", "BeforeGroup(2,0,2);", oForm.EventLog
+        AssertEquals "GroupDrag: and nothing is announced after it", "BeforeColDrag(B);BeforeGroup(2,0,2);", oForm.EventLog
         oForm.CancelGroup = False
+        '--- a client refusing the drag itself ends the gesture before any
+        '--- target is ever looked at. The header at 2250 is A by now -- the
+        '--- earlier drop put it behind B -- and with the gesture over, the
+        '--- release is a plain one: no header click, just Click
+        oForm.CancelColDrag = True
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(2250, 600)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(750, 150)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, 150)
+        AssertEquals "GroupDrag: a refused drag grouped nothing", 1, .Groups.Count
+        AssertEquals "GroupDrag: and the gate is all that was said", "BeforeColDrag(A);Click;", oForm.EventLog
+        oForm.CancelColDrag = False
     End With
     Unload oForm
 End Sub
@@ -1436,8 +1475,105 @@ Private Sub pvTestSorting()
         .Refresh
         AssertEquals "Sort: cleared keys restore data order", 3, .RowIndex(3)
         AssertEquals "Sort: RowCount unchanged by sorting", 4, .RowCount
+        '--- a date column sorts chronologically, not by the text its dates
+        '--- render as: these four text-sort differently at both a d.m.y and
+        '--- an m/d/y locale, so a StrComp fallback fails here either way
+        .Columns.Item(2).SortType = jgexSortTypeDate
+        oForm.SetSeed 1, 2, DateSerial(2020, 1, 2)
+        oForm.SetSeed 2, 2, DateSerial(2019, 5, 3)
+        oForm.SetSeed 3, 2, DateSerial(2019, 5, 4)
+        oForm.SetSeed 4, 2, DateSerial(2021, 2, 1)
+        .Rebind
+        .SortKeys.Add 2, jgexSortAscending
+        .Refresh
+        AssertEquals "Sort: the earliest date first", 2, .RowIndex(1)
+        AssertEquals "Sort: then the next day", 3, .RowIndex(2)
+        AssertEquals "Sort: then the next year", 1, .RowIndex(3)
+        AssertEquals "Sort: the latest date last", 4, .RowIndex(4)
     End With
     Unload oForm
+End Sub
+
+'--- the public Adds resolve whichever of a row's three names the caller
+'--- holds into the other two, so a re-sort can still move the item -- they
+'--- used to store the one name for all three. And bookmarks remove by key,
+'--- which an ADO byte-array bookmark needs: = on one is a type mismatch
+Private Sub pvTestSelectionApi()
+    Dim oForm           As frmWeak
+    Dim baBookmark(0 To 3) As Byte
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add "Alpha"
+        .DataMode = jgexUnbound
+        .ItemCount = 3
+        .Rebind
+        '--- descending puts data row 1 at the bottom, so neither name equals
+        '--- the other and a conflation shows
+        .SortKeys.Add 1, jgexSortDescending
+        .Refresh
+        .SelectedItems.Clear
+        .SelectedItems.AddRowIndex 1
+        AssertEquals "SelApi: the index is kept", 1, .SelectedItems.Item(1).RowIndex
+        AssertEquals "SelApi: and the position resolved", 3, .SelectedItems.Item(1).RowPosition
+        .SelectedItems.Clear
+        .SelectedItems.Add 1
+        AssertEquals "SelApi: the position is kept", 1, .SelectedItems.Item(1).RowPosition
+        AssertEquals "SelApi: and the index resolved", 3, .SelectedItems.Item(1).RowIndex
+        '--- a byte-array bookmark, the shape an ADO client cursor mints
+        baBookmark(0) = 1
+        baBookmark(3) = 7
+        .RowBookmark(2) = baBookmark
+        .SelectedItems.Clear
+        .SelectedItems.AddBookmark baBookmark
+        AssertEquals "SelApi: a byte-array bookmark resolves", 2, .SelectedItems.Item(1).RowIndex
+        .SelectedItems.RemoveBookmark baBookmark
+        AssertEquals "SelApi: and removes by its bytes", 0, .SelectedItems.Count
+    End With
+    Unload oForm
+End Sub
+
+'--- what a client keeps outlives what it was taken from: a level cleared out
+'--- of the box, a key cleared out of the sort and a column removed from the
+'--- collection are all detached rather than left pointing at the control --
+'--- compiled, a dangling weak reference is a crash on first touch
+Private Sub pvTestDetachedItems()
+    Dim oForm           As frmWeak
+    Dim oGroup          As JSGroup
+    Dim oKey            As JSSortKey
+    Dim oCol            As JSColumn
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add "Alpha"
+        .Columns.Add "Beta"
+        .Columns.Add "Gamma"
+        .DataMode = jgexUnbound
+        .ItemCount = 3
+        .Rebind
+        Set oGroup = .Groups.Add(1, jgexSortAscending)
+        Set oKey = .SortKeys.Add(3, jgexSortAscending)
+        Set oCol = .Columns.Item(2)
+        .Groups.Clear
+        .SortKeys.Clear
+        .Columns.Remove 2
+        '--- the columns behind the removed one close the hole in the
+        '--- position space rather than leaving a permutation with a gap
+        AssertEquals "Detached: the next column takes the position", "Gamma", .Columns.ItemByPosition(2).Caption
+        AssertEquals "Detached: and says so itself", 2, .Columns.Item(2).ColPosition
+    End With
+    Unload oForm
+    '--- the control is gone; the survivors answer for themselves, and their
+    '--- notifications go nowhere instead of into freed memory
+    oGroup.SortOrder = jgexSortDescending
+    AssertEquals "Detached: a held group still answers", jgexSortDescending, oGroup.SortOrder
+    oKey.SortOrder = jgexSortDescending
+    AssertEquals "Detached: a held sort key still answers", jgexSortDescending, oKey.SortOrder
+    oCol.Caption = "after"
+    AssertEquals "Detached: a held column still answers", "after", oCol.Caption
+    AssertEquals "Detached: and reports itself ungrouped", False, oCol.IsGrouped
 End Sub
 
 Private Sub pvTestGrouping()

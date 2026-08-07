@@ -68,12 +68,23 @@ End Function
 
 Public Sub Clear()
 Attribute Clear.VB_Description = "Removes all objects in a collection."
+    Dim oItem           As JSGroup
+
+    '--- detached on the way out: a level the client still holds must not
+    '--- keep a pointer to a control it no longer belongs to
+    For Each oItem In m_cItems
+        oItem.frTerminate
+    Next
     Set m_cItems = New Collection
     pvNotify
 End Sub
 
 Public Sub Remove(ByVal Index As Integer)
 Attribute Remove.VB_Description = "Removes a specific member from the collection."
+    Dim oItem           As JSGroup
+
+    Set oItem = m_cItems.Item(Index)
+    oItem.frTerminate
     m_cItems.Remove Index
     pvReindex
     pvNotify
@@ -84,13 +95,11 @@ Friend Sub frInit(ByVal oCtl As GridEX)
 End Sub
 
 Friend Sub frTerminate()
-    Dim lIdx            As Long
     Dim oItem           As JSGroup
 
     '--- items the client app still holds must not keep a pointer to a
     '--- control that is going away
-    For lIdx = 1 To m_cItems.Count
-        Set oItem = m_cItems.Item(lIdx)
+    For Each oItem In m_cItems
         oItem.frTerminate
     Next
     AssignWeakRef m_pOwner, Nothing
@@ -106,8 +115,8 @@ Private Sub pvReindex()
     Dim lIdx            As Long
     Dim oItem           As JSGroup
 
-    For lIdx = 1 To m_cItems.Count
-        Set oItem = m_cItems.Item(lIdx)
+    For Each oItem In m_cItems
+        lIdx = lIdx + 1
         oItem.frIndex = lIdx
     Next
 End Sub

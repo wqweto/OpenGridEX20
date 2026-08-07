@@ -97,7 +97,8 @@ Exit: static paint scenarios pass pixel diff against the golden corpus.
 Exit (met): all five unbound samples are ported under `test\Samples` and run in
 the smoke runner -- Unbound 1 and 2 read Products through DAO as the originals
 do, the other three build their data in code -- and the golden corpus passes at
-96 and 120 dpi. (Table view only -- card view intentionally out of M3 scope, and
+96 and 120 dpi (the whole corpus has since been extended to 144). (Table view
+only -- card view intentionally out of M3 scope, and
 sorting, grouping and editing stay with M4/M5, so the samples' header-click and
 edit paths are inert for now.)
 
@@ -108,7 +109,8 @@ edit paths are inert for now.)
 
 Exit (met): scenarios `035`-`056` cover sorting, grouping, expand/collapse, the
 group caption properties and both footer styles with their aggregates, all
-passing at 96 and 120 dpi; `PROPERTIES.md` has no M4 property left unimplemented
+passing at 96 and 120 dpi (since extended to 144); `PROPERTIES.md` has no M4
+property left unimplemented
 or merely stored. The Advanced Sample's M4 parts are covered as the API sequence
 its `frmSort`, `frmGroupBy` and `frmSummary` dialogs run (`ModelTests`), the
 sample itself waiting on ADO binding, card view and printing.
@@ -167,10 +169,11 @@ a verified renderer rather than on properties that merely compile.
   `column-order`); fix whatever disagrees with the original
 - Give the weak entries a second rendered value, incl. the three non-default
   `GridLines` modes
-- Card view is owned by M6 now. Five properties are still unowned: the
-  drag/resize affordances (`AllowColumnDrag`, `AllowRowSizing`, `DetectRowDrag`,
-  `JSColumn.AllowSizing`) and `Options`
-- Re-scope M10: the matrix puts 38 unimplemented paint properties there, mostly
+- Card view is owned by M6 now. Three properties are still unowned:
+  `AllowRowSizing`, `DetectRowDrag` and `Options` -- the column half of the
+  drag/resize affordances (`AllowColumnDrag`, `JSColumn.AllowSizing`) landed
+  with M5
+- Re-scope M10: the matrix puts 36 unimplemented paint properties there, mostly
   the `JSFormatStyle` font and picture families, which is far more than its
   one-line entry implies
 

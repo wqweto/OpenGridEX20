@@ -263,7 +263,7 @@ Friend Sub frReset(ByVal lColCount As Long)
     m_sGroupCaption = vbNullString
     m_bGroupPrefixed = False
     m_lGroupIconIndex = 0
-    m_bPreviewRowVisible = True
+    m_bPreviewRowVisible = False
     m_lRowHeight = 0
     m_lCellCount = 0
     Erase m_aCell

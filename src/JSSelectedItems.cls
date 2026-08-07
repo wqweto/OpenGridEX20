@@ -25,6 +25,7 @@ DefObj A-Z
 ' Constants and member variables
 '=========================================================================
 
+Private m_pOwner                    As GridEX
 Private m_cItems                    As Collection
 
 '=========================================================================
@@ -52,19 +53,40 @@ End Property
 ' Methods
 '=========================================================================
 
+'--- the three Adds differ only in which of a row's three names the caller
+'--- holds: whichever it is, the other two are resolved through the owner
+'--- before the item is stored, since an item keeps which record it is and a
+'--- position is worthless after the next re-sort
 Public Sub Add(ByVal RowPosition As Long)
 Attribute Add.VB_Description = "Selects a row given its current position."
-    pvAdd Empty, RowPosition, RowPosition
+    Dim lRowIndex       As Long
+
+    If m_pOwner Is Nothing Then
+        Exit Sub
+    End If
+    lRowIndex = m_pOwner.RowIndex(RowPosition)
+    pvAdd m_pOwner.RowBookmark(lRowIndex), lRowIndex, RowPosition
 End Sub
 
 Public Sub AddBookmark(ByVal Bookmark As Variant)
 Attribute AddBookmark.VB_Description = "Selects a row its bookmark."
-    pvAdd Bookmark, 0, 0
+    Dim lRowIndex       As Long
+
+    If m_pOwner Is Nothing Then
+        Exit Sub
+    End If
+    lRowIndex = m_pOwner.frGetRowIndex(Bookmark)
+    If lRowIndex > 0 Then
+        pvAdd Bookmark, lRowIndex, m_pOwner.frGetRowPosition(lRowIndex)
+    End If
 End Sub
 
 Public Sub AddRowIndex(ByVal RowIndex As Long)
 Attribute AddRowIndex.VB_Description = "Selects a row given its original row index."
-    pvAdd Empty, RowIndex, RowIndex
+    If m_pOwner Is Nothing Then
+        Exit Sub
+    End If
+    pvAdd m_pOwner.RowBookmark(RowIndex), RowIndex, m_pOwner.frGetRowPosition(RowIndex)
 End Sub
 
 Public Sub Remove(ByVal Index As Long)
@@ -74,22 +96,28 @@ End Sub
 
 Public Sub RemoveBookmark(ByVal Bookmark As Variant)
 Attribute RemoveBookmark.VB_Description = "Deselects a row given its bookmark."
-    Dim lIdx            As Long
+    Dim lRowIndex       As Long
 
-    For lIdx = 1 To m_cItems.Count
-        If m_cItems.Item(lIdx).Bookmark = Bookmark Then
-            m_cItems.Remove lIdx
-            Exit For
-        End If
-    Next
+    '--- resolved to the stable space and removed by that: bookmarks compare
+    '--- by key, not by =, which an ADO byte-array bookmark would raise a
+    '--- type mismatch over
+    If m_pOwner Is Nothing Then
+        Exit Sub
+    End If
+    lRowIndex = m_pOwner.frGetRowIndex(Bookmark)
+    If lRowIndex > 0 Then
+        RemoveRowIndex lRowIndex
+    End If
 End Sub
 
 Public Sub RemoveRowIndex(ByVal RowIndex As Long)
 Attribute RemoveRowIndex.VB_Description = "Deselects a row given its original row index."
     Dim lIdx            As Long
+    Dim oItem           As JSSelectedItem
 
-    For lIdx = 1 To m_cItems.Count
-        If m_cItems.Item(lIdx).RowIndex = RowIndex Then
+    For Each oItem In m_cItems
+        lIdx = lIdx + 1
+        If oItem.RowIndex = RowIndex Then
             m_cItems.Remove lIdx
             Exit For
         End If
@@ -99,9 +127,11 @@ End Sub
 Public Sub RemoveRowPosition(ByVal RowPosition As Long)
 Attribute RemoveRowPosition.VB_Description = "Deselects a row given its current row position."
     Dim lIdx            As Long
+    Dim oItem           As JSSelectedItem
 
-    For lIdx = 1 To m_cItems.Count
-        If m_cItems.Item(lIdx).RowPosition = RowPosition Then
+    For Each oItem In m_cItems
+        lIdx = lIdx + 1
+        If oItem.RowPosition = RowPosition Then
             m_cItems.Remove lIdx
             Exit For
         End If
@@ -115,6 +145,14 @@ End Sub
 
 Friend Sub frAdd(ByVal RowPosition As Long, vBookmark As Variant, ByVal RowIndex As Long)
     pvAdd vBookmark, RowIndex, RowPosition
+End Sub
+
+Friend Sub frInit(ByVal oCtl As GridEX)
+    AssignWeakRef m_pOwner, oCtl
+End Sub
+
+Friend Sub frTerminate()
+    AssignWeakRef m_pOwner, Nothing
 End Sub
 
 Private Sub pvAdd(vBookmark As Variant, ByVal lRowIndex As Long, ByVal lRowPosition As Long)
@@ -131,4 +169,8 @@ End Sub
 
 Private Sub Class_Initialize()
     Set m_cItems = New Collection
+End Sub
+
+Private Sub Class_Terminate()
+    frTerminate
 End Sub

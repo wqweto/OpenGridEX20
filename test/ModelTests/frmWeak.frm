@@ -54,6 +54,7 @@ Public EventLog                     As String
 Public CancelResize                 As Boolean
 Public CancelMove                   As Boolean
 Public CancelGroup                  As Boolean
+Public CancelColDrag                As Boolean
 '--- what the feed should hand out, by row and column. The original refuses
 '--- a write through JSRowData.Value outside UnboundReadData -- probed: it
 '--- raises &H80040000 "'Value' property can not be change in this context."
@@ -143,6 +144,17 @@ Private Sub GridEX1_ColResize(ByVal ColIndex As Integer, ByVal NewColWidth As Lo
     On Error GoTo EH
     EventLog = EventLog & "Resize(" & ColIndex & "," & NewColWidth & ");"
     Cancel.Value = CancelResize
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
+Private Sub GridEX1_BeforeColumnDrag(ByVal Column As JSColumn, ByVal Cancel As JSRetBoolean)
+    Const FUNC_NAME     As String = "GridEX1_BeforeColumnDrag"
+
+    On Error GoTo EH
+    EventLog = EventLog & "BeforeColDrag(" & Column.Caption & ");"
+    Cancel.Value = CancelColDrag
     Exit Sub
 EH:
     PrintError FUNC_NAME
