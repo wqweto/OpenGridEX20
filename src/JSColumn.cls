@@ -530,7 +530,7 @@ Private Sub Class_Initialize()
     m_bSelectable = True
     m_bCardCaption = False
     m_bShowCaptionInCardView = True
-    m_eEditType = jgexEditTextBox
+    m_eEditType = jgexEditNone
     m_eSortType = jgexSortTypeString
     m_lWidth = 100
     m_lHeaderIcon = -1

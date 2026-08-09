@@ -301,6 +301,12 @@ Friend Property Let frAllowUpdate(ByVal bValue As Boolean)
     End If
 End Property
 
+Friend Property Get frInitRowIndex() As Long
+    '--- the signed index frInitModel stored: positive a record, negative the
+    '--- projection slot of a group row -- what the window carries wrappers by
+    frInitRowIndex = m_lRowIndex
+End Property
+
 Friend Property Get frCellDirty(ByVal lColIndex As Long) As Boolean
     If lColIndex >= 1 And lColIndex <= m_lCellCount Then
         frCellDirty = m_aCell(lColIndex).Dirty

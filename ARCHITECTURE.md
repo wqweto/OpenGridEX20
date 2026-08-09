@@ -70,7 +70,8 @@ the typelib):
 Property Get  RowCount                         rows on show -- scrollbar range
 Property Get  ItemCount                        records of the source
 Property Get  Version                          bumped by a reprojection alone
-Property Get  RowIndex(RowPosition)            0 for a group row
+Property Get  RowIndex(RowPosition)            signed: negative a group row's
+                                               slot; the public surface masks
 Property Get/Let RowBookmark(RowIndex)
 Property Get/Let RowExpanded(RowPosition)
 Sub  SetAllExpanded(bValue)                    every group row at once

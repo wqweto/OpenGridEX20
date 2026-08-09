@@ -1,0 +1,3 @@
+MouseDown(Button=1, X=576, Y=456)
+MouseUp(Button=1, X=576, Y=456)
+Click()

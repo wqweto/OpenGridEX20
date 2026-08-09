@@ -33,6 +33,7 @@ Class=IDataModel; IDataModel.cls
 Class=cUnboundDataModel; cUnboundDataModel.cls
 Class=cAdoDataModel; cAdoDataModel.cls
 Module=mdModernSubclassing; mdModernSubclassing.bas
+Module=mdIPAO; mdIPAO.bas
 Startup="(None)"
 HelpFile=""
 Title="OpenGridEX20"

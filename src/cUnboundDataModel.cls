@@ -335,7 +335,7 @@ Private Property Get IDataModel_RowIndex(ByVal lRowPosition As Long) As Long
 
     On Error GoTo EH
     pvEnsureOrder
-    IDataModel_RowIndex = DataRowIndexAt(m_uRowSet, lRowPosition)
+    IDataModel_RowIndex = DataRecordIndexAt(m_uRowSet, lRowPosition)
     Exit Property
 EH:
     RaiseError FUNC_NAME
@@ -494,11 +494,13 @@ Private Function IDataModel_GetRowData(ByVal lRowPosition As Long) As JSRowData
         oData.frInitModel Me, lRowIndex, jgexRowTypeRecord, 0
         oData.frRowBookmark = m_uState.Bookmark(lRowIndex)
         For lIdx = 1 To lColCount
-            '--- through pvCellValue, so a FetchData column comes from the
-            '--- client here exactly as it does in a bound grid
             oData.frSetValue lIdx, pvCellValue(lRowIndex, lIdx)
-            If lIdx <= m_uFetch.ColCount And m_uFetch.IsFetchIcon(lIdx) Then
-                oData.IconIndex(lIdx) = m_pOwner.frRaiseFetchIcon(lRowIndex, lIdx, m_uState.Bookmark(lRowIndex))
+            If lIdx <= m_uFetch.ColCount Then
+                If m_uFetch.IsFetchIcon(lIdx) Then
+                    oData.IconIndex(lIdx) = m_pOwner.frRaiseFetchIcon(lRowIndex, lIdx, m_uState.Bookmark(lRowIndex))
+                ElseIf lIdx <= m_aRecord(lRowIndex).CellCount Then
+                    oData.IconIndex(lIdx) = m_aRecord(lRowIndex).IconIndexes(lIdx)
+                End If
             ElseIf lIdx <= m_aRecord(lRowIndex).CellCount Then
                 oData.IconIndex(lIdx) = m_aRecord(lRowIndex).IconIndexes(lIdx)
             End If
@@ -510,8 +512,6 @@ Private Function IDataModel_GetRowData(ByVal lRowPosition As Long) As JSRowData
         End With
         oData.GroupCaption = pvGroupCaption(-lRowIndex, bPrefixed)
         oData.frGroupPrefixed = bPrefixed
-        '--- a totals footer carries its columns' aggregates as the cell
-        '--- values, so painting one is painting an ordinary row
         If m_uRowSet.GroupRow(-lRowIndex).Footer Then
             If m_uRowSet.GroupFooterStyle = jgexTotalsGroupFooter Then
                 For Each oCol In m_pOwner.Columns
@@ -538,23 +538,14 @@ Private Sub IDataModel_UpdateRowData(oData As JSRowData)
     On Error GoTo EH
     lRowIndex = oData.RowIndex
     If lRowIndex < 0 Then
-        '--- a record that does not exist yet. The client is asked for its
-        '--- bookmark and nothing else -- probed, NewRowBookmark arrives Empty
-        '--- and Values.RowIndex reads ItemCount + 1
         Set oNewBookmark = New JSRetVariant
         m_pOwner.frRaiseUnboundAddNew oNewBookmark, oData
-        '--- grown only now the handler has returned: doing it inside the
-        '--- event re-enters the add and the original never leaves the new row
         pvEnsureCapacity m_uState.ItemCount + 1
         m_uState.ItemCount = m_uState.ItemCount + 1
         AssignVariant m_uState.Bookmark(m_uState.ItemCount), oNewBookmark.Value
         pvEnsureCells m_uState.ItemCount
         pvHarvest m_uState.ItemCount, oData
         m_aRecord(m_uState.ItemCount).Fetched = True
-        '--- the caller reads both off the row it just added. The position is
-        '--- left at 0: it is not known until the projection is rebuilt, and
-        '--- asking for it here would force a re-sort mid-insert. This buffer
-        '--- is the grid's, not ours, so it keeps its model reference
         oData.frInitModel Me, m_uState.ItemCount, jgexRowTypeRecord, 0
         oData.frRowBookmark = m_uState.Bookmark(m_uState.ItemCount)
         DataRefetchRow m_uState, m_uFetch, m_pOwner, m_uState.ItemCount
@@ -564,14 +555,7 @@ Private Sub IDataModel_UpdateRowData(oData As JSRowData)
         pvEnsureCells lRowIndex
         pvHarvest lRowIndex, oData
         m_pOwner.frRaiseUnboundUpdate lRowIndex, m_uState.Bookmark(lRowIndex), oData
-        '--- the client may compute a fetch column off what just changed, so
-        '--- it is asked again -- and that alone can invalidate the order
         DataRefetchRow m_uState, m_uFetch, m_pOwner, lRowIndex
-        '--- only a value that is a sort or group key can move the record. With
-        '--- no keys at all nothing moves, and reprojecting anyway would bump
-        '--- Version and make the grid repopulate its page -- which re-raises
-        '--- RowFormat for every visible row where the original raises it once
-        '--- for the edited row. Pinned by the event goldens of 058, 068, 071
         If m_uRowSet.SortKeyCount > 0 Then
             m_uState.OrderDirty = True
         End If
@@ -589,15 +573,9 @@ Private Sub IDataModel_Delete(ByVal lRowPosition As Long)
     On Error GoTo EH
     pvEnsureOrder
     lRowIndex = IDataModel_RowIndex(lRowPosition)
-    If lRowIndex = 0 Then
+    If lRowIndex <= 0 Then
         Exit Sub
     End If
-    '--- the client hears which record went, and by which bookmark, before
-    '--- the renumbering below makes that index mean something else
-    m_pOwner.frRaiseUnboundDelete lRowIndex, m_uState.Bookmark(lRowIndex)
-    '--- records are indexed by RowIndex itself, so a delete closes the hole
-    '--- and everything above it renumbers -- which is exactly what the
-    '--- original does, and what invalidates the bookmark map wholesale
     For lIdx = lRowIndex To m_uState.ItemCount - 1
         m_aRecord(lIdx) = m_aRecord(lIdx + 1)
     Next

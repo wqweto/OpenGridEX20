@@ -1486,3 +1486,102 @@ vertical lines only. One capture showed three things.
   code: the closed dirty-flag gap, the detach discipline, the three-scale
   corpus, the M10/unowned property counts reconciled at 36/3, and the group-by
   drop work in the M5 summary
+
+### Added (M5 -- the keyboard)
+
+- `mdIPAO.bas` hooks `IOleInPlaceActiveObject.TranslateAccelerator` through a
+  vtable thunk: the container translates accelerators before the window ever
+  sees `WM_KEYDOWN`, which is where a host steals arrows and tabs --
+  `frBeforeTranslateAccel` claims the grid's navigation keys and every key
+  the in-place editor works with (the EDIT is a plain child the container has
+  never heard of, so an unclaimed arrow becomes dialog navigation and Enter
+  or Escape fall to a Default or Cancel button), then hand-delivers each to
+  the window it was going to -- the window path stays the one place a key is
+  raised and dispatched, and posted keys walk the same road as real input
+- The keys the original taught by probing: a single-line editor gives up the
+  vertical arrows anywhere and Left at the very start, a wrapping one keeps
+  every arrow to walk its lines except Right at the very end of the text,
+  which leaves either kind; the caret is asked at key-down time through
+  `EM_GETSEL`, and a boundary arrow with nowhere to go is a no-op that keeps
+  the editor open
+- Column currency walks selectable columns only -- arrows skip a
+  `Selectable=False` column, the mouse refuses it, programmatic `Col` on it
+  clears to no column at all -- and the arrows keep walking with editing off;
+  a keyboard move scrolls a half-shown target column into view, the move
+  announced from where the cell was (`RowColChange` ahead of
+  `LeftColChange`, pinned in 088)
+- Tab heeds `TabKeyBehavior` in the accelerator alone -- probed, the window
+  path walks columns for it whatever the property says, which is exactly the
+  split the hook architecture wants -- and a cell tabbed into opens its
+  editor selected whole; F2 opens on the current cell (selected whole, ours
+  on purpose where the original appends); a printable character on the
+  surface opens the editor the same way, so what is typed replaces the cell;
+  Enter with no editor steps the row like a down arrow, and in the editor
+  commits and steps ahead of any Default button
+- Del clears the cell where a column is current -- the editor opens selected
+  whole and the selection is cut, outranking `AllowDelete` -- and in the
+  column-less row mode deletes the selected rows through the now-real
+  `Delete` method: one vetoable `BeforeDelete`, a vetoable `BeforeDeleteEX`
+  per record answering with the row index when the client never bookmarked
+  it, the currency re-landed from nowhere (`RowColChange` carries
+  `LastRow=0`) and `AfterDelete` closing out; probed, the unbound record goes
+  quietly -- no `UnboundDelete` is raised for it (093)
+- Escape is a ladder, every rung claimed ahead of the container: mid-drag it
+  is `WM_CANCELMODE` by hand abandoning the resize or the drag whole, over
+  an editor it cancels the cell, and the second press drops every column the
+  row has buffered
+- Group rows by mouse and keyboard: the expand box toggles on the press
+  after the marquee lands (084-087, with the caption double-click toggling
+  anywhere on the row and its release folding into one `Click`); Left
+  collapses an expanded header quietly -- a collapse exposes nothing, so no
+  `RowFormat` -- Right expands a collapsed one in place and steps into the
+  first child of an expanded one (094-096); Space toggles the header too,
+  a deliberate step past the original, which ignores it
+- `AllowEdit` matches the original's model, probed: it defaults True, a
+  click on an editable cell opens an edit session even where `EditType`
+  asks for no window -- `BeforeColEdit` on the click, `AfterColEdit` when
+  the currency leaves, nothing to type into between -- and with it off
+  there is no column currency at all: clicks land the row whole, the
+  horizontal keys go dead and F2 opens nothing (090-092)
+- Rows are swept into a drag-selection only by a press that landed on one:
+  a button already down when the pointer arrives, or one that went down on
+  the chrome or past the rows, selects nothing as it moves
+- Ctrl+Tab and Ctrl+Shift+Tab tab out even where plain Tab walks columns:
+  the chord goes back to the container's `IOleControlSite.TranslateAccelerator`
+  stripped to the plain (or shifted) Tab the host never translates chorded,
+  falling back to the parent's site for a control on a nested container
+- The strip left of the cells selects the row whole -- the row headers when
+  they show, a probed 5 pixel band when they do not -- with the currency
+  riding the usual row move before the column clears with a `RowColChange`
+  of its own; the pointer over the strip becomes the original's
+  right-pointing arrow, ours mirrored from the stock arrow on the fly
+  (mask, colour plane and hotspot) rather than shipped as a resource
+- Selection painting knows whether the control holds the focus, probed with
+  a real `WM_KILLFOCUS` at each `HideSelection` mode: the default trades the
+  fill for a thin highlight outline one short of the block rule, inactive
+  keeps a button-face fill, normal does not notice -- and the marquee hides
+  with the focus. The look is focused until a real `WM_KILLFOCUS` arrives,
+  which is how a control that never held focus paints the full selection,
+  and focus crossing to the in-place editor does not count as leaving
+- Focus leaving the editor for another control tears the box down silently,
+  probed: the text stays buffered in the row, the cell repaints under the
+  outline, and none of the edit events say a word
+
+### Fixed (what the keyboard work turned up)
+
+- `cUnboundDataModel.GetRowData` indexed the fetch map past its bounds for
+  any column added after the bind -- VB6's `And` does not short-circuit --
+  and the sweep that followed nested the only two live hazards of that
+  shape, both reading `m_hWndEdit` in the same breath that created it
+- A control shorter than the scrollbar band asked `picGrid.Move` for a
+  negative height: error 380 out of `pvLayoutGrid`, swallowed at the paint
+  boundary but leaving every later scrollbar update silently skipped;
+  `Clamp` grew proper optional bounds and stands guard there
+- `IDataModel.RowIndex` returns signed indexes (negative names a group
+  row's projection slot, stable across expand/collapse), which let the
+  window carry, the selection and the current-row hold share one identity
+  through reprojection -- `GetSignedRowIndex` folded away
+- The scenario corpus stands at 100 (089 retired with the F2 decision, its
+  golden pinned the original's append), recorded at 96 and 120dpi with
+  084-101 queued for goldens at the next 144dpi session; the harness gained
+  real focus-in/focus-out input actions for the unfocused looks

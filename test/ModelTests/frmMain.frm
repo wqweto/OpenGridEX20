@@ -74,6 +74,7 @@ Private Const WM_VSCROLL            As Long = &H115
 Private Const WM_KEYDOWN            As Long = &H100
 Private Const WM_LBUTTONDOWN        As Long = &H201
 Private Const WM_LBUTTONUP          As Long = &H202
+Private Const WM_LBUTTONDBLCLK      As Long = &H203
 Private Const WM_MOUSEMOVE          As Long = &H200
 Private Const WM_CHAR               As Long = &H102
 Private Const MK_LBUTTON            As Long = &H1
@@ -107,6 +108,7 @@ Private Declare Function IsWindowVisible Lib "user32" (ByVal hWnd As Long) As Lo
 Private Declare Function GetClientRect Lib "user32" (ByVal hWnd As Long, lpRect As RECT) As Long
 Private Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongW" (ByVal hWnd As Long, ByVal nIndex As Long) As Long
 Private Declare Function GetFocus Lib "user32" () As Long
+Private Declare Function SetFocusApi Lib "user32" Alias "SetFocus" (ByVal hWnd As Long) As Long
 Private Declare Function IsWindow Lib "user32" (ByVal hWnd As Long) As Long
 Private Declare Function GetSystemMetrics Lib "user32" (ByVal nIndex As Long) As Long
 
@@ -168,11 +170,15 @@ Private Sub Form_Load()
     pvTestDropOnSelf
     pvTestScrollProps
     pvTestItemCountInvalidate
+    pvTestTinyResize
     pvTestEditLeaveCell
+    pvTestTabKey
+    pvTestDelKey
     pvTestSorting
     pvTestSelectionApi
     pvTestDetachedItems
     pvTestGrouping
+    pvTestGroupBoxClick
     pvTestGroupCaption
     pvTestGroupFooter
     pvTestAdvancedSampleParts
@@ -481,29 +487,29 @@ Private Sub pvTestUnbound()
         '--- first cell read of a row fires UnboundReadData exactly once
         oForm.EventLog = vbNullString
         AssertEquals "Unbound: fetched value", "R2C1", .GetRowData(2).Value(1)
-        AssertEquals "Unbound: fetch fired once", "Read(2);", oForm.EventLog
+        AssertEquals "Unbound: fetch fired once", "UnboundReadData(2);", oForm.EventLog
         AssertEquals "Unbound: second col cached", "R2C2", .GetRowData(2).Value(2)
-        AssertEquals "Unbound: no refire on cached row", "Read(2);", oForm.EventLog
+        AssertEquals "Unbound: no refire on cached row", "UnboundReadData(2);", oForm.EventLog
         AssertEquals "Unbound: other row fetches on demand", "R1C2", .GetRowData(1).Value(2)
-        AssertEquals "Unbound: fetch log per row", "Read(2);Read(1);", oForm.EventLog
+        AssertEquals "Unbound: fetch log per row", "UnboundReadData(2);UnboundReadData(1);", oForm.EventLog
         '--- RefreshRowIndex marks one row for lazy refetch
         oForm.EventLog = vbNullString
         .RefreshRowIndex 2
         AssertEquals "Unbound: refresh is lazy", vbNullString, oForm.EventLog
         AssertEquals "Unbound: refetched value", "R2C1", .GetRowData(2).Value(1)
-        AssertEquals "Unbound: refetch fired for row 2", "Read(2);", oForm.EventLog
+        AssertEquals "Unbound: refetch fired for row 2", "UnboundReadData(2);", oForm.EventLog
         AssertEquals "Unbound: row 1 still cached", "R1C1", .GetRowData(1).Value(1)
-        AssertEquals "Unbound: row 1 not refetched", "Read(2);", oForm.EventLog
+        AssertEquals "Unbound: row 1 not refetched", "UnboundReadData(2);", oForm.EventLog
         '--- bookmarks round-trip, reach the event and key RefreshRowBookmark
         .RowBookmark(3) = "bk3"
         AssertEquals "Unbound: RowBookmark get", "bk3", .RowBookmark(3)
         oForm.EventLog = vbNullString
         AssertEquals "Unbound: fetch row 3", "R3C2", .GetRowData(3).Value(2)
-        AssertEquals "Unbound: bookmark passed to event", "Read(3)bk3;", oForm.EventLog
+        AssertEquals "Unbound: bookmark passed to event", "UnboundReadData(3)bk3;", oForm.EventLog
         oForm.EventLog = vbNullString
         .RefreshRowBookmark "bk3"
         AssertEquals "Unbound: bookmark refetch", "R3C1", .GetRowData(3).Value(1)
-        AssertEquals "Unbound: bookmark refetch log", "Read(3)bk3;", oForm.EventLog
+        AssertEquals "Unbound: bookmark refetch log", "UnboundReadData(3)bk3;", oForm.EventLog
         '--- Refetch resets data on all rows but keeps bookmarks
         .Refetch
         AssertEquals "Unbound: value refetched after Refetch", "R1C1", .GetRowData(1).Value(1)
@@ -538,7 +544,7 @@ Private Sub pvTestUnbound()
         '--- row onto record 2: this form never paints, so nothing had fetched
         '--- it yet -- on screen the record is read to paint the row and the
         '--- model answers the second ask from its cache
-        AssertEquals "Unbound: nav event order", "Read(2);RowCol(1,0);RowCol(2,0);First;", oForm.EventLog
+        AssertEquals "Unbound: nav event order", "UnboundReadData(2);RowColChange(1,0);RowColChange(2,0);FirstItemChange;", oForm.EventLog
     End With
     Unload oForm
 End Sub
@@ -565,7 +571,7 @@ Private Sub pvTestScroll()
         AssertEquals "Scroll: line up", 2, .FirstItem
         SendMessage .hWnd, WM_VSCROLL, SB_PAGEDOWN, 0
         Assert "Scroll: page down advances", .FirstItem > 2
-        AssertEquals "Scroll: FirstItemChange event count", "First;First;First;First;", oForm.EventLog
+        AssertEquals "Scroll: FirstItemChange event count", "FirstItemChange;FirstItemChange;FirstItemChange;FirstItemChange;", oForm.EventLog
         '--- at the bottom, then given more room: the rows hidden above have to
         '--- come back, or the grid paints blank where they were
         .FirstItem = .RowCount
@@ -826,14 +832,14 @@ Private Sub pvTestColumnSizing()
         oForm.EventLog = vbNullString
         '--- grabbing the divider is not a click on the header it sits in
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(1500, 600)
-        AssertEquals "ColSize: the grab does not click the header", "", oForm.EventLog
+        AssertEquals "ColSize: the grab does not click the header", "MouseDown(1);", oForm.EventLog
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(2100, 600)
         AssertEquals "ColSize: the column follows the pointer", lWidth + 40 * lPixel, .Columns.Item(1).Width
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1800, 600)
         AssertEquals "ColSize: and back again", lWidth + 20 * lPixel, .Columns.Item(1).Width
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1800, 600)
         AssertEquals "ColSize: the client hears the width once, at the end", _
-            "Resize(1," & lWidth + 20 * lPixel & ");", oForm.EventLog
+            "MouseDown(1);MouseMove(0);MouseMove(0);ColResize(1," & lWidth + 20 * lPixel & ");", oForm.EventLog
         AssertEquals "ColSize: and the column keeps it", lWidth + 20 * lPixel, .Columns.Item(1).Width
         '--- a client that refuses it puts the column back where it was
         oForm.CancelResize = True
@@ -849,6 +855,13 @@ Private Sub pvTestColumnSizing()
         AssertEquals "ColSize: WM_CANCELMODE abandons the drag", lWidth + 20 * lPixel, .Columns.Item(1).Width
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(2700, 600)
         AssertEquals "ColSize: and the pointer no longer drags it", lWidth + 20 * lPixel, .Columns.Item(1).Width
+        '--- Escape mid-drag is the same abandonment by key
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(1800, 600)
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(2400, 600)
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyEscape, 0
+        AssertEquals "ColSize: Escape abandons the drag too", lWidth + 20 * lPixel, .Columns.Item(1).Width
+        SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(2700, 600)
+        AssertEquals "ColSize: with the pointer let go as well", lWidth + 20 * lPixel, .Columns.Item(1).Width
         '--- a column that refuses to be sized is not grabbed at all
         .Columns.Item(1).AllowSizing = False
         oForm.EventLog = vbNullString
@@ -864,7 +877,7 @@ Private Sub pvTestColumnSizing()
         .Columns.Item(2).AutoSize
         lWidth = .Columns.Item(2).Width
         Assert "AutoSize: a column of short values shrinks to them", lWidth < 3000
-        Assert "AutoSize: and the client hears one ColResize", InStr(oForm.EventLog, "Resize(2,") > 0
+        Assert "AutoSize: and the client hears one ColResize", InStr(oForm.EventLog, "ColResize(2,") > 0
         .Columns.Item(2).Caption = "a caption wider than any value in it"
         .Columns.Item(2).AutoSize
         Assert "AutoSize: a caption wider than the values wins", .Columns.Item(2).Width > lWidth
@@ -906,8 +919,8 @@ Private Sub pvTestColumnMove()
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(750 + lSlack, 600)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750 + lSlack, 600)
         AssertEquals "ColMove: a click alone moves nothing", 1, .Columns.Item(1).ColPosition
-        AssertEquals "ColMove: and says nothing about a move", "", _
-            Replace(Replace(oForm.EventLog, "HdrClick(A);", ""), "Click;", "")
+        AssertEquals "ColMove: and says nothing about a move", "MouseDown(1);MouseMove(1);MouseUp(1);", _
+            Replace(Replace(oForm.EventLog, "ColumnHeaderClick(A);", ""), "Click;", "")
         '--- one pixel further out and the header is being repositioned, which
         '--- takes the header click with it even when it lands where it started
         oForm.EventLog = vbNullString
@@ -915,7 +928,7 @@ Private Sub pvTestColumnMove()
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(750 + lSlack + Screen.TwipsPerPixelX, 600)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750 + lSlack + Screen.TwipsPerPixelX, 600)
         AssertEquals "ColMove: a drop back in the same header moves nothing", 1, .Columns.Item(1).ColPosition
-        AssertEquals "ColMove: and is no header click, only the drag's own gate", "BeforeColDrag(A);", oForm.EventLog
+        AssertEquals "ColMove: and is no header click, only the drag's own gate", "MouseDown(1);MouseMove(1);BeforeColumnDrag(A);", oForm.EventLog
         '--- pressing on A and letting go over B moves A after it
         oForm.EventLog = vbNullString
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 600)
@@ -923,10 +936,10 @@ Private Sub pvTestColumnMove()
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(2400, 600)
         AssertEquals "ColMove: A took B's place", 2, .Columns.Item(1).ColPosition
         AssertEquals "ColMove: and B took A's", 1, .Columns.Item(2).ColPosition
-        Assert "ColMove: the client was asked first", InStr(oForm.EventLog, "BeforeMove(A,2);") > 0
-        Assert "ColMove: and told afterwards", InStr(oForm.EventLog, "AfterMove;") > 0
+        Assert "ColMove: the client was asked first", InStr(oForm.EventLog, "BeforeColMove(A,2);") > 0
+        Assert "ColMove: and told afterwards", InStr(oForm.EventLog, "AfterColMove;") > 0
         '--- a header that started moving is not a header that was clicked
-        AssertEquals "ColMove: a move is no header click", 0, InStr(oForm.EventLog, "HdrClick(")
+        AssertEquals "ColMove: a move is no header click", 0, InStr(oForm.EventLog, "ColumnHeaderClick(")
         '--- a client that refuses it leaves the columns where they were
         oForm.CancelMove = True
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(2250, 600)
@@ -992,13 +1005,13 @@ Private Sub pvTestGroupDrag()
         AssertEquals "GroupDrag: ascending", jgexSortAscending, .Groups.Item(1).SortOrder
         '--- the header's own gate, raised as the press turns into a drag the
         '--- way BeforeGroupDrag is for a chip
-        Assert "GroupDrag: the drag itself was gated", InStr(oForm.EventLog, "BeforeColDrag(A);") > 0
-        Assert "GroupDrag: before anything changed", InStr(oForm.EventLog, "BeforeColDrag(A);") < InStr(oForm.EventLog, "BeforeGroup(1,0,1);")
+        Assert "GroupDrag: the drag itself was gated", InStr(oForm.EventLog, "BeforeColumnDrag(A);") > 0
+        Assert "GroupDrag: before anything changed", InStr(oForm.EventLog, "BeforeColumnDrag(A);") < InStr(oForm.EventLog, "BeforeGroupChange(1,0,1);")
         '--- the reprojection sits between the two, re-reading the rows and
         '--- taking the view with it, so the pair is asserted in order rather
         '--- than as the whole of the log
-        Assert "GroupDrag: the client was asked first", InStr(oForm.EventLog, "BeforeGroup(1,0,1);") > 0
-        Assert "GroupDrag: and told afterwards", InStr(oForm.EventLog, "AfterGroup;") > InStr(oForm.EventLog, "BeforeGroup(1,0,1);")
+        Assert "GroupDrag: the client was asked first", InStr(oForm.EventLog, "BeforeGroupChange(1,0,1);") > 0
+        Assert "GroupDrag: and told afterwards", InStr(oForm.EventLog, "AfterGroupChange;") > InStr(oForm.EventLog, "BeforeGroupChange(1,0,1);")
         AssertEquals "GroupDrag: and the column says so", True, .Columns.Item(1).IsGrouped
         '--- a drop on a header is still a move, not a group
         oForm.EventLog = vbNullString
@@ -1013,7 +1026,7 @@ Private Sub pvTestGroupDrag()
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1875, 150)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1875, 150)
         AssertEquals "GroupDrag: a refused group is not added", 1, .Groups.Count
-        AssertEquals "GroupDrag: and nothing is announced after it", "BeforeColDrag(B);BeforeGroup(2,0,2);", oForm.EventLog
+        AssertEquals "GroupDrag: and nothing is announced after it", "MouseDown(1);MouseMove(1);BeforeColumnDrag(B);BeforeGroupChange(2,0,2);", oForm.EventLog
         oForm.CancelGroup = False
         '--- a client refusing the drag itself ends the gesture before any
         '--- target is ever looked at. The header at 2250 is A by now -- the
@@ -1025,7 +1038,7 @@ Private Sub pvTestGroupDrag()
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(750, 150)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, 150)
         AssertEquals "GroupDrag: a refused drag grouped nothing", 1, .Groups.Count
-        AssertEquals "GroupDrag: and the gate is all that was said", "BeforeColDrag(A);Click;", oForm.EventLog
+        AssertEquals "GroupDrag: and the gate is all that was said", "MouseDown(1);MouseMove(1);BeforeColumnDrag(A);MouseUp(1);Click;", oForm.EventLog
         oForm.CancelColDrag = False
     End With
     Unload oForm
@@ -1058,7 +1071,7 @@ Private Sub pvTestGroupChipDrag()
         AssertEquals "ChipDrag: still two levels", 2, .Groups.Count
         AssertEquals "ChipDrag: the second went in front of the first", 2, .Groups.Item(1).ColIndex
         AssertEquals "ChipDrag: and the first came after it", 1, .Groups.Item(2).ColIndex
-        Assert "ChipDrag: the move was announced", InStr(oForm.EventLog, "BeforeGroup(2,2,1);") > 0
+        Assert "ChipDrag: the move was announced", InStr(oForm.EventLog, "BeforeGroupChange(2,2,1);") > 0
         '--- one let go over the rows loses its level and its column answers to
         '--- the header it came down in the column of, which here is the one it
         '--- is already in, so the level goes and nothing else does. The box is
@@ -1068,8 +1081,8 @@ Private Sub pvTestGroupChipDrag()
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1875, 1500)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1875, 1500)
         AssertEquals "ChipDrag: dropped on the rows the level is gone", 1, .Groups.Count
-        Assert "ChipDrag: the delete was announced", InStr(oForm.EventLog, "BeforeGroup(1,1,2);") > 0
-        AssertEquals "ChipDrag: and it landed where it already was", 0, InStr(oForm.EventLog, "BeforeMove(")
+        Assert "ChipDrag: the delete was announced", InStr(oForm.EventLog, "BeforeGroupChange(1,1,2);") > 0
+        AssertEquals "ChipDrag: and it landed where it already was", 0, InStr(oForm.EventLog, "BeforeColMove(")
         '--- let go over a header and the level goes with its column landing
         '--- where the pointer left it. One chip left, so the box is back to a
         '--- single row and 600 twips down is the header row at either scale
@@ -1078,8 +1091,8 @@ Private Sub pvTestGroupChipDrag()
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(375, 600)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(375, 600)
         AssertEquals "ChipDrag: the last level is gone too", 0, .Groups.Count
-        Assert "ChipDrag: that delete was announced", InStr(oForm.EventLog, "BeforeGroup(2,1,1);") > 0
-        Assert "ChipDrag: and the column went with it", InStr(oForm.EventLog, "BeforeMove(B,1);") > 0
+        Assert "ChipDrag: that delete was announced", InStr(oForm.EventLog, "BeforeGroupChange(2,1,1);") > 0
+        Assert "ChipDrag: and the column went with it", InStr(oForm.EventLog, "BeforeColMove(B,1);") > 0
         '--- and one taken off the top of the control, where the pointer is
         '--- still captured and the coordinates simply run out of range
         .Groups.Add 1, jgexSortAscending
@@ -1090,8 +1103,8 @@ Private Sub pvTestGroupChipDrag()
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1875, -150)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1875, -150)
         AssertEquals "ChipDrag: dropped above the control it is gone", 0, .Groups.Count
-        Assert "ChipDrag: and that delete was announced too", InStr(oForm.EventLog, "BeforeGroup(1,1,1);") > 0
-        AssertEquals "ChipDrag: with no column moved by a drop off the control", 0, InStr(oForm.EventLog, "BeforeMove(")
+        Assert "ChipDrag: and that delete was announced too", InStr(oForm.EventLog, "BeforeGroupChange(1,1,1);") > 0
+        AssertEquals "ChipDrag: with no column moved by a drop off the control", 0, InStr(oForm.EventLog, "BeforeColMove(")
     End With
     Unload oForm
 End Sub
@@ -1121,7 +1134,7 @@ Private Sub pvTestChipDropRight()
         AssertEquals "ChipRight: still two levels", 2, .Groups.Count
         AssertEquals "ChipRight: the first went behind the second", 2, .Groups.Item(1).ColIndex
         AssertEquals "ChipRight: and the second came first", 1, .Groups.Item(2).ColIndex
-        Assert "ChipRight: the move was announced", InStr(oForm.EventLog, "BeforeGroup(1,2,") > 0
+        Assert "ChipRight: the move was announced", InStr(oForm.EventLog, "BeforeGroupChange(1,2,") > 0
     End With
     Unload oForm
 End Sub
@@ -1151,8 +1164,8 @@ Private Sub pvTestChipDropOffControl()
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1650, -150)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1650, -150)
         AssertEquals "OffControl: the level is gone", 0, .Groups.Count
-        Assert "OffControl: the delete was announced", InStr(oForm.EventLog, "BeforeGroup(1,1,1);") > 0
-        AssertEquals "OffControl: and no column went with it", 0, InStr(oForm.EventLog, "BeforeMove(")
+        Assert "OffControl: the delete was announced", InStr(oForm.EventLog, "BeforeGroupChange(1,1,1);") > 0
+        AssertEquals "OffControl: and no column went with it", 0, InStr(oForm.EventLog, "BeforeColMove(")
         AssertEquals "OffControl: the column is where it was", 1, .Columns.Item(1).ColPosition
     End With
     Unload oForm
@@ -1182,7 +1195,7 @@ Private Sub pvTestDropPastLastChip()
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1875, 150)
         AssertEquals "PastLast: the empty box took it", 1, .Groups.Count
         AssertEquals "PastLast: as the only level", 1, .Groups.Item(1).ColIndex
-        Assert "PastLast: announced as the first", InStr(oForm.EventLog, "BeforeGroup(1,0,1);") > 0
+        Assert "PastLast: announced as the first", InStr(oForm.EventLog, "BeforeGroupChange(1,0,1);") > 0
         '--- the second column's header onto open box beyond the one chip. One
         '--- chip means the box is a single row and 600 twips down is the
         '--- header row at either scale. 1875 is well past the chip and still
@@ -1194,7 +1207,7 @@ Private Sub pvTestDropPastLastChip()
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1875, 150)
         AssertEquals "PastLast: the column is grouped", 2, .Groups.Count
         AssertEquals "PastLast: on the end of the order", 2, .Groups.Item(2).ColIndex
-        Assert "PastLast: the insert was announced there", InStr(oForm.EventLog, "BeforeGroup(2,0,2);") > 0
+        Assert "PastLast: the insert was announced there", InStr(oForm.EventLog, "BeforeGroupChange(2,0,2);") > 0
         '--- and the first chip let go out there goes to the back of an order
         '--- it was at the front of
         oForm.EventLog = vbNullString
@@ -1204,14 +1217,14 @@ Private Sub pvTestDropPastLastChip()
         AssertEquals "PastLast: still two levels", 2, .Groups.Count
         AssertEquals "PastLast: the first went to the back", 2, .Groups.Item(1).ColIndex
         AssertEquals "PastLast: and the second came first", 1, .Groups.Item(2).ColIndex
-        Assert "PastLast: the move was announced", InStr(oForm.EventLog, "BeforeGroup(1,2,2);") > 0
+        Assert "PastLast: the move was announced", InStr(oForm.EventLog, "BeforeGroupChange(1,2,2);") > 0
         '--- the one that is already last has nowhere to go out there
         oForm.EventLog = vbNullString
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(1500, 375)
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1875, 375)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1875, 375)
         AssertEquals "PastLast: the order is left alone", 1, .Groups.Item(2).ColIndex
-        AssertEquals "PastLast: and nothing was announced", 0, InStr(oForm.EventLog, "BeforeGroup(")
+        AssertEquals "PastLast: and nothing was announced", 0, InStr(oForm.EventLog, "BeforeGroupChange(")
     End With
     Unload oForm
 End Sub
@@ -1242,9 +1255,9 @@ Private Sub pvTestChipDropOnRows()
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1860, 1500)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1860, 1500)
         AssertEquals "OnRows: the level is gone", 0, .Groups.Count
-        Assert "OnRows: the delete was announced", InStr(oForm.EventLog, "BeforeGroup(1,1,1);") > 0
+        Assert "OnRows: the delete was announced", InStr(oForm.EventLog, "BeforeGroupChange(1,1,1);") > 0
         AssertEquals "OnRows: and the column went where it was let go", 3, .Columns.Item(1).ColPosition
-        Assert "OnRows: which was announced too", InStr(oForm.EventLog, "BeforeMove(A,3);") > 0
+        Assert "OnRows: which was announced too", InStr(oForm.EventLog, "BeforeColMove(A,3);") > 0
     End With
     Unload oForm
 End Sub
@@ -1269,7 +1282,7 @@ Private Sub pvTestDropOnSelf()
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(450, 225)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(450, 225)
         AssertEquals "DropSelf: the level is still there", 1, .Groups.Count
-        AssertEquals "DropSelf: and nothing was announced", 0, InStr(oForm.EventLog, "BeforeGroup(")
+        AssertEquals "DropSelf: and nothing was announced", 0, InStr(oForm.EventLog, "BeforeGroupChange(")
         '--- and let go on open box past it, which is the end of an order it is
         '--- the whole of
         oForm.EventLog = vbNullString
@@ -1277,14 +1290,14 @@ Private Sub pvTestDropOnSelf()
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(1500, 225)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(1500, 225)
         AssertEquals "DropSelf: open box moves nothing", 1, .Groups.Count
-        AssertEquals "DropSelf: and says nothing either", 0, InStr(oForm.EventLog, "BeforeGroup(")
+        AssertEquals "DropSelf: and says nothing either", 0, InStr(oForm.EventLog, "BeforeGroupChange(")
         '--- a header dropped on its own right half is not a move
         oForm.EventLog = vbNullString
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(1875, 600)
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(2400, 600)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(2400, 600)
         AssertEquals "DropSelf: the column stayed put", 2, .Columns.Item(2).ColPosition
-        AssertEquals "DropSelf: and no move was announced", 0, InStr(oForm.EventLog, "BeforeMove(")
+        AssertEquals "DropSelf: and no move was announced", 0, InStr(oForm.EventLog, "BeforeColMove(")
     End With
     Unload oForm
 End Sub
@@ -1300,6 +1313,10 @@ Private Sub pvTestEditLeaveCell()
     Set oForm = New frmWeak
     Load oForm
     With oForm.GridEX1
+        '--- wide enough for both columns whole: an arrow that leaves the
+        '--- cell scrolls a half-shown target column in, which would shift
+        '--- every click below off its intended cell
+        .Move 60, 60, 3600
         .Columns.Add("A").Width = 1500
         .Columns.Add("B").Width = 1500
         .DataMode = jgexUnbound
@@ -1343,6 +1360,276 @@ Private Sub pvTestEditLeaveCell()
         .Value(1) = "kept"
         .Row = 1
         AssertEquals "LeaveCell: leaving commits what Value buffered", "kept", .GetRowData(2).Value(1)
+        '--- a vertical arrow in a single-line editor moves the row, taking
+        '--- the edit with it: real input goes through the IPAO accelerator
+        '--- hook, this is its posted twin at the editor's own window
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 900)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, 900)
+        Assert "LeaveCell: an editor for the arrow to close", .hWndEdit <> 0
+        SendMessage .hWndEdit, WM_CHAR, 88, 0
+        SendMessage .hWndEdit, WM_KEYDOWN, vbKeyDown, 0
+        AssertEquals "LeaveCell: Down leaves the cell and moves the row", 2, .Row
+        AssertEquals "LeaveCell: taking the edit with it", "R1C1ZX", .GetRowData(1).Value(1)
+        AssertEquals "LeaveCell: and the editor is gone", 0, .hWndEdit
+        '--- a wrapping editor keeps its arrows: the original walks the caret
+        '--- and never leaves the cell, not even from the last line
+        .Columns.Item(1).WordWrap = True
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 900)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, 900)
+        hEdit = .hWndEdit
+        Assert "LeaveCell: a wrapping editor opened", hEdit <> 0
+        SendMessage hEdit, WM_KEYDOWN, vbKeyDown, 0
+        SendMessage hEdit, WM_KEYDOWN, vbKeyDown, 0
+        SendMessage hEdit, WM_KEYDOWN, vbKeyUp, 0
+        AssertEquals "LeaveCell: arrows stay in a wrapping editor", 1, .Row
+        AssertEquals "LeaveCell: which is still open", hEdit, .hWndEdit
+        SendMessage hEdit, WM_KEYDOWN, vbKeyEscape, 0
+        AssertEquals "LeaveCell: closed without a trace", 0, .hWndEdit
+        '--- horizontal arrows leave at the text boundary: Right at the very
+        '--- end leaves even a wrapping editor, moving the column, while Left
+        '--- leaves only a single-line one from the very start. The click puts
+        '--- the caret past the short text, so it opens at the end
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 900)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, 900)
+        Assert "LeaveCell: a wrapping editor for Right to leave", .hWndEdit <> 0
+        SendMessage .hWndEdit, WM_KEYDOWN, vbKeyRight, 0
+        AssertEquals "LeaveCell: Right at the end leaves a wrapping editor", 2, .Col
+        AssertEquals "LeaveCell: without opening another", 0, .hWndEdit
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 900)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, 900)
+        hEdit = .hWndEdit
+        SendMessage hEdit, WM_KEYDOWN, vbKeyHome, 0
+        SendMessage hEdit, WM_KEYDOWN, vbKeyLeft, 0
+        SendMessage hEdit, WM_KEYDOWN, vbKeyLeft, 0
+        AssertEquals "LeaveCell: Left stays in a wrapping editor", 1, .Col
+        AssertEquals "LeaveCell: still the same editor", hEdit, .hWndEdit
+        SendMessage hEdit, WM_KEYDOWN, vbKeyEscape, 0
+        '--- the single-line editor leaves at both boundaries but only there:
+        '--- an arrow with text still ahead of it moves the caret, not the cell
+        .Columns.Item(1).WordWrap = False
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 900)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, 900)
+        SendMessage .hWndEdit, WM_KEYDOWN, vbKeyRight, 0
+        AssertEquals "LeaveCell: Right at the end leaves a single-line editor", 2, .Col
+        AssertEquals "LeaveCell: with no editor on the next cell", 0, .hWndEdit
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(2250, 900)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(2250, 900)
+        hEdit = .hWndEdit
+        SendMessage hEdit, WM_KEYDOWN, vbKeyHome, 0
+        SendMessage hEdit, WM_KEYDOWN, vbKeyRight, 0
+        AssertEquals "LeaveCell: an interior Right stays put", hEdit, .hWndEdit
+        SendMessage hEdit, WM_KEYDOWN, vbKeyLeft, 0
+        AssertEquals "LeaveCell: an interior Left stays put", hEdit, .hWndEdit
+        SendMessage hEdit, WM_KEYDOWN, vbKeyLeft, 0
+        AssertEquals "LeaveCell: Left at the start leaves for the previous column", 1, .Col
+        AssertEquals "LeaveCell: closing the editor", 0, .hWndEdit
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(2250, 900)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(2250, 900)
+        hEdit = .hWndEdit
+        SendMessage hEdit, WM_KEYDOWN, vbKeyRight, 0
+        AssertEquals "LeaveCell: Right with no next column stays editing", hEdit, .hWndEdit
+        SendMessage hEdit, WM_KEYDOWN, vbKeyEscape, 0
+        AssertEquals "LeaveCell: and closes clean", 0, .hWndEdit
+        '--- F2 opens the editor on the current cell selected whole, so what
+        '--- is typed next replaces the cell
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyF2, 0
+        Assert "LeaveCell: F2 opens an editor on the current cell", .hWndEdit <> 0
+        SendMessage .hWndEdit, WM_CHAR, 88, 0
+        SendMessage .hWndEdit, WM_KEYDOWN, vbKeyDown, 0
+        AssertEquals "LeaveCell: typed after F2 replaces the cell", "X", .GetRowData(1).Value(2)
+        AssertEquals "LeaveCell: and F2's editor closed on the way", 0, .hWndEdit
+    End With
+    Unload oForm
+End Sub
+
+Private Sub pvTestTabKey()
+    Dim oForm           As frmWeak
+    Dim hEdit           As Long
+
+    '--- probed: the window path walks columns for Tab whatever TabKeyBehavior
+    '--- says -- the property only rules the accelerator hook -- and the cell
+    '--- tabbed into opens its editor with the text selected whole
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Move 60, 60, 3600
+        .Columns.Add("A").Width = 1500
+        .Columns.Add("B").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 5
+        .Rebind
+        .AllowEdit = True
+        .Columns.Item(1).EditType = jgexEditTextBox
+        .Columns.Item(2).EditType = jgexEditTextBox
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 900)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, 900)
+        hEdit = .hWndEdit
+        Assert "TabKey: the click opens an editor to tab out of", hEdit <> 0
+        SendMessage hEdit, WM_KEYDOWN, vbKeyTab, 0
+        AssertEquals "TabKey: Tab moves the column", 2, .Col
+        Assert "TabKey: and opens the next cell's editor", .hWndEdit <> 0 And .hWndEdit <> hEdit
+        SendMessage .hWndEdit, WM_CHAR, 78, 0
+        SendMessage .hWndEdit, WM_KEYDOWN, vbKeyDown, 0
+        AssertEquals "TabKey: typing replaced the selected text", "N", .GetRowData(1).Value(2)
+        AssertEquals "TabKey: after the commit the row moved", 2, .Row
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyF2, 0
+        hEdit = .hWndEdit
+        Assert "TabKey: F2 reopens on the last column", hEdit <> 0
+        SendMessage hEdit, WM_KEYDOWN, vbKeyTab, 0
+        AssertEquals "TabKey: Tab with no next column stays", 2, .Col
+        AssertEquals "TabKey: in the same editor", hEdit, .hWndEdit
+        SendMessage hEdit, WM_KEYDOWN, vbKeyEscape, 0
+        '--- posted keys bypass the accelerator, so the walk survives the
+        '--- property flip -- only real input tabs the focus away under it
+        .TabKeyBehavior = jgexControlNavigation
+        .Col = 1
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyTab, 0
+        AssertEquals "TabKey: the window path walks under control navigation too", 2, .Col
+        SendMessage .hWndEdit, WM_KEYDOWN, vbKeyEscape, 0
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyReturn, 0
+        AssertEquals "TabKey: Enter with no editor steps the row", 3, .Row
+        '--- and none of it without editing: the horizontal keys are dead,
+        '--- clicks land the row alone and F2 opens nothing
+        .AllowEdit = False
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyLeft, 0
+        AssertEquals "TabKey: the arrows walk columns without editing too", 1, .Col
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyRight, 0
+        AssertEquals "TabKey: both ways", 2, .Col
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyTab, 0
+        AssertEquals "TabKey: while Tab stays dead without editing", 2, .Col
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyF2, 0
+        AssertEquals "TabKey: and F2 opens nothing", 0, .hWndEdit
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyReturn, 0
+        AssertEquals "TabKey: while Enter still walks the rows", 4, .Row
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 900)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, 900)
+        AssertEquals "TabKey: a click sets no column either", 2, .Col
+        AssertEquals "TabKey: though it still lands the row", 1, .Row
+        AssertEquals "TabKey: and opens nothing on the way", 0, .hWndEdit
+        '--- a column marked not selectable is skipped by the keys and
+        '--- refused by the mouse
+        .AllowEdit = True
+        .Columns.Add("C").Width = 1500
+        .Columns.Item(2).Selectable = False
+        .Col = 1
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyRight, 0
+        AssertEquals "TabKey: Right skips a non-selectable column", 3, .Col
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyLeft, 0
+        AssertEquals "TabKey: Left skips it back", 1, .Col
+        '--- probed: Left on the leftmost column keeps the cell currency --
+        '--- no fall-back to a column-less row selection
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyLeft, 0
+        AssertEquals "TabKey: and Left on the first column stays", 1, .Col
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(2250, 900)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(2250, 900)
+        AssertEquals "TabKey: a click cannot select it either", 1, .Col
+        AssertEquals "TabKey: nor opens its editor", 0, .hWndEdit
+        .Col = 2
+        AssertEquals "TabKey: programmatic currency on it clears to none", 0, .Col
+        '--- a printable character opens the current cell's editor selected
+        '--- whole, so what is typed replaces the cell
+        .Col = 1
+        SendMessage .hWnd, WM_CHAR, 90, 0
+        Assert "TabKey: a typed character opens the editor", .hWndEdit <> 0
+        SendMessage .hWndEdit, WM_KEYDOWN, vbKeyReturn, 0
+        AssertEquals "TabKey: and what was typed replaced the cell", "Z", .GetRowData(1).Value(1)
+        AssertEquals "TabKey: with the editor gone on the commit", 0, .hWndEdit
+        '--- probed: the strip left of the cells selects the row whole -- the
+        '--- currency rides the row move first, then the column clears
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(30, 900)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(30, 900)
+        AssertEquals "TabKey: the row-select strip lands the row", 1, .Row
+        AssertEquals "TabKey: and clears the column", 0, .Col
+        AssertEquals "TabKey: without opening an editor", 0, .hWndEdit
+    End With
+    Unload oForm
+End Sub
+
+Private Sub pvTestDelKey()
+    Dim oForm           As frmWeak
+
+    '--- probed: with a column current Del clears the cell into an open edit
+    '--- session, outranking AllowDelete; the column-less row mode deletes the
+    '--- row itself with the BeforeDelete/BeforeDeleteEX/AfterDelete trio
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Move 60, 60, 3600
+        .Columns.Add("A").Width = 1500
+        .Columns.Add("B").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 5
+        .Rebind
+        .AllowEdit = True
+        .Columns.Item(1).EditType = jgexEditTextBox
+        .Columns.Item(2).EditType = jgexEditTextBox
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 900)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, 900)
+        SendMessage .hWndEdit, WM_KEYDOWN, vbKeyEscape, 0
+        AssertEquals "DelKey: no editor before the surface Del", 0, .hWndEdit
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyDelete, 0
+        Assert "DelKey: Del opens the editor", .hWndEdit <> 0
+        AssertEquals "DelKey: cleared empty", 0, SendMessage(.hWndEdit, &HE, 0, 0)
+        SendMessage .hWndEdit, WM_KEYDOWN, vbKeyDown, 0
+        AssertEquals "DelKey: the row move commits the empty cell", "", .GetRowData(1).Value(1)
+        AssertEquals "DelKey: on row 2 now", 2, .Row
+        '--- row mode deletes only when allowed
+        .AllowEdit = False
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyDelete, 0
+        AssertEquals "DelKey: without AllowDelete nothing goes", 5, .RowCount
+        .AllowDelete = True
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyDelete, 0
+        AssertEquals "DelKey: the row is gone", 4, .RowCount
+        AssertEquals "DelKey: and the currency landed where it stood", 2, .Row
+        Assert "DelKey: the veto trio in order", InStr(oForm.EventLog, "BeforeDelete;BeforeDeleteEX(2)") > 0 _
+            And InStr(oForm.EventLog, "AfterDelete;") > 0
+        '--- probed: focus leaving the editor for another control tears the
+        '--- box down silently -- the text stays buffered in the row and none
+        '--- of the edit events say a word
+        .AllowEdit = True
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 900)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, 900)
+        Assert "DelKey: an editor to abandon", .hWndEdit <> 0
+        SendMessage .hWndEdit, WM_CHAR, 88, 0
+        oForm.EventLog = vbNullString
+        SetFocusApi oForm.hWnd
+        AssertEquals "DelKey: focus loss tears the editor down", 0, .hWndEdit
+        AssertEquals "DelKey: silently", vbNullString, oForm.EventLog
+        AssertEquals "DelKey: with the text buffered", "X", .Value(1)
+    End With
+    Unload oForm
+End Sub
+
+'--- a control shorter than the scrollbar band used to ask picGrid.Move for a
+'--- negative height: error 380 out of pvLayoutGrid, swallowed at the paint
+'--- boundary but unwinding through pvUpdateScrollBars with m_bScrollUpdating
+'--- still set -- after which every scrollbar update was silently skipped for
+'--- the control's lifetime
+Private Sub pvTestTinyResize()
+    Dim oForm           As frmWeak
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add "Alpha"
+        .DataMode = jgexUnbound
+        .ItemCount = 50
+        .Rebind
+        '--- the navigator holds the band open with no horizontal bar needed
+        .RecordNavigator = True
+        .Refresh
+        Assert "TinyResize: fifty rows put the bar up", (GetWindowLong(.hWnd, GWL_STYLE) And WS_VSCROLL) <> 0
+        '--- shorter than the band, an update while down there, then back
+        .Height = 60
+        .Refresh
+        .Height = 2000
+        '--- the update path has to still be alive: shrinking the count takes
+        '--- the bar away, growing it brings it back
+        .ItemCount = 2
+        Assert "TinyResize: updates survive the squeeze", (GetWindowLong(.hWnd, GWL_STYLE) And WS_VSCROLL) = 0
+        .ItemCount = 50
+        Assert "TinyResize: both ways", (GetWindowLong(.hWnd, GWL_STYLE) And WS_VSCROLL) <> 0
     End With
     Unload oForm
 End Sub
@@ -1627,6 +1914,104 @@ Private Sub pvTestGrouping()
         .Groups.Clear
         .Refresh
         AssertEquals "Group: cleared groups restore the records", 4, .RowCount
+    End With
+    Unload oForm
+End Sub
+
+'--- the [+]/[-] box on a group header collapses and expands its level: the
+'--- press navigates to the row first and toggles after (084), a click on the
+'--- caption only selects, and a double-click anywhere on the header toggles
+'--- too, its release swallowing the Click (086/087). A footer has no box
+Private Sub pvTestGroupBoxClick()
+    Dim oForm           As frmWeak
+    Dim lIdx            As Long
+    Dim lHdrPx          As Long
+    Dim lRowPx          As Long
+    Dim lY              As Long
+
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add "Alpha"
+        .Columns.Add "Beta"
+        .DataMode = jgexUnbound
+        For lIdx = 1 To 4
+            oForm.SetSeed lIdx, 1, IIf(lIdx <= 2, "north", "south")
+        Next
+        .ItemCount = 4
+        .Rebind
+        .GroupByBoxVisible = False
+        .Groups.Add 1, jgexSortAscending
+        .Refresh
+        '--- grouping scrolls the current record to the top, which would put
+        '--- the first header off the view and every click a row lower
+        .FirstItem = 1
+        AssertEquals "BoxClick: grouped rows", 6, .RowCount
+        '--- the box is fixed-pixel chrome -- 12px square, 2 in from its
+        '--- level's indent, centred in the row -- so the click is computed in
+        '--- pixels off the control's own metrics and holds at any system DPI
+        lHdrPx = .ColumnHeaderHeight \ Screen.TwipsPerPixelY
+        lRowPx = .RowHeight \ Screen.TwipsPerPixelY
+        lY = lHdrPx + lRowPx \ 2
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(8, lY)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(8, lY)
+        AssertEquals "BoxClick: the click collapses the level", 4, .RowCount
+        AssertEquals "BoxClick: and lands the marquee on it", 1, .Row
+        Assert "BoxClick: selection first, row change after", InStr(oForm.EventLog, "SelectionChange;RowColChange(2,0);") > 0
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(8, lY)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(8, lY)
+        AssertEquals "BoxClick: a second click expands it", 6, .RowCount
+        '--- the caption is not the box: a single click there selects only
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(60, lY)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(60, lY)
+        AssertEquals "BoxClick: a caption click leaves the level alone", 6, .RowCount
+        '--- but a double-click there toggles, and its release is no click
+        oForm.EventLog = vbNullString
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(60, lY)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(60, lY)
+        SendMessage .hWnd, WM_LBUTTONDBLCLK, 0, MakeDWord(60, lY)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(60, lY)
+        AssertEquals "BoxClick: a caption double-click collapses", 4, .RowCount
+        '--- DblClick ends in the same word, so its own entry comes off the count
+        AssertEquals "BoxClick: one Click for its two releases", 1, _
+            (Len(oForm.EventLog) - Len(Replace(oForm.EventLog, "Click;", ""))) \ Len("Click;") - _
+            (Len(oForm.EventLog) - Len(Replace(oForm.EventLog, "DblClick;", ""))) \ Len("DblClick;")
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(8, lY)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(8, lY)
+        AssertEquals "BoxClick: expanded again for the footers", 6, .RowCount
+        '--- a footer's indent leaves room for a box that is not there
+        .GroupFooterStyle = jgexCaptionGroupFooter
+        .RefreshGroups
+        AssertEquals "BoxClick: footered rows", 8, .RowCount
+        lY = lHdrPx + 3 * lRowPx + lRowPx \ 2
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, MakeDWord(8, lY)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, MakeDWord(8, lY)
+        AssertEquals "BoxClick: a footer has no box to click", 8, .RowCount
+        '--- Space toggles the header's level -- ours on purpose, the original
+        '--- ignores it -- and a footer stays as it is
+        .Row = 1
+        SendMessage .hWnd, WM_KEYDOWN, vbKeySpace, 0
+        AssertEquals "BoxClick: Space collapses the header's level", 5, .RowCount
+        SendMessage .hWnd, WM_KEYDOWN, vbKeySpace, 0
+        AssertEquals "BoxClick: and expands it again", 8, .RowCount
+        .Row = 4
+        SendMessage .hWnd, WM_KEYDOWN, vbKeySpace, 0
+        AssertEquals "BoxClick: Space on a footer changes nothing", 8, .RowCount
+        '--- the arrows walk the tree the probed way: Left collapses the
+        '--- header and then stays put, Right expands it back and pressed
+        '--- again steps into the first child
+        .Row = 1
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyLeft, 0
+        AssertEquals "BoxClick: Left collapses the header", 5, .RowCount
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyLeft, 0
+        AssertEquals "BoxClick: Left again stays collapsed", 5, .RowCount
+        AssertEquals "BoxClick: without moving", 1, .Row
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyRight, 0
+        AssertEquals "BoxClick: Right expands it back", 8, .RowCount
+        AssertEquals "BoxClick: staying on the header", 1, .Row
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyRight, 0
+        AssertEquals "BoxClick: Right again steps into the first child", 2, .Row
     End With
     Unload oForm
 End Sub
@@ -2014,9 +2399,9 @@ Private Sub pvTestMouse()
         '--- click the first column header
         oForm.EventLog = vbNullString
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 600)
-        AssertEquals "Mouse: the press alone says nothing", "", oForm.EventLog
+        AssertEquals "Mouse: the press alone announces nothing but itself", "MouseDown(1);", oForm.EventLog
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, 600)
-        Assert "Mouse: the release fires ColumnHeaderClick", InStr(oForm.EventLog, "HdrClick(A);") > 0
+        Assert "Mouse: the release fires ColumnHeaderClick", InStr(oForm.EventLog, "ColumnHeaderClick(A);") > 0
         '--- AutomaticSort off by default, so the click above sorted nothing
         AssertEquals "AutoSort: off leaves the sort keys alone", 0, .SortKeys.Count
     End With
@@ -2086,16 +2471,16 @@ Private Sub pvTestAutomaticSort()
         '--- at x=8, y=7, sized off the caption, so (30, 15) lands inside it
         oForm.EventLog = vbNullString
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(450, 225)
-        AssertEquals "GBox: the press alone says nothing", vbNullString, oForm.EventLog
+        AssertEquals "GBox: the press alone announces nothing but itself", "MouseDown(1);", oForm.EventLog
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(450, 225)
-        AssertEquals "GBox: the release fires GroupByBoxHeaderClick", "GBoxClick(1);Click;", oForm.EventLog
+        AssertEquals "GBox: the release fires GroupByBoxHeaderClick", "MouseDown(1);GroupByBoxHeaderClick(1);MouseUp(1);Click;", oForm.EventLog
         AssertEquals "GBox: chip click flips the group", jgexSortDescending, .Groups.Item(1).SortOrder
         AssertEquals "GBox: no sort key added for it", 0, .SortKeys.Count
         '--- the empty part of the box is not a chip
         oForm.EventLog = vbNullString
         SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(4500, 225)
         SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(4500, 225)
-        AssertEquals "GBox: a click off the chips does nothing", "Click;", oForm.EventLog
+        AssertEquals "GBox: a click off the chips does nothing", "MouseDown(1);MouseUp(1);Click;", oForm.EventLog
         AssertEquals "GBox: and leaves the order alone", jgexSortDescending, .Groups.Item(1).SortOrder
         '--- ungrouping hands the column back to the sort keys
         .Groups.Clear
@@ -2119,13 +2504,13 @@ Private Sub pvTestKeyPressDrag()
         '--- WM_CHAR raises KeyPress with the character code
         oForm.EventLog = vbNullString
         SendMessage .hWnd, WM_CHAR, 65, 0
-        AssertEquals "KeyPress: WM_CHAR raises KeyPress(65)", "Press(65);", oForm.EventLog
-        '--- left-button drag over rows extends the selection range from the
-        '--- mouse-down anchor (row 1 after bind) to the row under the cursor
+        AssertEquals "KeyPress: WM_CHAR raises KeyKeyPress(65)", "KeyPress(65);", oForm.EventLog
+        '--- the sweep is armed only by a press that lands on a row: a button
+        '--- already down when the pointer arrives -- or one that went down on
+        '--- the chrome or past the rows -- sweeps nothing
         SendMessage .hWnd, WM_MOUSEMOVE, MK_LBUTTON, TwipsDWord(450, 1200)
-        Assert "Drag: row under cursor selected", .RowSelected(2)
-        Assert "Drag: anchor row still selected", .RowSelected(1)
-        Assert "Drag: row past cursor not selected", Not .RowSelected(4)
+        AssertEquals "Drag: a drag from nowhere selects nothing", 1, .SelectedItems.Count
+        Assert "Drag: row under cursor not selected", Not .RowSelected(2)
         '--- a click that opened an editor keeps its drag: the button is still
         '--- down over the grid, and the cell being edited is not the start of
         '--- a selection
@@ -2179,14 +2564,14 @@ Private Sub pvTestSelection()
         .RowSelected(3) = True
         Assert "Sel: row 3 selected via property", .RowSelected(3)
         Assert "Sel: row 1 still selected (multi)", .RowSelected(1)
-        AssertEquals "Sel: SelectionChange fired once", "Sel;", oForm.EventLog
+        AssertEquals "Sel: SelectionChange fired once", "SelectionChange;", oForm.EventLog
         '--- setting the same value again is a no-op (no event)
         oForm.EventLog = vbNullString
         .RowSelected(3) = True
         AssertEquals "Sel: no event when unchanged", vbNullString, oForm.EventLog
         .RowSelected(3) = False
         Assert "Sel: row 3 deselected", Not .RowSelected(3)
-        AssertEquals "Sel: deselect fires event", "Sel;", oForm.EventLog
+        AssertEquals "Sel: deselect fires event", "SelectionChange;", oForm.EventLog
     End With
     Unload oForm
 End Sub

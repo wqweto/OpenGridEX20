@@ -66,12 +66,16 @@ End Property
 Public Property Get Version() As Long
 End Property
 
-'--- The record a position holds, 0 for a group header or footer. This and
+'--- The signed index a position holds: positive a record's RowIndex,
+'--- negative a group row's projection slot, 0 out of range. This and
 '--- RowBookmark below are the two queries the original answers publicly,
 '--- and they run the same way: from the derived space towards identity,
-'--- RowPosition -> RowIndex -> Bookmark. It reads the projection only and
-'--- never populates, so a caller after the index alone does not drag an
-'--- UnboundReadData behind it the way GetData would
+'--- RowPosition -> RowIndex -> Bookmark -- the public surface masks the
+'--- negatives to 0, while the grid's window and selection carry wrappers
+'--- and items by them, since neither an expand nor a collapse re-sorts the
+'--- order underneath. It reads the projection only and never populates, so
+'--- a caller after the index alone does not drag an UnboundReadData behind
+'--- it the way GetData would
 Public Property Get RowIndex(ByVal lRowPosition As Long) As Long
 End Property
 

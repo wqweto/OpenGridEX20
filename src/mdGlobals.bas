@@ -29,6 +29,8 @@ Public Const NULL_PTR                   As Long = 0
 Public Const INTERFACESAFE_FOR_UNTRUSTED_CALLER As Long = 1
 Public Const INTERFACESAFE_FOR_UNTRUSTED_DATA As Long = 2
 '--- Windows messages
+Public Const WM_SETFOCUS                As Long = &H7
+Public Const WM_KILLFOCUS               As Long = &H8
 Public Const WM_SETTEXT                 As Long = &HC
 Public Const WM_GETTEXT                 As Long = &HD
 Public Const WM_GETTEXTLENGTH           As Long = &HE
@@ -38,6 +40,7 @@ Public Const WM_CANCELMODE              As Long = &H1F
 Public Const WM_SETCURSOR               As Long = &H20
 Public Const WM_MOUSEACTIVATE           As Long = &H21
 Public Const WM_SETFONT                 As Long = &H30
+Public Const EM_GETSEL                  As Long = &HB0
 Public Const EM_SETSEL                  As Long = &HB1
 Public Const EM_LIMITTEXT               As Long = &HC5
 Public Const EM_SETMARGINS              As Long = &HD3
@@ -55,6 +58,7 @@ Public Const WM_LBUTTONDOWN             As Long = &H201
 Public Const WM_LBUTTONUP               As Long = &H202
 Public Const WM_LBUTTONDBLCLK           As Long = &H203
 Public Const EN_CHANGE                  As Long = &H300
+Public Const WM_CLEAR                   As Long = &H303
 '--- Edit control margins
 Public Const EC_LEFTMARGIN              As Long = 1
 '--- Window styles
@@ -86,6 +90,7 @@ Public Const MK_CONTROL                 As Long = &H8
 '--- Mouse activate
 Public Const MA_NOACTIVATE              As Long = 3
 '--- Cursors
+Public Const IDC_ARROW                  As Long = 32512
 Public Const IDC_SIZEWE                 As Long = 32644
 Public Const IDC_SIZEALL                As Long = 32646
 '--- Scroll bar codes
@@ -166,6 +171,7 @@ Public Declare Function KillTimer Lib "user32" (ByVal hWnd As Long, ByVal nIDEve
 Public Declare Function BeginPaint Lib "user32" (ByVal hWnd As Long, lpPaint As PAINTSTRUCT) As Long
 Public Declare Function EndPaint Lib "user32" (ByVal hWnd As Long, lpPaint As PAINTSTRUCT) As Long
 Public Declare Function UpdateWindow Lib "user32" (ByVal hWnd As Long) As Long
+Public Declare Function GetWindowTextLength Lib "user32" Alias "GetWindowTextLengthW" (ByVal hWnd As Long) As Long
 Public Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (Destination As Any, Source As Any, ByVal Length As Long)
 Public Declare Function ArrPtr Lib "msvbvm60" Alias "VarPtr" (Ptr() As Any) As LongPtr
 Public Declare Function OleTranslateColor Lib "olepro32" (ByVal clrOle As OLE_COLOR, ByVal hPal As Long, clrRef As Long) As Long
@@ -208,10 +214,34 @@ Public Declare Function GetScrollInfo Lib "user32" (ByVal hWnd As Long, ByVal fn
 Public Declare Function GetKeyState Lib "user32" (ByVal nVirtKey As Long) As Integer
 Private Declare Function VariantChangeType Lib "oleaut32" (Dest As Variant, Src As Variant, ByVal wFlags As Integer, ByVal vt As VbVarType) As Long
 Public Declare Function GetSystemMetrics Lib "user32" (ByVal nIndex As Long) As Long
+Public Declare Function StretchBlt Lib "gdi32" (ByVal hDCDest As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hDCSrc As Long, ByVal xSrc As Long, ByVal ySrc As Long, ByVal nSrcWidth As Long, ByVal nSrcHeight As Long, ByVal dwRop As Long) As Long
+Public Declare Function CreateBitmap Lib "gdi32" (ByVal nWidth As Long, ByVal nHeight As Long, ByVal nPlanes As Long, ByVal nBitCount As Long, lpBits As Any) As Long
+Public Declare Function GetObjectAPI Lib "gdi32" Alias "GetObjectW" (ByVal hObject As Long, ByVal nCount As Long, lpObject As Any) As Long
+Public Declare Function GetIconInfo Lib "user32" (ByVal hIcon As Long, piconinfo As ICONINFO) As Long
+Public Declare Function CreateIconIndirect Lib "user32" (piconinfo As ICONINFO) As Long
+Public Declare Function DestroyIcon Lib "user32" (ByVal hIcon As Long) As Long
 
 Public Type POINTAPI
     X                       As Long
     Y                       As Long
+End Type
+
+Public Type ICONINFO
+    fIcon                   As Long
+    xHotspot                As Long
+    yHotspot                As Long
+    hbmMask                 As Long
+    hbmColor                As Long
+End Type
+
+Public Type BITMAP
+    bmType                  As Long
+    bmWidth                 As Long
+    bmHeight                As Long
+    bmWidthBytes            As Long
+    bmPlanes                As Integer
+    bmBitsPixel             As Integer
+    bmBits                  As Long
 End Type
 
 Public Type SIZEAPI
@@ -233,6 +263,15 @@ Public Type PAINTSTRUCT
     fRestore                As Long
     fIncUpdate              As Long
     rgbReserved(0 To 31)    As Byte
+End Type
+
+Public Type APIMSG
+    hWnd                    As Long
+    Message                 As Long
+    wParam                  As Long
+    lParam                  As Long
+    time                    As Long
+    pt                      As POINTAPI
 End Type
 
 Public Type SCROLLINFO
@@ -274,7 +313,7 @@ Public Const LIB_NAME               As String = "OpenGridEX20"
 ' Functions
 '=========================================================================
 
-Public Function Clamp(ByVal lValue As Long, ByVal lMin As Long, ByVal lMax As Long) As Long
+Public Function Clamp(ByVal lValue As Long, Optional ByVal lMin As Long = &H80000000, Optional ByVal lMax As Long = &H7FFFFFFF) As Long
     Clamp = lValue
     If Clamp < lMin Then
         Clamp = lMin
@@ -299,19 +338,28 @@ Public Function HiWord(ByVal lValue As Long) As Long
     HiWord = (lValue \ &H10000) And &HFFFF&
 End Function
 
-'--- and the coordinate pair an lParam carries, which is signed
-Public Function GetXLParam(ByVal lParam As Long) As Long
+'--- and as (short)LOWORD and (short)HIWORD give them: sign-extended
+Public Function LoWordInt(ByVal lValue As Long) As Integer
     Dim nWord           As Integer
 
-    Call CopyMemory(nWord, lParam, 2)
-    GetXLParam = nWord
+    Call CopyMemory(nWord, lValue, 2)
+    LoWordInt = nWord
+End Function
+
+Public Function HiWordInt(ByVal lValue As Long) As Integer
+    Dim nWord           As Integer
+
+    Call CopyMemory(nWord, ByVal VarPtr(lValue) + 2, 2)
+    HiWordInt = nWord
+End Function
+
+'--- the coordinate pair an lParam carries, which is signed
+Public Function GetXLParam(ByVal lParam As Long) As Long
+    GetXLParam = LoWordInt(lParam)
 End Function
 
 Public Function GetYLParam(ByVal lParam As Long) As Long
-    Dim nWord           As Integer
-
-    Call CopyMemory(nWord, ByVal VarPtr(lParam) + 2, 2)
-    GetYLParam = nWord
+    GetYLParam = HiWordInt(lParam)
 End Function
 
 Public Function C2Dbl(vValue As Variant) As Double
@@ -440,6 +488,12 @@ End Function
 Public Function PushError() As Variant
     PushError = Array(Err.Number, Err.Source, Err.Description, Erl)
 End Function
+
+Public Sub PopError(LocalErr As Variant)
+    Err.Number = LocalErr(0)
+    Err.Source = LocalErr(1)
+    Err.Description = LocalErr(2)
+End Sub
 
 Public Sub PopRaiseError(LocalErr As Variant, sModule As String, sFunction As String)
     Err.Raise LocalErr(0), GetErrorSource(sModule, sFunction, LocalErr(2)) & vbCrLf & LocalErr(1), LocalErr(2)

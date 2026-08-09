@@ -371,7 +371,7 @@ Private Property Get IDataModel_RowIndex(ByVal lRowPosition As Long) As Long
 
     On Error GoTo EH
     pvEnsureOrder
-    IDataModel_RowIndex = DataRowIndexAt(m_uRowSet, lRowPosition)
+    IDataModel_RowIndex = DataRecordIndexAt(m_uRowSet, lRowPosition)
     Exit Property
 EH:
     RaiseError FUNC_NAME
@@ -617,7 +617,7 @@ Private Sub IDataModel_Delete(ByVal lRowPosition As Long)
     On Error GoTo EH
     pvEnsureOrder
     lRowIndex = IDataModel_RowIndex(lRowPosition)
-    If lRowIndex = 0 Then
+    If lRowIndex <= 0 Then
         Exit Sub
     End If
     pvSeek lRowIndex

@@ -388,21 +388,6 @@ EH:
     RaiseError FUNC_NAME
 End Sub
 
-'--- the record a position holds, 0 for a group row
-Public Function DataRowIndexAt(uRowSet As UcsRowSet, ByVal lRowPosition As Long) As Long
-    Const FUNC_NAME     As String = "DataRowIndexAt"
-    Dim lRowIndex       As Long
-
-    On Error GoTo EH
-    lRowIndex = DataRecordIndexAt(uRowSet, lRowPosition)
-    If lRowIndex > 0 Then
-        DataRowIndexAt = lRowIndex
-    End If
-    Exit Function
-EH:
-    RaiseError FUNC_NAME
-End Function
-
 '--- the original sizes its bookmark store to ItemCount and raises "Subscript
 '--- out of range" past the end. This one answers Empty and writes nothing
 '--- instead: a row index the caller worked out from a stale count is a
@@ -498,8 +483,12 @@ Public Function DataGetRowPosition(uState As UcsDataState, uRowSet As UcsRowSet,
     Const FUNC_NAME     As String = "DataGetRowPosition"
 
     On Error GoTo EH
+    '--- signed, like the forwards: negative is a group row's projection slot,
+    '--- whose position the write-back keeps beside the records'
     If lRowIndex >= 1 And lRowIndex <= uState.ItemCount Then
         DataGetRowPosition = uRowSet.RowPosition(lRowIndex)
+    ElseIf lRowIndex < 0 And -lRowIndex <= uRowSet.GroupRowCount Then
+        DataGetRowPosition = uRowSet.GroupRow(-lRowIndex).RowPosition
     End If
     Exit Function
 EH:

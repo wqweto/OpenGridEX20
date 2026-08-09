@@ -470,6 +470,19 @@ Private Sub pvRunInput(oList As Object)
             Call SendMessage(hTarget, WM_CHAR, AscW(Mid$(sText, lJdx, 1)), ByVal 0&)
             Call SendMessage(hTarget, WM_KEYUP, AscW(UCase$(Mid$(sText, lJdx, 1))), ByVal 0&)
         Next
+        '--- real focus, in and out: how a control paints its selection is
+        '--- allowed to depend on whether it holds the focus for real. The
+        '--- grid surface is the window the control exposes as hWnd -- the
+        '--- original's inner window -- so that is what takes the focus
+        If Not IsEmpty(JsonValue(oEntry, "focus")) Then
+            Call SetFocusApi(pvControlHwnd())
+        End If
+        If Not IsEmpty(JsonValue(oEntry, "unfocus")) Then
+            Call SetFocusApi(hWnd)
+            '--- WM_KILLFOCUS by hand as well: on the harness desktop a focus
+            '--- move does not always deliver one to the inner window
+            Call SendMessage(pvControlHwnd(), &H8, 0, ByVal 0&)
+        End If
         pvSettle 5
     Next
     Exit Sub

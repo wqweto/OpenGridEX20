@@ -1,0 +1,26 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "group-arrow-expand",
+    "width": 400,
+    "height": 300,
+    "apply": "before-show",
+    "props": {
+        "GroupByBoxVisible": false,
+        "DefaultGroupMode": 1,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500 },
+            { "Caption": "Beta", "Width": 1500 }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "north", "n1" ],
+            [ "north", "n2" ],
+            [ "north", "n3" ],
+            [ "south", "s1" ],
+            [ "south", "s2" ]
+        ]
+    },
+    "post": { "Groups": [ { "ColIndex": 1, "SortOrder": 1 } ] },
+    "input": [ { "click": [ 1200, 390 ] }, { "key": 39 }, { "click": [ 1200, 390 ] } ]
+}

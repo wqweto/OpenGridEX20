@@ -17,3 +17,4 @@
 *.oca
 test/Snapshot/*.json
 test/VisualDiff/*.out.txt
+* - Copy*

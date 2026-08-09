@@ -41,7 +41,15 @@ End Property
 
 Public Property Get RowIndex() As Long
 Attribute RowIndex.VB_Description = "Returns the original index of a selected row."
-    RowIndex = m_lRowIndex
+    '--- a selected group row keeps its projection slot privately; publicly a
+    '--- group row has no row index, the same answer JSRowData gives
+    If m_lRowIndex > 0 Then
+        RowIndex = m_lRowIndex
+    End If
+End Property
+
+Friend Property Get frInitRowIndex() As Long
+    frInitRowIndex = m_lRowIndex
 End Property
 
 Public Property Get RowPosition() As Long
