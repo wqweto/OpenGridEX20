@@ -21,8 +21,8 @@ The document is in three parts:
 | status | count | meaning |
 |---|---:|---|
 | paint | 126 | changes pixels -- part 1 carries its verification state |
-| consumed | 71 | the engine reads it: it drives data, layout or events |
-| storage | 85 | stored, returned and round-tripped; nothing reads it yet |
+| consumed | 76 | the engine reads it: it drives data, layout or events |
+| storage | 80 | stored, returned and round-tripped; nothing reads it yet |
 | derived | 6 | no member of its own -- computed on the fly, or parameterized |
 | **total** | **288** | |
 
@@ -67,16 +67,16 @@ gridline is ever drawn and the golden's full colour histogram
 
 | | count | share |
 |---|---:|---:|
-| verified | 65 | 52% |
+| verified | 67 | 53% |
 | partial | 2 | 2% |
 | weak | 0 | 0% |
 | unverified | 0 | 0% |
 | consumed (no pixels of its own) | 3 | 2% |
 | n/a (state only) | 1 | 1% |
-| **not implemented** | **55** | **44%** |
+| **not implemented** | **53** | **42%** |
 | **total** | **126** | |
 
-**69 of 126 (55%) are read by the paint path**; **55 (44%) are not implemented**
+**71 of 126 (56%) are read by the paint path**; **53 (42%) are not implemented**
 -- they store and return their value, and round-trip through the snapshot
 corpus, but the renderer never looks at them -- and the remaining 4 are read by
 the engine without painting anything themselves.
@@ -197,7 +197,7 @@ commit, so that hash carries no information about painting.
 | `GroupFooterStyle` | `jgexGroupFooterStyleConstants` | verified | M4 | -- | `053-group-footer-caption` (caption) and `054-group-footer-totals` (totals) vs the `jgexNoGroupFooter` default elsewhere |
 | `Groups` | `JSGroups` | verified | M4 | -- | `038-grouped-one-level`, `041-grouped-two-levels` (nested levels, indent rules, chip staircase), `039`/`044` (font scaling), `040-group-caption-width` |
 | `HeaderStyle` | `jgexHeaderStyleConstants` | verified | M3c | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | all four values: default 0 everywhere, `010-headers-noborder` (1), `012-headers-singleflat` and `003-headers-flat` (2, the latter over a 400tw header with rows), `011-headers-single3d` (3) |
-| `HideSelection` | `Boolean` | **not impl** | M10 | -- | -- |
+| `HideSelection` | `jgexHideSelectionConstants` | verified | M5 | -- | all three values against a real `WM_KILLFOCUS`: `098-unfocused-selection` (default outline), `099-unfocused-inactive` (button-face fill), `100-unfocused-normal` (unmoved), with the focused look pinned by every other scenario |
 | `ImageHeight` | `Integer` | **not impl** | M10 | -- | -- |
 | `ImageWidth` | `Integer` | **not impl** | M10 | -- | -- |
 | `ItemCount` | `Long` | verified | M3a | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | row counts 2/3/5/6/14/16 across the corpus |
@@ -212,7 +212,7 @@ commit, so that hash carries no information about painting.
 | `JSColumn.ColumnType` | `jgexColumnTypeConstants` | partial | M10 | -- | `062-checkbox-values`, `063-checkbox-large-font` (`jgexCheckBox`) vs `jgexText` default; `jgexIcon`/`jgexIconAndText` unimplemented |
 | `JSColumn.DefaultIcon` | `Integer` | **not impl** | M10 | -- | -- |
 | `JSColumn.EditType` | `jgexEditTypeConstants` | partial | M5 | -- | `057-edit-textbox` (`jgexEditTextBox`), `060-edit-checkbox` (`jgexEditCheckBox`) vs `jgexEditNone` default; `jgexEditCustom`/`DropDown`/`CalendarDropDown`/`Combo` unimplemented |
-| `JSColumn.Format` | `String` | **not impl** | M10 | -- | -- |
+| `JSColumn.Format` | `String` | verified | M5 | -- | `103-column-format` renders `0.00` and `#,##0` against unformatted columns elsewhere, with a value that will not format passing through; `104-format-edit` pins the editor opening on the raw value under a formatted cell |
 | `JSColumn.GroupEmptyStringCaption` | `String` | verified | M4 | -- | `050-group-empty-caption` (`<blank>`) vs `051-group-empty-default` (the `(none)` default) |
 | `JSColumn.GroupFormat` | `String` | verified | M4 | -- | `052-group-format` (`0` over 10.2/10.4/20.4) vs unformatted elsewhere; labels the caption only, the group still breaks on the raw value |
 | `JSColumn.GroupPrefix` | `String` | verified | M4 | -- | `049-group-prefix` (`Region: `) vs unprefixed elsewhere; joined by a space, caption starts one space earlier |
@@ -421,8 +421,8 @@ prove.
 |---|---|---|---|---|---|
 | `ActAsDropDown` | `Boolean` | consumed | -- | -- | snapshot round-trip |
 | `ADORecordset` | `Object` | storage | M8 | -- | -- |
-| `AllowDelete` | `Boolean` | storage | M5 | -- | `Samples` frmUnboundArray |
-| `AllowEdit` | `Boolean` | storage | M5 | -- | snapshot round-trip |
+| `AllowDelete` | `Boolean` | consumed | M5 | -- | `093-del-row` and `ModelTests` pvTestDelKey: Del deletes the selected row under True, goes dead under the default False |
+| `AllowEdit` | `Boolean` | consumed | M5 | -- | `090`-`092` pin the probed model -- default True opens an edit session on every click, False drops column currency whole; `ModelTests` pvTestTabKey |
 | `AutomaticSort` | `Boolean` | consumed | M4 | -- | `ModelTests` pvTestAutomaticSort: a header click sorts under True, leaves the keys alone under the default False |
 | `BoundColumnIndex` | `Variant` | consumed | -- | -- | -- |
 | `CalendarNoneText` | `String` | storage | M5 | -- | snapshot round-trip |
@@ -454,15 +454,15 @@ prove.
 | `JSColumn.DropDownControl` | `Object` | storage | M5 | -- | -- |
 | `JSColumn.FetchData` | `Boolean` | storage | M10 | -- | snapshot round-trip |
 | `JSColumn.FetchIcon` | `Boolean` | storage | M10 | -- | snapshot round-trip |
-| `JSColumn.HasValueList` | `Boolean` | consumed | -- | -- | `ModelTests` pvTestValueList |
+| `JSColumn.HasValueList` | `Boolean` | consumed | -- | -- | `ModelTests` pvTestValueList and pvTestDisplayValue; gates the replacement `102-valuelist-replace` renders |
 | `JSColumn.Index` | `Integer` | consumed | -- | [`db8b3ba`](../../commit/db8b3ba335f1e7f03c8022049ba9e8fd6d1dbed9) | `ModelTests` pvTestColumns |
 | `JSColumn.Key` | `String` | storage | M8 | -- | -- |
 | `JSColumn.MaxLength` | `Long` | storage | M5 | -- | snapshot round-trip |
-| `JSColumn.NullBehavior` | `jgexNullBehaviorConstants` | storage | M5 | -- | snapshot round-trip |
-| `JSColumn.ReplaceValues` | `Boolean` | storage | M5 | -- | snapshot round-trip |
-| `JSColumn.Selectable` | `Boolean` | storage | M5 | -- | snapshot round-trip |
+| `JSColumn.NullBehavior` | `jgexNullBehaviorConstants` | storage | M8 | -- | snapshot round-trip; probed to have no effect on what is painted or stored unbound -- it says how an empty cell reaches a *database*, and `jgexNBAutomatic` leaves an empty string behind (`OldValue=`, not Null) |
+| `JSColumn.ReplaceValues` | `Boolean` | consumed | M5 | -- | `102-valuelist-replace` carries a replacing column beside a non-replacing one over the same list; `ModelTests` pvTestDisplayValue. Defaults True, as every column in the recorded corpus does |
+| `JSColumn.Selectable` | `Boolean` | consumed | M5 | -- | `ModelTests` pvTestTabKey: the arrows skip a `Selectable=False` column, the mouse refuses it and programmatic `Col` on it clears to none |
 | `JSColumn.Tag` | `String` | storage | M8 | -- | snapshot round-trip |
-| `JSColumn.ValueList` | `JSValueList` | consumed | -- | -- | `ModelTests` pvTestValueList |
+| `JSColumn.ValueList` | `JSValueList` | consumed | -- | -- | `102-valuelist-replace` paints each item's text in place of its value and nothing at all for a value the list does not carry; `105-valuelist-edit` opens the editor on the text, and `ModelTests` pvTestDisplayValue commits it back as the value |
 | `JSColumns.Count` | `Integer` | consumed | -- | -- | `ModelTests` pvTestColumns |
 | `JSColumns.Item(vntIndexKey)` | `JSColumn` | consumed | -- | -- | `ModelTests` pvTestColumns |
 | `JSDataObject.Files` | `JSDataObjectFiles` | consumed | -- | [`0fb8743`](../../commit/0fb87434c0852fb35e02628f70786f1111de0626) | -- |
@@ -535,7 +535,7 @@ prove.
 | `JSRowData.CellPicture(ColIndex)` | `Picture` | consumed | -- | -- | -- |
 | `JSRowData.CellStyle(ColIndex)` | `String` | consumed | -- | -- | `ModelTests` pvTestRowData |
 | `JSRowData.ColCount` | `Integer` | consumed | -- | -- | `ModelTests` pvTestRowData |
-| `JSRowData.DisplayValue(ColIndex)` | `String` | consumed | -- | -- | `ModelTests` pvTestRowData |
+| `JSRowData.DisplayValue(ColIndex)` | `String` | consumed | -- | -- | `ModelTests` pvTestRowData and pvTestDisplayValue: every column is written before `RowFormat` sees the row -- the value as text, or what `Format` and a replacing value list make of it -- and the painter takes whatever the client leaves there |
 | `JSRowData.GroupCaption` | `String` | consumed | -- | -- | `ModelTests` pvTestRowData |
 | `JSRowData.GroupIconIndex` | `Integer` | consumed | -- | -- | -- |
 | `JSRowData.GroupLevel` | `Integer` | consumed | -- | -- | -- |
@@ -579,7 +579,7 @@ prove.
 | `SelLength` | `Long` | storage | M5 | -- | -- |
 | `SelStart` | `Long` | storage | M5 | -- | -- |
 | `SelText` | `String` | storage | M5 | -- | -- |
-| `TabKeyBehavior` | `jgexTabKeyBehaviorConstants` | storage | M5 | -- | snapshot round-trip |
+| `TabKeyBehavior` | `jgexTabKeyBehaviorConstants` | consumed | M5 | -- | the accelerator hook consumes Tab only under `jgexColumnNavigation` -- probed, the window path walks columns regardless; `ModelTests` pvTestTabKey |
 | `Value(ColIndex)` | `Variant` | computed | -- | -- | `ModelTests` pvTestRowData |
 
 ## Part 3 -- The object model
@@ -624,12 +624,12 @@ A column: layout, data binding, editing and card behaviour -- 46 properties (31 
 | `FetchData` | `Boolean` | read/write | storage | Returns/sets whether the FetchData event will be fired for the column. |
 | `Tag` | `String` | read/write | storage | Returns/sets an expression that stores any extra data needed for your program. |
 | `DataChanged` | `Boolean` | read/write | storage | Returns/sets a value indicating that data in the column has changed by some process other than by retrieving data from the current record. |
-| `ReplaceValues` | `Boolean` | read/write | storage | Returns/sets whether the column values are replaced for using the ValueList for the column. |
+| `ReplaceValues` | `Boolean` | read/write | consumed | Returns/sets whether the column values are replaced for using the ValueList for the column. |
 | `DefaultValue` | `Variant` | read/write | storage | Returns/sets the default value for the column in a new record. |
 | `MaxLength` | `Long` | read/write | storage | Returns/sets the maximum number of characters that can be entered in a field. |
 | `NullBehavior` | `jgexNullBehaviorConstants` | read/write | storage | Determines how empty strings are written in the database. |
 | `ButtonStyle` | `jgexButtonStyleConstants` | read/write | [paint](#the-matrix) | Determines if a column will show a button when the user enters edit mode. |
-| `Selectable` | `Boolean` | read/write | storage | Controls whether cell can be selected. |
+| `Selectable` | `Boolean` | read/write | consumed | Controls whether cell can be selected. |
 | `CellStyle` | `String` | read/write | [paint](#the-matrix) | Returns/sets the name of the JSFormatStyle to be applied in all the cells in a column. |
 | `WordWrap` | `Boolean` | read/write | [paint](#the-matrix) | determines whether text in a cell is wordwrapped. |
 | `AggregateFunction` | `jgexAggregateFunctionConstants` | read/write | [paint](#the-matrix) | Returns/sets the aggregate function to be shown in group footers for a column. |

@@ -1585,3 +1585,38 @@ vertical lines only. One capture showed three things.
   golden pinned the original's append), recorded at 96 and 120dpi with
   084-101 queued for goldens at the next 144dpi session; the harness gained
   real focus-in/focus-out input actions for the unfocused looks
+
+### Added (M5 -- what a cell reads as)
+
+- `JSRowData.DisplayValue` is written for every column before `RowFormat`
+  sees the row -- probed, the original hands the client a buffer whose plain
+  columns already carry their value as text -- so a handler reads what the
+  cell will say and is free to overwrite it, and the painter takes whatever
+  is left there
+- `JSColumn.Format` decides what a cell reads as: the value through the
+  VB format string, a value it cannot format passing through as it stands,
+  a blank staying blank (103). It is presentation only -- probed with a
+  window dump, the editor over a cell painting `1.50` holds `1.5`, because
+  what is edited is the value underneath (104)
+- `JSColumn.ValueList` replaces what it carries: a cell reads as the
+  matching item's text and, probed, as nothing at all when the list has no
+  item for the value -- not as the value itself (102). Here the text *is*
+  what is edited, so the editor opens on it (105) and a commit writes back
+  the value the text stands for; a text the list does not carry is refused
+  where it stands, after the update pair has gone out
+- `JSColumn.ReplaceValues` gates all of that, as the docs say: with it off
+  the list is drop-down entries and nothing more (102 carries a replacing
+  column beside a non-replacing one over the same list)
+
+### Fixed
+
+- `JSColumn.ReplaceValues` defaulted False where the original defaults True
+  -- every one of the 250 columns in the recorded snapshot corpus carries
+  it True, and the round-trip could not see it because a snapshot imports
+  the value explicitly
+- `JSColumn.NullBehavior` stays storage, now on the record as such: probed,
+  it changes neither what is painted nor what an unbound cell stores --
+  under `jgexNBAutomatic` a cleared cell leaves an empty string behind
+  rather than a Null -- since what it governs is how an empty cell reaches
+  a database. The harness event log spells `Null` out now, which is the
+  only reason that reads as an answer rather than as a blank

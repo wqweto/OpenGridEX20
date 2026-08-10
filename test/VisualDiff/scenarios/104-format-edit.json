@@ -1,0 +1,25 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "format-edit",
+    "width": 400,
+    "height": 200,
+    "apply": "before-show",
+    "props": {
+        "GroupByBoxVisible": false,
+        "AllowEdit": true,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500, "EditType": 1, "Format": "0.00" },
+            { "Caption": "Beta", "Width": 1500, "EditType": 1, "HasValueList": true, "ReplaceValues": true,
+              "ValueList": [ { "Value": "x", "Text": "Ex" }, { "Value": "y", "Text": "Why" } ] }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ 1.5, "x" ],
+            [ 2, "y" ]
+        ]
+    },
+    "input": [
+        { "click": [ 600, 480 ] }
+    ]
+}

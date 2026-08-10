@@ -69,6 +69,7 @@ Private Const MODULE_NAME As String = "frmMain"
 Private Const WM_TIMER              As Long = &H113
 Private Const WM_HSCROLL            As Long = &H114
 Private Const WM_CANCELMODE         As Long = &H1F
+Private Const WM_SETTEXT            As Long = &HC
 Private Const WM_ERASEBKGND         As Long = &H14
 Private Const WM_VSCROLL            As Long = &H115
 Private Const WM_KEYDOWN            As Long = &H100
@@ -174,6 +175,7 @@ Private Sub Form_Load()
     pvTestEditLeaveCell
     pvTestTabKey
     pvTestDelKey
+    pvTestDisplayValue
     pvTestSorting
     pvTestSelectionApi
     pvTestDetachedItems
@@ -1541,6 +1543,72 @@ Private Sub pvTestTabKey()
         AssertEquals "TabKey: the row-select strip lands the row", 1, .Row
         AssertEquals "TabKey: and clears the column", 0, .Col
         AssertEquals "TabKey: without opening an editor", 0, .hWndEdit
+    End With
+    Unload oForm
+End Sub
+
+Private Sub pvTestDisplayValue()
+    Dim oForm           As frmWeak
+    Dim oCol            As JSColumn
+
+    '--- Format and the value list write into DisplayValue before RowFormat
+    '--- gets the buffer, so the client sees what the cell will read as and
+    '--- can overwrite it; the painter takes whatever is left there
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("A").Width = 1500
+        .Columns.Add("B").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 3
+        oForm.SetSeed 1, 1, 1.5
+        oForm.SetSeed 2, 1, 2
+        oForm.SetSeed 3, 1, "abc"
+        .Columns.Item(1).Format = "0.00"
+        .Rebind
+        AssertEquals "Display: the format decides what the cell reads as", "1.50", .GetRowData(1).DisplayValue(1)
+        AssertEquals "Display: a whole number takes the same places", "2.00", .GetRowData(2).DisplayValue(1)
+        '--- and the client sees it already written: the row landed on is
+        '--- decorated as it becomes current, buffer first
+        oForm.SeenDisplay = vbNullString
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyDown, 0
+        AssertEquals "Display: RowFormat found it already written", "2.00", oForm.SeenDisplay
+        AssertEquals "Display: what will not format passes through", "abc", .GetRowData(3).DisplayValue(1)
+        AssertEquals "Display: the value underneath is untouched", 1.5, .GetRowData(1).Value(1)
+        '--- probed: a plain column is written too, with the value as it reads
+        AssertEquals "Display: a column with no say still carries its value", "R1C2", .GetRowData(1).DisplayValue(2)
+        '--- the list replaces the value it carries and blanks the rest
+        Set oCol = .Columns.Item(1)
+        oCol.Format = vbNullString
+        oCol.HasValueList = True
+        oCol.ValueList.Add 1.5, "One and a half"
+        oCol.ValueList.Add 2, "Two"
+        .Refetch
+        AssertEquals "Display: the list's text stands in for the value", "One and a half", .GetRowData(1).DisplayValue(1)
+        AssertEquals "Display: a value the list does not carry reads as nothing", vbNullString, .GetRowData(3).DisplayValue(1)
+        '--- and does none of it when the list is only a drop-down
+        oCol.ReplaceValues = False
+        .Refetch
+        AssertEquals "Display: no replacement without ReplaceValues", "1.5", .GetRowData(1).DisplayValue(1)
+        oCol.ReplaceValues = True
+        .Refetch
+        '--- the editor opens on the text, and what it commits is the value
+        '--- the text stands for
+        .AllowEdit = True
+        oCol.EditType = jgexEditTextBox
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 900)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, 900)
+        Assert "Display: the cell opened an editor", .hWndEdit <> 0
+        SendMessage .hWndEdit, WM_SETTEXT, 0, StrPtr("Two")
+        SendMessage .hWndEdit, WM_KEYDOWN, vbKeyDown, 0
+        AssertEquals "Display: the text committed as its value", 2, .GetRowData(1).Value(1)
+        AssertEquals "Display: which reads back as the text", "Two", .GetRowData(1).DisplayValue(1)
+        '--- a text the list does not carry is refused where it stands
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, 900)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, 900)
+        SendMessage .hWndEdit, WM_SETTEXT, 0, StrPtr("Nonesuch")
+        SendMessage .hWndEdit, WM_KEYDOWN, vbKeyDown, 0
+        AssertEquals "Display: an unknown text leaves the value alone", 2, .GetRowData(1).Value(1)
     End With
     Unload oForm
 End Sub

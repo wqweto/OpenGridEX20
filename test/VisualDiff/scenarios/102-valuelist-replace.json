@@ -1,0 +1,24 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "valuelist-replace",
+    "width": 400,
+    "height": 200,
+    "apply": "before-show",
+    "props": {
+        "GroupByBoxVisible": false,
+        "AllowEdit": false,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500, "HasValueList": true, "ReplaceValues": true,
+              "ValueList": [ { "Value": "x", "Text": "Ex" }, { "Value": "y", "Text": "Why" } ] },
+            { "Caption": "Beta", "Width": 1500, "HasValueList": true, "ReplaceValues": false,
+              "ValueList": [ { "Value": "x", "Text": "Ex" }, { "Value": "y", "Text": "Why" } ] }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ "x", "x" ],
+            [ "y", "y" ],
+            [ "z", "z" ]
+        ]
+    }
+}

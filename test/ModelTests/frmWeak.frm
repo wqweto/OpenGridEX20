@@ -51,6 +51,9 @@ Private Const MODULE_NAME As String = "frmWeak"
 '=========================================================================
 
 Public EventLog                     As String
+'--- what column 1 already reads as when RowFormat gets the buffer, which is
+'--- where Format and the value list have written before the client looks
+Public SeenDisplay                  As String
 Public CancelResize                 As Boolean
 Public CancelMove                   As Boolean
 Public CancelGroup                  As Boolean
@@ -637,6 +640,7 @@ Private Sub GridEX1_RowFormat(RowBuffer As JSRowData)
 
     On Error GoTo EH
     EventLog = EventLog & "RowFormat(" & RowBuffer.RowIndex & ");"
+    SeenDisplay = RowBuffer.DisplayValue(1)
     Exit Sub
 EH:
     PrintError FUNC_NAME

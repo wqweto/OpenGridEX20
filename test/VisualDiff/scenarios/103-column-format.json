@@ -1,0 +1,22 @@
+{
+    "$schema": "opengex-visualdiff/1",
+    "name": "column-format",
+    "width": 400,
+    "height": 200,
+    "apply": "before-show",
+    "props": {
+        "GroupByBoxVisible": false,
+        "AllowEdit": false,
+        "Columns": [
+            { "Caption": "Alpha", "Width": 1500, "Format": "0.00" },
+            { "Caption": "Beta", "Width": 1500, "Format": "#,##0" }
+        ]
+    },
+    "unbound": {
+        "rows": [
+            [ 1.5, 1234 ],
+            [ 2, 5678 ],
+            [ "abc", "" ]
+        ]
+    }
+}

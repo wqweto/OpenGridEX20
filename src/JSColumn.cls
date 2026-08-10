@@ -528,6 +528,9 @@ Private Sub Class_Initialize()
     m_bVisible = True
     m_bAllowSizing = True
     m_bSelectable = True
+    '--- probed: every column in the recorded corpus carries it True, which is
+    '--- what the docs call the default -- a value list replaces unless told not to
+    m_bReplaceValues = True
     m_bCardCaption = False
     m_bShowCaptionInCardView = True
     m_eEditType = jgexEditNone

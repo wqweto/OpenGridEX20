@@ -371,7 +371,13 @@ Private Function pvFormatEvent(Info As EventInfo) As String
             If LenB(sParams) <> 0 Then
                 sParams = sParams & ", "
             End If
-            sParams = sParams & Info.EventParameters(lIdx).Name & "=" & C2Str(vValue)
+            '--- Null spelled out: C2Str would render it as the empty string,
+            '--- and what NullBehavior stores is exactly this distinction
+            If IsNull(vValue) Then
+                sParams = sParams & Info.EventParameters(lIdx).Name & "=Null"
+            Else
+                sParams = sParams & Info.EventParameters(lIdx).Name & "=" & C2Str(vValue)
+            End If
         End If
     Next
     pvFormatEvent = Info.Name & "(" & sParams & ")"
