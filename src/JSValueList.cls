@@ -41,7 +41,7 @@ Public Property Get ItemByValue(ByVal Value As Variant) As JSValueItem
 Attribute ItemByValue.VB_Description = "Returns a specific JSValueItem of the JSValueList."
     Dim lIdx            As Long
 
-    lIdx = pvFindByValue(Value)
+    lIdx = pvFindItem(Value)
     If lIdx > 0 Then
         Set ItemByValue = m_cItems.Item(lIdx)
     End If
@@ -88,21 +88,21 @@ End Sub
 Public Sub Remove(ByVal Index As Long)
 Attribute Remove.VB_Description = "Removes a specific JSValueItem from the JSValueList."
     m_cItems.Remove Index
-    pvReindex
+    pvReindexItems
 End Sub
 
 Public Sub RemoveItemByValue(ByVal Value As Variant)
 Attribute RemoveItemByValue.VB_Description = "Removes a specific JSValueItem from the JSValueList."
     Dim lIdx            As Long
 
-    lIdx = pvFindByValue(Value)
+    lIdx = pvFindItem(Value)
     If lIdx > 0 Then
         m_cItems.Remove lIdx
-        pvReindex
+        pvReindexItems
     End If
 End Sub
 
-Private Function pvFindByValue(Value As Variant) As Long
+Private Function pvFindItem(Value As Variant) As Long
     Dim lIdx            As Long
     Dim oItem           As JSValueItem
     Dim vItem           As Variant
@@ -117,14 +117,14 @@ Private Function pvFindByValue(Value As Variant) As Long
         vItem = oItem.Value
         If Not IsObject(vItem) And Not IsArray(vItem) And Not IsNull(vItem) Then
             If vItem = Value Then
-                pvFindByValue = lIdx
+                pvFindItem = lIdx
                 Exit For
             End If
         End If
     Next
 End Function
 
-Private Sub pvReindex()
+Private Sub pvReindexItems()
     Dim lIdx            As Long
     Dim oItem           As JSValueItem
 

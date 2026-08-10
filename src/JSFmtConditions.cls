@@ -110,7 +110,7 @@ End Function
 Public Sub Remove(ByVal Index As Variant)
 Attribute Remove.VB_Description = "Removes a specific member from the JSFmtConditions collection."
     m_cItems.Remove Index
-    pvReindex
+    pvReindexItems
 End Sub
 
 Public Sub Clear()
@@ -118,7 +118,7 @@ Attribute Clear.VB_Description = "Removes all objects in a collection."
     Set m_cItems = New Collection
 End Sub
 
-Private Sub pvReindex()
+Private Sub pvReindexItems()
     Dim lIdx            As Long
     Dim oItem           As JSFmtCondition
 

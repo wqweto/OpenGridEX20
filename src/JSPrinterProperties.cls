@@ -382,8 +382,8 @@ End Sub
 ' Methods
 '=========================================================================
 
-Private Function pvDefaultFont() As Font
-    Set pvDefaultFont = NewStdFont()
+Private Function pvCreateDefaultFont() As Font
+    Set pvCreateDefaultFont = NewStdFont()
 End Function
 
 '=========================================================================

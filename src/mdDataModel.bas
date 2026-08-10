@@ -12,7 +12,7 @@ Attribute VB_Name = "mdDataModel"
 '
 ' The one thing the caller must do between reading the sort keys and
 ' projecting is fill uRowSet.Key -- that is the only step needing a cell
-' value, and it is why DataProject cannot simply be handed the control
+' value, and it is why DataProjectRows cannot simply be handed the control
 '
 ' A SQL model uses none of this: it answers RowCount, the projection and
 ' the aggregates from ORDER BY, GROUP BY and COUNT(*) instead
@@ -93,8 +93,8 @@ End Sub
 ' Functions
 '=========================================================================
 
-Public Sub DataInitFetch(uFetch As UcsFetchCache, oCtl As GridEX)
-    Const FUNC_NAME     As String = "DataInitFetch"
+Public Sub DataInitFetchCache(uFetch As UcsFetchCache, oCtl As GridEX)
+    Const FUNC_NAME     As String = "DataInitFetchCache"
     Dim oCol            As JSColumn
 
     On Error GoTo EH
@@ -242,8 +242,8 @@ End Sub
 
 '--- everything from the seeded order to the finished projection. The caller
 '--- has filled Key by now, or has no sort keys at all
-Public Sub DataProject(uRowSet As UcsRowSet)
-    Const FUNC_NAME     As String = "DataProject"
+Public Sub DataProjectRows(uRowSet As UcsRowSet)
+    Const FUNC_NAME     As String = "DataProjectRows"
     Dim lIdx            As Long
     Dim aTemp()         As Long
 
@@ -267,7 +267,7 @@ Public Sub DataProject(uRowSet As UcsRowSet)
             .OrderCount = .ItemCount
             If .SortKeyCount > 0 Then
                 ReDim aTemp(1 To .ItemCount) As Long
-                pvMergeSort uRowSet, .Order, aTemp, 1, .ItemCount
+                pvMergeSortRows uRowSet, .Order, aTemp, 1, .ItemCount
             End If
             If .GroupColCount > 0 Then
                 pvBuildGroupRows uRowSet
@@ -279,7 +279,7 @@ Public Sub DataProject(uRowSet As UcsRowSet)
             Erase .Key
         End If
     End With
-    DataBuildVisible uRowSet
+    DataBuildVisibleRows uRowSet
     DataWritePositions uRowSet
     Exit Sub
 EH:
@@ -288,8 +288,8 @@ End Sub
 
 '--- an expand or a collapse reprojects with these two and never re-sorts:
 '--- the order underneath stays exactly as it was
-Public Sub DataBuildVisible(uRowSet As UcsRowSet)
-    Const FUNC_NAME     As String = "DataBuildVisible"
+Public Sub DataBuildVisibleRows(uRowSet As UcsRowSet)
+    Const FUNC_NAME     As String = "DataBuildVisibleRows"
     Dim lIdx            As Long
     Dim lPos            As Long
     Dim lHidden         As Long
@@ -393,14 +393,14 @@ End Sub
 '--- instead: a row index the caller worked out from a stale count is a
 '--- question with no answer rather than a fault, and the paint path asks it
 '--- often enough that raising there costs more than it says
-Public Function DataRowBookmark(uState As UcsDataState, ByVal lRowIndex As Long) As Variant
-    Const FUNC_NAME     As String = "DataRowBookmark"
+Public Function DataGetRowBookmark(uState As UcsDataState, ByVal lRowIndex As Long) As Variant
+    Const FUNC_NAME     As String = "DataGetRowBookmark"
 
     On Error GoTo EH
     If lRowIndex < 1 Or lRowIndex > uState.ItemCount Then
         Exit Function
     End If
-    AssignVariant DataRowBookmark, uState.Bookmark(lRowIndex)
+    AssignVariant DataGetRowBookmark, uState.Bookmark(lRowIndex)
     Exit Function
 EH:
     RaiseError FUNC_NAME
@@ -422,14 +422,14 @@ EH:
     RaiseError FUNC_NAME
 End Sub
 
-Public Function DataRowExpanded(uRowSet As UcsRowSet, ByVal lRowPosition As Long) As Boolean
-    Const FUNC_NAME     As String = "DataRowExpanded"
+Public Function DataGetRowExpanded(uRowSet As UcsRowSet, ByVal lRowPosition As Long) As Boolean
+    Const FUNC_NAME     As String = "DataGetRowExpanded"
     Dim lRowIndex       As Long
 
     On Error GoTo EH
-    lRowIndex = DataRecordIndexAt(uRowSet, lRowPosition)
+    lRowIndex = DataGetRecordIndex(uRowSet, lRowPosition)
     If lRowIndex < 0 Then
-        DataRowExpanded = Not uRowSet.GroupRow(-lRowIndex).Collapsed
+        DataGetRowExpanded = Not uRowSet.GroupRow(-lRowIndex).Collapsed
     End If
     Exit Function
 EH:
@@ -441,7 +441,7 @@ Public Sub DataSetRowExpanded(uRowSet As UcsRowSet, ByVal lRowPosition As Long, 
     Dim lRowIndex       As Long
 
     On Error GoTo EH
-    lRowIndex = DataRecordIndexAt(uRowSet, lRowPosition)
+    lRowIndex = DataGetRecordIndex(uRowSet, lRowPosition)
     If lRowIndex < 0 Then
         '--- a footer closes a group rather than opening one, so it has no
         '--- expand box and nothing to toggle. Nested rather than And-ed, since
@@ -452,7 +452,7 @@ Public Sub DataSetRowExpanded(uRowSet As UcsRowSet, ByVal lRowPosition As Long, 
                 '--- an expand or a collapse only reprojects: the sort order
                 '--- underneath stays exactly as it was
                 uRowSet.GroupRow(-lRowIndex).Collapsed = Not bValue
-                DataBuildVisible uRowSet
+                DataBuildVisibleRows uRowSet
                 DataWritePositions uRowSet
             End If
         End If
@@ -472,7 +472,7 @@ Public Sub DataSetAllExpanded(uRowSet As UcsRowSet, ByVal bValue As Boolean)
     Next
     '--- reprojects without re-sorting, so Version stays put and a held group
     '--- wrapper survives a collapse -- which is what the original does
-    DataBuildVisible uRowSet
+    DataBuildVisibleRows uRowSet
     DataWritePositions uRowSet
     Exit Sub
 EH:
@@ -501,10 +501,10 @@ Public Function DataGetRowIndex(uState As UcsDataState, vBookmark As Variant) As
     Dim vRetVal         As Variant
 
     On Error GoTo EH
-    If DataIsBlank(vBookmark) Then
+    If DataIsBlankValue(vBookmark) Then
         Exit Function
     End If
-    sKey = DataBookmarkKey(vBookmark)
+    sKey = DataGetBookmarkKey(vBookmark)
     If LenB(sKey) = 0 Then
         Exit Function
     End If
@@ -594,8 +594,8 @@ Public Sub DataEnsureBookmarks(uState As UcsDataState)
     '--- the original resolves to: with "bk-1" on records 1 and 3, all of
     '--- MoveToBookmark, AddBookmark and RefreshRowBookmark answer 1
     For lIdx = 1 To uState.ItemCount
-        If Not DataIsBlank(uState.Bookmark(lIdx)) Then
-            sKey = DataBookmarkKey(uState.Bookmark(lIdx))
+        If Not DataIsBlankValue(uState.Bookmark(lIdx)) Then
+            sKey = DataGetBookmarkKey(uState.Bookmark(lIdx))
             If LenB(sKey) <> 0 Then
                 If Not SearchCollection(uState.Bookmarks, sKey) Then
                     uState.Bookmarks.Add lIdx, sKey
@@ -664,13 +664,13 @@ EH:
     RaiseError FUNC_NAME
 End Sub
 
-Public Function DataRecordIndexAt(uRowSet As UcsRowSet, ByVal lRowPosition As Long) As Long
-    Const FUNC_NAME     As String = "DataRecordIndexAt"
+Public Function DataGetRecordIndex(uRowSet As UcsRowSet, ByVal lRowPosition As Long) As Long
+    Const FUNC_NAME     As String = "DataGetRecordIndex"
 
     On Error GoTo EH
     With uRowSet
         If lRowPosition >= 1 And lRowPosition <= .VisibleCount Then
-            DataRecordIndexAt = .Order(.Visible(lRowPosition))
+            DataGetRecordIndex = .Order(.Visible(lRowPosition))
         End If
     End With
     Exit Function
@@ -678,15 +678,15 @@ EH:
     RaiseError FUNC_NAME
 End Function
 
-Public Function DataIsBlank(vValue As Variant) As Boolean
-    Const FUNC_NAME     As String = "DataIsBlank"
+Public Function DataIsBlankValue(vValue As Variant) As Boolean
+    Const FUNC_NAME     As String = "DataIsBlankValue"
 
     On Error GoTo EH
     Select Case VarType(vValue)
     Case vbEmpty, vbNull, vbError
-        DataIsBlank = True
+        DataIsBlankValue = True
     Case vbString
-        DataIsBlank = (LenB(vValue) = 0)
+        DataIsBlankValue = (LenB(vValue) = 0)
     End Select
     Exit Function
 EH:
@@ -700,8 +700,8 @@ Public Function DataCompareValues(vValue1 As Variant, vValue2 As Variant, ByVal 
 
     On Error GoTo EH
     '--- blanks sort first, whatever the type
-    bBlank1 = DataIsBlank(vValue1)
-    bBlank2 = DataIsBlank(vValue2)
+    bBlank1 = DataIsBlankValue(vValue1)
+    bBlank2 = DataIsBlankValue(vValue2)
     If bBlank1 Or bBlank2 Then
         DataCompareValues = IIf(bBlank1, 0, 1) - IIf(bBlank2, 0, 1)
         Exit Function
@@ -719,8 +719,8 @@ EH:
     RaiseError FUNC_NAME
 End Function
 
-Public Function DataBookmarkKey(vValue As Variant) As String
-    Const FUNC_NAME     As String = "DataBookmarkKey"
+Public Function DataGetBookmarkKey(vValue As Variant) As String
+    Const FUNC_NAME     As String = "DataGetBookmarkKey"
     Dim baData()        As Byte
 
     On Error GoTo EH
@@ -733,13 +733,13 @@ Public Function DataBookmarkKey(vValue As Variant) As String
     '--- at all, a question with no answer rather than a type mismatch
     If VarType(vValue) = vbArray + vbByte Then
         baData = vValue
-        DataBookmarkKey = "B" & ToHex(baData)
+        DataGetBookmarkKey = "B" & ToHex(baData)
     ElseIf IsArray(vValue) Then
         Exit Function
     ElseIf VarType(vValue) = vbString Then
-        DataBookmarkKey = "S" & vValue
+        DataGetBookmarkKey = "S" & vValue
     Else
-        DataBookmarkKey = "#" & C2Dbl(vValue)
+        DataGetBookmarkKey = "#" & C2Dbl(vValue)
     End If
     Exit Function
 EH:
@@ -749,8 +749,8 @@ End Function
 '--- one walk over values the caller has already collected for a group's
 '--- records serves every function: the counts take any value, the rest only
 '--- the ones that are numbers
-Public Function DataAggregate(aValues() As Variant, ByVal lValueCount As Long, ByVal eFunc As jgexAggregateFunctionConstants, ByVal eSortType As jgexSortTypeConstants) As Variant
-    Const FUNC_NAME     As String = "DataAggregate"
+Public Function DataAggregateValues(aValues() As Variant, ByVal lValueCount As Long, ByVal eFunc As jgexAggregateFunctionConstants, ByVal eSortType As jgexSortTypeConstants) As Variant
+    Const FUNC_NAME     As String = "DataAggregateValues"
     Dim lIdx            As Long
     Dim lCount          As Long
     Dim dblSum          As Double
@@ -761,11 +761,11 @@ Public Function DataAggregate(aValues() As Variant, ByVal lValueCount As Long, B
 
     On Error GoTo EH
     If eFunc = jgexCount Then
-        DataAggregate = lValueCount
+        DataAggregateValues = lValueCount
         Exit Function
     End If
     For lIdx = 1 To lValueCount
-        If Not DataIsBlank(aValues(lIdx)) And Not IsObject(aValues(lIdx)) Then
+        If Not DataIsBlankValue(aValues(lIdx)) And Not IsObject(aValues(lIdx)) Then
             lCount = lCount + 1
             If IsEmpty(vMin) Then
                 vMin = aValues(lIdx)
@@ -787,25 +787,25 @@ Public Function DataAggregate(aValues() As Variant, ByVal lValueCount As Long, B
     Next
     Select Case eFunc
     Case jgexValueCount
-        DataAggregate = lCount
+        DataAggregateValues = lCount
     Case jgexSum
-        DataAggregate = dblSum
+        DataAggregateValues = dblSum
     Case jgexAvg
         If lCount > 0 Then
-            DataAggregate = dblSum / lCount
+            DataAggregateValues = dblSum / lCount
         End If
     Case jgexMin
-        DataAggregate = vMin
+        DataAggregateValues = vMin
     Case jgexMax
-        DataAggregate = vMax
+        DataAggregateValues = vMax
     Case jgexStdDev
         '--- population deviation over the values that were numbers
         If lCount > 1 Then
             dblValue = (dblSquares - dblSum * dblSum / lCount) / lCount
             If dblValue > 0 Then
-                DataAggregate = Sqr(dblValue)
+                DataAggregateValues = Sqr(dblValue)
             Else
-                DataAggregate = 0
+                DataAggregateValues = 0
             End If
         End If
     End Select
@@ -814,7 +814,7 @@ EH:
     RaiseError FUNC_NAME
 End Function
 
-Private Sub pvMergeSort(uRowSet As UcsRowSet, aIdx() As Long, aTemp() As Long, ByVal lFirst As Long, ByVal lLast As Long)
+Private Sub pvMergeSortRows(uRowSet As UcsRowSet, aIdx() As Long, aTemp() As Long, ByVal lFirst As Long, ByVal lLast As Long)
     Dim lMid            As Long
     Dim lLeft           As Long
     Dim lRight          As Long
@@ -824,8 +824,8 @@ Private Sub pvMergeSort(uRowSet As UcsRowSet, aIdx() As Long, aTemp() As Long, B
         Exit Sub
     End If
     lMid = (lFirst + lLast) \ 2
-    pvMergeSort uRowSet, aIdx, aTemp, lFirst, lMid
-    pvMergeSort uRowSet, aIdx, aTemp, lMid + 1, lLast
+    pvMergeSortRows uRowSet, aIdx, aTemp, lFirst, lMid
+    pvMergeSortRows uRowSet, aIdx, aTemp, lMid + 1, lLast
     lLeft = lFirst
     lRight = lMid + 1
     lPos = lFirst

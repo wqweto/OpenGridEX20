@@ -106,8 +106,8 @@ Attribute Remove.VB_Description = "Removes a specific JSColumn from the collecti
             oItem.frColPosition = oItem.ColPosition - 1
         End If
     Next
-    pvReindex
-    pvNotify
+    pvReindexItems
+    pvNotifyOwner
 End Sub
 
 Public Sub Clear()
@@ -118,10 +118,10 @@ Attribute Clear.VB_Description = "Removes all objects in a collection."
         oItem.frTerminate
     Next
     Set m_cItems = New Collection
-    pvNotify
+    pvNotifyOwner
 End Sub
 
-Private Sub pvReindex()
+Private Sub pvReindexItems()
     Dim lIdx            As Long
     Dim oItem           As JSColumn
 
@@ -131,7 +131,7 @@ Private Sub pvReindex()
     Next
 End Sub
 
-Private Sub pvNotify()
+Private Sub pvNotifyOwner()
     If Not m_pOwner Is Nothing Then
         m_pOwner.frNotifySortChanged
     End If

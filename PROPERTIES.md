@@ -1,4 +1,4 @@
-﻿# GridEX property inventory
+# GridEX property inventory
 
 Every public property of the control and its object model -- **288** of them
 across `GridEX`, `GEXPreview` and the 23 `JS*` classes -- read out of the
@@ -49,7 +49,7 @@ or more distinct values** and every one is pixel-identical to the original. That
 bar matters: a property can be correctly wired into the paint path and still be
 completely unproven, either because no scenario sets it or because the scenario
 that sets it cannot render the affected element. `GridLinesColor` is the worked
-example -- consumed by `pvLine` since M3c and set to `0x0000FF` by
+example -- consumed by `pvDrawLine` since M3c and set to `0x0000FF` by
 `002-gridlines-dots-colors`, yet that scenario declares **no rows**, so no data
 gridline is ever drawn and the golden's full colour histogram
 (`808080`, `F0F0F0`, `A0A0A0`, `FFFFFF`, `696969`, `000000`) holds no blue pixel.

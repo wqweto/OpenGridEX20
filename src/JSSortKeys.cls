@@ -62,8 +62,8 @@ Attribute Add.VB_Description = "Adds a JSSortKey object to the collection and re
     Else
         m_cItems.Add Add
     End If
-    pvReindex
-    pvNotify
+    pvReindexItems
+    pvNotifyOwner
 End Function
 
 Public Sub Remove(ByVal Index As Integer)
@@ -73,8 +73,8 @@ Attribute Remove.VB_Description = "Removes a specific member from the collection
     Set oItem = m_cItems.Item(Index)
     oItem.frTerminate
     m_cItems.Remove Index
-    pvReindex
-    pvNotify
+    pvReindexItems
+    pvNotifyOwner
 End Sub
 
 Public Sub Clear()
@@ -87,7 +87,7 @@ Attribute Clear.VB_Description = "Removes all objects in a collection."
         oItem.frTerminate
     Next
     Set m_cItems = New Collection
-    pvNotify
+    pvNotifyOwner
 End Sub
 
 '=========================================================================
@@ -109,13 +109,13 @@ Friend Sub frTerminate()
     AssignWeakRef m_pOwner, Nothing
 End Sub
 
-Private Sub pvNotify()
+Private Sub pvNotifyOwner()
     If Not m_pOwner Is Nothing Then
         m_pOwner.frNotifySortChanged
     End If
 End Sub
 
-Private Sub pvReindex()
+Private Sub pvReindexItems()
     Dim lIdx            As Long
     Dim oItem           As JSSortKey
 

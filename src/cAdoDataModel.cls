@@ -100,7 +100,7 @@ End Sub
 
 '--- storage: this half is what makes the model an ADO one
 
-Private Sub pvBind()
+Private Sub pvBindRecordset()
     Dim lIdx            As Long
 
     Set m_oRs = m_pOwner.ADORecordset
@@ -133,7 +133,7 @@ End Sub
 Private Sub pvBindFields()
     Dim oCol            As JSColumn
 
-    DataInitFetch m_uFetch, m_pOwner
+    DataInitFetchCache m_uFetch, m_pOwner
     '--- DataField is the whole of the binding: a column that names no field
     '--- is not bound to the recordset at all and stays Nothing here, which
     '--- reads as Empty. There is deliberately no fall back to the field in
@@ -169,7 +169,7 @@ Private Function pvFindField(sName As String) As Object
     Next
 End Function
 
-Private Sub pvSeek(ByVal lRowIndex As Long)
+Private Sub pvSeekRecord(ByVal lRowIndex As Long)
     If lRowIndex = m_lCurRowIndex Then
         Exit Sub
     End If
@@ -180,27 +180,27 @@ Private Sub pvSeek(ByVal lRowIndex As Long)
     m_lCurRowIndex = lRowIndex
 End Sub
 
-Private Function pvCellValue(ByVal lRowIndex As Long, ByVal lColIndex As Long) As Variant
+Private Function pvGetCellValue(ByVal lRowIndex As Long, ByVal lColIndex As Long) As Variant
     If lColIndex < 1 Or lColIndex > m_lFieldCount Then
         Exit Function
     End If
     '--- FetchData outranks any DataField the column carries, so it is asked
     '--- first and the recordset is never consulted for such a column
     If m_uFetch.IsFetchData(lColIndex) Then
-        AssignVariant pvCellValue, DataFetchValue(m_uState, m_uFetch, m_pOwner, lRowIndex, lColIndex)
+        AssignVariant pvGetCellValue, DataFetchValue(m_uState, m_uFetch, m_pOwner, lRowIndex, lColIndex)
         Exit Function
     End If
     If m_aField(lColIndex) Is Nothing Then
         Exit Function
     End If
-    pvSeek lRowIndex
+    pvSeekRecord lRowIndex
     If m_lCurRowIndex <> lRowIndex Then
         Exit Function
     End If
     '--- read straight off the cached Field: nothing is copied into the
     '--- record, the recordset is the cache, and the Field already points at
     '--- whichever record the seek above left the cursor on
-    AssignVariant pvCellValue, m_aField(lColIndex).Value
+    AssignVariant pvGetCellValue, m_aField(lColIndex).Value
 End Function
 
 Private Sub pvWriteFields(oData As JSRowData)
@@ -219,8 +219,8 @@ Private Sub pvWriteFields(oData As JSRowData)
     Next
 End Sub
 
-Private Sub pvResyncCurrent()
-    Const FUNC_NAME     As String = "pvResyncCurrent"
+Private Sub pvResyncCurrentRow()
+    Const FUNC_NAME     As String = "pvResyncCurrentRow"
 
     '--- a provider that cannot re-read the current record refuses Resync,
     '--- and the refresh degrades to whatever the cursor already holds
@@ -262,7 +262,7 @@ Private Sub pvEnsureOrder()
             For lIdx = 1 To m_uRowSet.SortKeyCount
                 lCol = m_uRowSet.SortCol(lIdx)
                 If lCol > 0 Then
-                    vValue = pvCellValue(lRow, lCol)
+                    vValue = pvGetCellValue(lRow, lCol)
                     '--- an object in a cell has no ordering, so it sorts blank
                     If Not IsObject(vValue) Then
                         m_uRowSet.Key(lIdx, lRow) = vValue
@@ -273,10 +273,10 @@ Private Sub pvEnsureOrder()
         Loop
         m_lCurRowIndex = 0
     End If
-    DataProject m_uRowSet
+    DataProjectRows m_uRowSet
 End Sub
 
-Private Function pvGroupCaption(ByVal lGroupIndex As Long, bPrefixed As Boolean) As String
+Private Function pvGetGroupCaption(ByVal lGroupIndex As Long, bPrefixed As Boolean) As String
     Dim oCol            As JSColumn
     Dim vValue          As Variant
     Dim sText           As String
@@ -290,8 +290,8 @@ Private Function pvGroupCaption(ByVal lGroupIndex As Long, bPrefixed As Boolean)
         Exit Function
     End If
     Set oCol = m_pOwner.Columns.Item(lColIndex)
-    vValue = pvCellValue(m_uRowSet.GroupRow(lGroupIndex).FirstRowIndex, lColIndex)
-    If Not DataIsBlank(vValue) And Not IsObject(vValue) And Not IsArray(vValue) Then
+    vValue = pvGetCellValue(m_uRowSet.GroupRow(lGroupIndex).FirstRowIndex, lColIndex)
+    If Not DataIsBlankValue(vValue) And Not IsObject(vValue) And Not IsArray(vValue) Then
         If LenB(oCol.GroupFormat) <> 0 Then
             sText = Format$(vValue, oCol.GroupFormat)
         Else
@@ -305,10 +305,10 @@ Private Function pvGroupCaption(ByVal lGroupIndex As Long, bPrefixed As Boolean)
     If bPrefixed Then
         sText = oCol.GroupPrefix & " " & sText
     End If
-    pvGroupCaption = sText
+    pvGetGroupCaption = sText
 End Function
 
-Private Function pvGroupValues(ByVal lGroupIndex As Long, ByVal lColIndex As Long, aValues() As Variant) As Long
+Private Function pvBuildGroupValues(ByVal lGroupIndex As Long, ByVal lColIndex As Long, aValues() As Variant) As Long
     Dim lIdx            As Long
     Dim lCount          As Long
 
@@ -321,12 +321,12 @@ Private Function pvGroupValues(ByVal lGroupIndex As Long, ByVal lColIndex As Lon
             If lIdx >= 1 And lIdx <= m_uRowSet.OrderCount Then
                 If m_uRowSet.Order(lIdx) > 0 Then
                     lCount = lCount + 1
-                    AssignVariant aValues(lCount), pvCellValue(m_uRowSet.Order(lIdx), lColIndex)
+                    AssignVariant aValues(lCount), pvGetCellValue(m_uRowSet.Order(lIdx), lColIndex)
                 End If
             End If
         Next
     End With
-    pvGroupValues = lCount
+    pvBuildGroupValues = lCount
 End Function
 
 '--- bookmarks
@@ -371,7 +371,7 @@ Private Property Get IDataModel_RowIndex(ByVal lRowPosition As Long) As Long
 
     On Error GoTo EH
     pvEnsureOrder
-    IDataModel_RowIndex = DataRecordIndexAt(m_uRowSet, lRowPosition)
+    IDataModel_RowIndex = DataGetRecordIndex(m_uRowSet, lRowPosition)
     Exit Property
 EH:
     RaiseError FUNC_NAME
@@ -381,7 +381,7 @@ Private Property Get IDataModel_RowBookmark(ByVal lRowIndex As Long) As Variant
     Const FUNC_NAME     As String = "IDataModel_RowBookmark"
 
     On Error GoTo EH
-    AssignVariant IDataModel_RowBookmark, DataRowBookmark(m_uState, lRowIndex)
+    AssignVariant IDataModel_RowBookmark, DataGetRowBookmark(m_uState, lRowIndex)
     Exit Property
 EH:
     RaiseError FUNC_NAME
@@ -402,7 +402,7 @@ Private Property Get IDataModel_RowExpanded(ByVal lRowPosition As Long) As Boole
 
     On Error GoTo EH
     pvEnsureOrder
-    IDataModel_RowExpanded = DataRowExpanded(m_uRowSet, lRowPosition)
+    IDataModel_RowExpanded = DataGetRowExpanded(m_uRowSet, lRowPosition)
     Exit Property
 EH:
     RaiseError FUNC_NAME
@@ -471,8 +471,8 @@ Private Sub IDataModel_RefreshRowIndex(ByVal lRowIndex As Long)
     '--- the recordset is the cache, so there is nothing of ours to drop --
     '--- the record just has to be re-read from the source
     If lRowIndex >= 1 And lRowIndex <= m_uState.ItemCount Then
-        pvSeek lRowIndex
-        pvResyncCurrent
+        pvSeekRecord lRowIndex
+        pvResyncCurrentRow
         m_lCurRowIndex = 0
         '--- only that record's fetch columns: the rest of the cache is
         '--- still good and refetching it would be gratuitous
@@ -495,7 +495,7 @@ Private Sub IDataModel_Refresh()
     On Error GoTo EH
     '--- a full refresh rebinds: the recordset may be a different object, and
     '--- its order is what defines RowIndex
-    pvBind
+    pvBindRecordset
     m_uState.OrderDirty = True
     m_uState.BookmarksDirty = True
     Exit Sub
@@ -520,14 +520,14 @@ Private Function IDataModel_GetRowData(ByVal lRowPosition As Long) As JSRowData
     lColCount = m_pOwner.Columns.Count
     Set oData = New JSRowData
     oData.frReset lColCount
-    lRowIndex = DataRecordIndexAt(m_uRowSet, lRowPosition)
+    lRowIndex = DataGetRecordIndex(m_uRowSet, lRowPosition)
     If lRowIndex > 0 Then
         oData.frInitModel Me, lRowIndex, jgexRowTypeRecord, 0
         oData.frRowBookmark = m_uState.Bookmark(lRowIndex)
-        '--- one seek for the whole row: pvCellValue leaves the cursor where
+        '--- one seek for the whole row: pvGetCellValue leaves the cursor where
         '--- it put it, so the remaining columns cost a property call each
         For lIdx = 1 To lColCount
-            oData.frSetValue lIdx, pvCellValue(lRowIndex, lIdx)
+            oData.frSetValue lIdx, pvGetCellValue(lRowIndex, lIdx)
             If lIdx <= m_uFetch.ColCount Then
                 If m_uFetch.IsFetchIcon(lIdx) Then
                     oData.IconIndex(lIdx) = m_pOwner.frRaiseFetchIcon(lRowIndex, lIdx, m_uState.Bookmark(lRowIndex))
@@ -539,7 +539,7 @@ Private Function IDataModel_GetRowData(ByVal lRowPosition As Long) As JSRowData
             oData.frInitModel Me, lRowIndex, _
                 IIf(.Footer, jgexRowTypeGroupFooter, jgexRowTypeGroupHeader), .Level
         End With
-        oData.GroupCaption = pvGroupCaption(-lRowIndex, bPrefixed)
+        oData.GroupCaption = pvGetGroupCaption(-lRowIndex, bPrefixed)
         oData.frGroupPrefixed = bPrefixed
         '--- a totals footer carries its columns' aggregates as the cell
         '--- values, so painting one is painting an ordinary row
@@ -548,8 +548,8 @@ Private Function IDataModel_GetRowData(ByVal lRowPosition As Long) As JSRowData
                 For Each oCol In m_pOwner.Columns
                     eFunc = oCol.AggregateFunction
                     If eFunc <> jgexAggregateNone Then
-                        lCount = pvGroupValues(-lRowIndex, oCol.Index, aValues)
-                        oData.frSetValue oCol.Index, DataAggregate(aValues, lCount, eFunc, oCol.SortType)
+                        lCount = pvBuildGroupValues(-lRowIndex, oCol.Index, aValues)
+                        oData.frSetValue oCol.Index, DataAggregateValues(aValues, lCount, eFunc, oCol.SortType)
                     End If
                 Next
             End If
@@ -589,7 +589,7 @@ Private Sub IDataModel_UpdateRowData(oData As JSRowData)
         m_uState.BookmarksDirty = True
         m_uState.OrderDirty = True
     ElseIf lRowIndex >= 1 And lRowIndex <= m_uState.ItemCount Then
-        pvSeek lRowIndex
+        pvSeekRecord lRowIndex
         pvWriteFields oData
         m_oRs.Update
         '--- the client may compute a fetch column off what just changed, so
@@ -620,7 +620,7 @@ Private Sub IDataModel_Delete(ByVal lRowPosition As Long)
     If lRowIndex <= 0 Then
         Exit Sub
     End If
-    pvSeek lRowIndex
+    pvSeekRecord lRowIndex
     m_oRs.Delete
     '--- records are indexed by RowIndex itself, so a delete closes the hole
     '--- and everything above it renumbers, as the original does
@@ -684,8 +684,8 @@ Private Function IDataModel_GetSubTotal(ByVal lRowIndex As Long, ByVal lColIndex
         If lColIndex >= 1 And lColIndex <= m_pOwner.Columns.Count Then
             eSortType = m_pOwner.Columns.Item(lColIndex).SortType
         End If
-        lCount = pvGroupValues(-lRowIndex, lColIndex, aValues)
-        IDataModel_GetSubTotal = DataAggregate(aValues, lCount, eFunc, eSortType)
+        lCount = pvBuildGroupValues(-lRowIndex, lColIndex, aValues)
+        IDataModel_GetSubTotal = DataAggregateValues(aValues, lCount, eFunc, eSortType)
     End If
     Exit Function
 EH:

@@ -1666,3 +1666,32 @@ vertical lines only. One capture showed three things.
   painted nothing; the bind now arms the buffer the way navigation does
 - `pvPaintNewRowDivider` stopped at the last column, leaving the band's
   right remainder undrawn past the block
+
+### Changed (procedures grouped by trade and named by what they do)
+
+- The private block of `GridEX.ctl` reorganized into twelve groups under
+  one-line headers -- painting, editing, input, navigation and selection,
+  the new row, columns under the mouse, grouping, data model, layout and
+  scrolling, hit testing, the record navigator, drawing primitives --
+  entry points first, helpers trailing; verified a pure move (the line
+  multiset differs by exactly the headers)
+- Procedure naming convention adopted and written into `CLAUDE.md`:
+  Verb+[Adj+]Noun, with `Get` for cheap values, `Count`/`Calc`/`Build`/
+  `Measure` where work happens, `Hit` for point lookups, `Handle` for
+  message reactions, `Track`/`End` for drag pairs, `Is`/`Has`/`Needs`/
+  `Uses` for predicates
+- 104 private procedures renamed in `GridEX.ctl` to match (787 call
+  sites): the `pvOn*` handlers became `pvHandle*`, the noun-only getters
+  gained their verbs, the `pvEdit*`/`pvBuffer*` noun-first families
+  flipped, the point lookups joined `pvHit*` -- and the long-standing
+  `pvBufferTermiante` typo died as `pvFreeBuffer`
+- 26 more across the models and `JS*` classes (`pvHarvest` ->
+  `pvHarvestRecord`, `pvReindex` -> `pvReindexItems`, `pvNotify` ->
+  `pvNotifyOwner`, `pvDefaultFont` -> `pvCreateDefaultFont` -- it
+  allocates), and nine `Data*` publics in `mdDataModel.bas`
+  (`DataProject` -> `DataProjectRows`, `DataAggregate` ->
+  `DataAggregateValues`, the noun-only getters -> `DataGet*`);
+  `mdIPAO.bas` and `mdModernSubclassing.bas` keep their upstream names
+- `ARCHITECTURE.md`/`PROPERTIES.md` references updated, including the
+  stale `pvBufferOpen`/`pvBufferClose` aliases and a `pvAggregate` that
+  had long since become the public `DataAggregateValues`

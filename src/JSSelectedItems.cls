@@ -65,7 +65,7 @@ Attribute Add.VB_Description = "Selects a row given its current position."
         Exit Sub
     End If
     lRowIndex = m_pOwner.RowIndex(RowPosition)
-    pvAdd m_pOwner.RowBookmark(lRowIndex), lRowIndex, RowPosition
+    pvAddItem m_pOwner.RowBookmark(lRowIndex), lRowIndex, RowPosition
 End Sub
 
 Public Sub AddBookmark(ByVal Bookmark As Variant)
@@ -77,7 +77,7 @@ Attribute AddBookmark.VB_Description = "Selects a row its bookmark."
     End If
     lRowIndex = m_pOwner.frGetRowIndex(Bookmark)
     If lRowIndex > 0 Then
-        pvAdd Bookmark, lRowIndex, m_pOwner.frGetRowPosition(lRowIndex)
+        pvAddItem Bookmark, lRowIndex, m_pOwner.frGetRowPosition(lRowIndex)
     End If
 End Sub
 
@@ -86,7 +86,7 @@ Attribute AddRowIndex.VB_Description = "Selects a row given its original row ind
     If m_pOwner Is Nothing Then
         Exit Sub
     End If
-    pvAdd m_pOwner.RowBookmark(RowIndex), RowIndex, m_pOwner.frGetRowPosition(RowIndex)
+    pvAddItem m_pOwner.RowBookmark(RowIndex), RowIndex, m_pOwner.frGetRowPosition(RowIndex)
 End Sub
 
 Public Sub Remove(ByVal Index As Long)
@@ -144,7 +144,7 @@ Attribute Clear.VB_Description = "Removes all selected rows in the collection."
 End Sub
 
 Friend Sub frAdd(ByVal RowPosition As Long, vBookmark As Variant, ByVal RowIndex As Long)
-    pvAdd vBookmark, RowIndex, RowPosition
+    pvAddItem vBookmark, RowIndex, RowPosition
 End Sub
 
 Friend Sub frInit(ByVal oCtl As GridEX)
@@ -155,7 +155,7 @@ Friend Sub frTerminate()
     AssignWeakRef m_pOwner, Nothing
 End Sub
 
-Private Sub pvAdd(vBookmark As Variant, ByVal lRowIndex As Long, ByVal lRowPosition As Long)
+Private Sub pvAddItem(vBookmark As Variant, ByVal lRowIndex As Long, ByVal lRowPosition As Long)
     Dim oItem           As JSSelectedItem
 
     Set oItem = New JSSelectedItem

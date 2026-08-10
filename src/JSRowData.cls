@@ -164,7 +164,7 @@ End Property
 Public Property Get RecordCount() As Long
 Attribute RecordCount.VB_Description = "Returns the number of records in a JSRowData object representing a group row."
     If Not m_pModel Is Nothing Then
-        pvCheckValid
+        pvCheckOwner
         RecordCount = m_pModel.GetRecordCount(m_lRowIndex)
     End If
 End Property
@@ -226,7 +226,7 @@ End Property
 Public Function GetBookmarks() As Variant
 Attribute GetBookmarks.VB_Description = "Returns an array of record bookmarks in a group row."
     If Not m_pModel Is Nothing Then
-        pvCheckValid
+        pvCheckOwner
         GetBookmarks = m_pModel.GetBookmarks(m_lRowIndex)
     End If
 End Function
@@ -234,7 +234,7 @@ End Function
 Public Function GetRowIndexes() As Variant
 Attribute GetRowIndexes.VB_Description = "Returns an array of row indexes in a group row."
     If Not m_pModel Is Nothing Then
-        pvCheckValid
+        pvCheckOwner
         GetRowIndexes = m_pModel.GetRowIndexes(m_lRowIndex)
     End If
 End Function
@@ -242,7 +242,7 @@ End Function
 Public Function GetSubTotal(ByVal ColIndex As Integer, ByVal AggregateFunction As jgexAggregateFunctionConstants) As Variant
 Attribute GetSubTotal.VB_Description = "Returns the aggregate function result of the set of values contained in a specified column on a group."
     If Not m_pModel Is Nothing Then
-        pvCheckValid
+        pvCheckOwner
         GetSubTotal = m_pModel.GetSubTotal(m_lRowIndex, ColIndex, AggregateFunction)
     End If
 End Function
@@ -345,7 +345,7 @@ End Sub
 ' Functions
 '=========================================================================
 
-Private Sub pvCheckValid()
+Private Sub pvCheckOwner()
     '--- only a group row: a record wrapper stays readable however stale the
     '--- projection has become, which is what the original does. A model that
     '--- leaves Version at 0 never mismatches and so never refuses

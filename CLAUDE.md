@@ -45,6 +45,7 @@
 - Order of procedures in module: public events/enums/types, API declares, member variables and private enums/types, properties, methods, event handlers, base class events (e.g. Class_Terminate)
 - Within properties/methods order by visibility: public, friend, private
 - Use `pv` prefix for private procedures and `fr` for friend ones
+- Name procedures Verb+[Adj+]Noun: `Get` for cheap values, `Count`/`Calc`/`Build`/`Measure` where work happens, `Hit` for point lookups, `Handle` for message reactions, `Track`/`End` for drag pairs, `Is`/`Has`/`Needs`/`Uses` for predicates
 - Use `lIdx`, `lJdx`, etc. instead of single-letter index variable `i`, `j`, etc.
 - Prefer `Long` to `Integer` i.e. don't use `Integer` indexers
 - ReDim uses explicit data-type i.e. `ReDim aName(0 To 100) As String`

@@ -141,11 +141,11 @@ the projection and the aggregates all come from `ORDER BY`, `GROUP BY` and
   order, the group rows, the visible map and the position write-back
 - `DataReadSortKeys` -- reads `Groups` then `SortKeys` off the control, group
   columns leading, since grouping sorts too
-- `DataProject` -- seed in RowIndex order, stable merge sort, emit group rows,
+- `DataProjectRows` -- seed in RowIndex order, stable merge sort, emit group rows,
   build the visible map, write positions
-- `DataBuildVisible` / `DataWritePositions` -- the collapse path on their own,
+- `DataBuildVisibleRows` / `DataWritePositions` -- the collapse path on their own,
   because expand/collapse **reprojects without re-sorting**
-- `DataCompareValues`, `DataIsBlank`, `DataBookmarkKey`, `DataAggregate`
+- `DataCompareValues`, `DataIsBlankValue`, `DataGetBookmarkKey`, `DataAggregateValues`
 
 The one step that cannot move is filling `uRowSet.Key`, because that is the
 only part of the pass that needs a cell value. Each implementation does it its
@@ -217,7 +217,7 @@ filled under. `RecordCount`, `GetSubTotal`, `GetBookmarks` and
 been rebuilt raises `vbObjectError + 129`, *"JSRowData object may have
 changed. The object is no longer valid."* -- the original's own number and
 message. Record wrappers never check, and go on reading the row they were
-filled with. `UcsRowSet.Version` is bumped by `DataProject` alone, so a
+filled with. `UcsRowSet.Version` is bumped by `DataProjectRows` alone, so a
 collapse leaves a held header working, which is what the original does.
 
 ### FetchData
@@ -254,7 +254,7 @@ from the original rather than assumed:
   the next read of RowIndex 3 carrying `"bk-4"`.
 - **type is part of identity, width is not.** Numeric widths resolve against
   each other, and `Boolean` and `Date` resolve against their numeric value, but
-  a string never matches a number. Hence `DataBookmarkKey`: `"S" & value` for
+  a string never matches a number. Hence `DataGetBookmarkKey`: `"S" & value` for
   strings, `"#" & C2Dbl(value)` for everything else, and the hex of the bytes
   for the byte-array bookmarks a client-side ADO cursor hands out.
 
@@ -293,9 +293,9 @@ current row's RowIndex -- the one address space a reprojection cannot move --
 and resolves it back through `GetRowPosition`.
 
 Knowing *when* to do that is what `Version` is for. The model bumps it in
-`DataProject` and nowhere else, so the control compares it on entry to the
+`DataProjectRows` and nowhere else, so the control compares it on entry to the
 paths that matter and remaps when it moves. A collapse is the exception: it
-reprojects through `DataBuildVisible`/`DataWritePositions` without re-sorting,
+reprojects through `DataBuildVisibleRows`/`DataWritePositions` without re-sorting,
 and deliberately leaves `Version` alone because a held group wrapper has to
 survive one. The collapse paths therefore remap directly rather than waiting
 for the version watch.
@@ -308,7 +308,7 @@ on whatever record it was on before the bind.
 
 **The control draws from the model.** `GridEX.ctl` owns no rows, no order, no
 group rows and no aggregates: it asks for a page of `JSRowData` and paints from
-that. The projection, the row storage, the sort, `pvAggregate` and all 26
+that. The projection, the row storage, the sort, `DataAggregateValues` and all 26
 `frRow*` accessors are gone, along with `JSRowData`'s view mode -- about 810
 lines out of the control.
 
@@ -360,14 +360,14 @@ band now lays its own background down as its first act.
 
 ### The buffer
 
-One bitmap carries the whole paint. `pvBufferOpen` allocates it as tall as the
+One bitmap carries the whole paint. `pvInitBuffer` allocates it as tall as the
 tallest band that will go through it -- the group-by box, the header strip, or a
-row plus the line it shares with the row above -- and `pvBufferClose` frees it
-once everything has been painted. Between them `pvBufferBand` puts it over the
-band about to be drawn and `pvBufferFlush` blits that band out. A client-sized
+row plus the line it shares with the row above -- and `pvFreeBuffer` frees it
+once everything has been painted. Between them `pvSetBufferBand` puts it over the
+band about to be drawn and `pvFlushBuffer` blits that band out. A client-sized
 bitmap held between paints is a lot of memory for a strip of rows; a band-sized
 one held for the length of one paint is not, and it saves a create/select/delete
-per row. `pvBufferOpen` hands back the caller's own DC if the allocation fails,
+per row. `pvInitBuffer` hands back the caller's own DC if the allocation fails,
 so failure degrades to painting direct rather than to not painting.
 
 Painted straight onto the window, a band shows every stage it goes through --
@@ -375,7 +375,7 @@ the fill, then what is drawn over it. That is what the eye reads as flicker, and
 it is why the unit is the band rather than the whole surface: the bitmap stays
 row-sized and a repaint that only dirties one strip only buffers one strip.
 
-`pvBufferBand` sets two things per band. `SetViewportOrgEx(0, -lTop)` keeps every
+`pvSetBufferBand` sets two things per band. `SetViewportOrgEx(0, -lTop)` keeps every
 painter addressing the client area, and a clip box the size of the band keeps
 what they draw inside it -- a rule the height of a row ends at that row's edges
 rather than running the length of the bitmap.
@@ -402,8 +402,8 @@ column rules over it. Both moved into the row, in the order they had, because a
 band that is blitted has to arrive finished. The rules still close over the
 cells, the horizontal rule and the marquee's dots; a per-row segment reproduces
 a block-long line because solid is phase-free, dotted stamps on absolute parity,
-and a dashed rule restarts its phase at every row top anyway -- `pvLine` anchors
-`pvStampedLine` there.
+and a dashed rule restarts its phase at every row top anyway -- `pvDrawLine` anchors
+`pvDrawStampedLine` there.
 
 What reaches outside a row is worth knowing, because each item is a pixel bug
 waiting to happen: a group row's opening rule lands on the row above (hence the

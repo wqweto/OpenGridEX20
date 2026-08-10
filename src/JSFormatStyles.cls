@@ -109,7 +109,7 @@ End Function
 ' Methods
 '=========================================================================
 
-Private Sub pvAddSystem(sName As String, ByVal clrBack As OLE_COLOR, ByVal clrFore As OLE_COLOR)
+Private Sub pvAddSystemStyles(sName As String, ByVal clrBack As OLE_COLOR, ByVal clrFore As OLE_COLOR)
     With Add(sName)
         .frIsSystem = True
         .BackColor = clrBack
@@ -126,10 +126,10 @@ Private Sub Class_Initialize()
     '--- built-in styles present on a fresh original control; protected
     '--- from Remove and preserved across Clear; creation order matches
     '--- the original (SelectedRow first)
-    pvAddSystem "SelectedRow", vbHighlight, vbHighlightText
-    pvAddSystem "Default", vbWindowBackground, vbWindowText
-    pvAddSystem "OddRow", &HBFFFFF, vbWindowText
-    pvAddSystem "EvenRow", &HC1D7B0, vbWindowText
-    pvAddSystem "RowGroup", vbButtonFace, vbButtonText
-    pvAddSystem "PreviewRow", vbWindowBackground, &HFF0000
+    pvAddSystemStyles "SelectedRow", vbHighlight, vbHighlightText
+    pvAddSystemStyles "Default", vbWindowBackground, vbWindowText
+    pvAddSystemStyles "OddRow", &HBFFFFF, vbWindowText
+    pvAddSystemStyles "EvenRow", &HC1D7B0, vbWindowText
+    pvAddSystemStyles "RowGroup", vbButtonFace, vbButtonText
+    pvAddSystemStyles "PreviewRow", vbWindowBackground, &HFF0000
 End Sub

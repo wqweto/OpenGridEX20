@@ -719,9 +719,9 @@ End Type
 ' Error handling
 '=========================================================================
 
-Private Sub RaiseError(sFunction As String)
-    PopRaiseError PushError, MODULE_NAME, sFunction
-End Sub
+'Private Sub RaiseError(sFunction As String)
+'    PopRaiseError PushError, MODULE_NAME, sFunction
+'End Sub
 
 Private Sub PrintError(sFunction As String)
     PopPrintError PushError, MODULE_NAME, sFunction
@@ -738,7 +738,7 @@ End Property
 
 Public Property Let FrozenColumns(ByVal nValue As Integer)
     m_lFrozenColumns = nValue
-    pvInvalidate
+    pvInvalidateGrid
 End Property
 
 Public Property Get RowHeight() As Long
@@ -748,7 +748,7 @@ End Property
 Public Property Let RowHeight(ByVal lValue As Long)
     m_lRowHeight = ToPixels(lValue)
     m_bRowHeightSet = True
-    pvInvalidate
+    pvInvalidateGrid
 End Property
 
 Public Property Get hWndEdit() As Long
@@ -786,7 +786,7 @@ End Property
 
 Public Property Let ForeColor(ByVal lValue As OLE_COLOR)
     m_clrForeColor = lValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get RowColorEven() As OLE_COLOR
@@ -796,7 +796,7 @@ End Property
 
 Public Property Let RowColorEven(ByVal lValue As OLE_COLOR)
     m_clrRowColorEven = lValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get RowColorOdd() As OLE_COLOR
@@ -806,7 +806,7 @@ End Property
 
 Public Property Let RowColorOdd(ByVal lValue As OLE_COLOR)
     m_clrRowColorOdd = lValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get RowCount() As Long
@@ -817,21 +817,21 @@ End Property
 
 Public Property Get RowSelected(ByVal RowPosition As Long) As Boolean
 Attribute RowSelected.VB_Description = "Returns/set whether a row is selected or not."
-    RowSelected = pvIsRowSelected(RowPosition)
+    RowSelected = pvIsSelectedRow(RowPosition)
 End Property
 
 Public Property Let RowSelected(ByVal RowPosition As Long, ByVal bValue As Boolean)
     If bValue Then
-        If Not pvIsRowSelected(RowPosition) Then
-            pvAddSel RowPosition
+        If Not pvIsSelectedRow(RowPosition) Then
+            pvSelectRow RowPosition
             RaiseEvent SelectionChange
-            pvInvalidate SkipScroll:=True
+            pvInvalidateGrid SkipScroll:=True
         End If
     Else
-        If pvIsRowSelected(RowPosition) Then
+        If pvIsSelectedRow(RowPosition) Then
             m_oSelectedItems.RemoveRowPosition RowPosition
             RaiseEvent SelectionChange
-            pvInvalidate SkipScroll:=True
+            pvInvalidateGrid SkipScroll:=True
         End If
     End If
 End Property
@@ -851,7 +851,7 @@ Public Property Let Col(ByVal nValue As Integer)
     Dim lMax            As Long
     Dim oCol            As JSColumn
 
-    lMax = pvVisibleColCount()
+    lMax = pvCountVisibleCols()
     If nValue > lMax Then
         nValue = lMax
     End If
@@ -859,7 +859,7 @@ Public Property Let Col(ByVal nValue As Integer)
         nValue = 1
     End If
     If nValue >= 1 Then
-        Set oCol = pvColByPosition(nValue)
+        Set oCol = pvGetColByPosition(nValue)
         If oCol Is Nothing Then
             nValue = 0
         ElseIf Not oCol.Selectable Then
@@ -867,10 +867,10 @@ Public Property Let Col(ByVal nValue As Integer)
         End If
     End If
     If m_lCol <> nValue Then
-        pvEditEnd
+        pvEndEdit
         lLastCol = m_lCol
         m_lCol = nValue
-        pvInvalidate SkipScroll:=True
+        pvInvalidateGrid SkipScroll:=True
         RaiseEvent RowColChange(m_lRow, lLastCol)
     End If
 End Property
@@ -882,7 +882,7 @@ End Property
 
 Public Property Let BackColorRowGroup(ByVal lValue As OLE_COLOR)
     m_clrBackColorRowGroup = lValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get Groups() As JSGroups
@@ -897,7 +897,7 @@ End Property
 
 Public Property Let RecordNavigator(ByVal bValue As Boolean)
     m_bRecordNavigator = bValue
-    pvInvalidate
+    pvInvalidateGrid
 End Property
 
 Public Property Get BorderStyle() As jgexBorderStyleConstants
@@ -921,7 +921,7 @@ End Property
 
 Public Property Let GroupByBoxVisible(ByVal bValue As Boolean)
     m_bGroupByBoxVisible = bValue
-    pvInvalidate
+    pvInvalidateGrid
 End Property
 
 Public Property Get BackColorGBBox() As OLE_COLOR
@@ -931,7 +931,7 @@ End Property
 
 Public Property Let BackColorGBBox(ByVal lValue As OLE_COLOR)
     m_clrBackColorGBBox = lValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get BackColor() As OLE_COLOR
@@ -941,7 +941,7 @@ End Property
 
 Public Property Let BackColor(ByVal lValue As OLE_COLOR)
     m_clrBackColor = lValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get ColumnHeaderHeight() As Long
@@ -951,7 +951,7 @@ End Property
 
 Public Property Let ColumnHeaderHeight(ByVal lValue As Long)
     m_lColumnHeaderHeight = ToPixels(lValue)
-    pvInvalidate
+    pvInvalidateGrid
 End Property
 
 Public Property Get ColumnHeaders() As Boolean
@@ -961,7 +961,7 @@ End Property
 
 Public Property Let ColumnHeaders(ByVal bValue As Boolean)
     m_bColumnHeaders = bValue
-    pvInvalidate
+    pvInvalidateGrid
 End Property
 
 Public Property Get BackColorHeader() As OLE_COLOR
@@ -971,7 +971,7 @@ End Property
 
 Public Property Let BackColorHeader(ByVal lValue As OLE_COLOR)
     m_clrBackColorHeader = lValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get MaskColor() As OLE_COLOR
@@ -1031,7 +1031,7 @@ End Property
 
 Public Property Let RowHeaders(ByVal bValue As Boolean)
     m_bRowHeaders = bValue
-    pvInvalidate
+    pvInvalidateGrid
 End Property
 
 Public Property Get AllowAddNew() As Boolean
@@ -1083,10 +1083,10 @@ Attribute LeftCol.VB_Description = "Returns/sets the left-most visible column."
 End Property
 
 Public Property Let LeftCol(ByVal nValue As Integer)
-    nValue = Clamp(nValue, 1, pvMaxLeftCol())
+    nValue = Clamp(nValue, 1, pvGetMaxLeftCol())
     If m_lLeftCol <> nValue Then
         m_lLeftCol = nValue
-        pvInvalidate
+        pvInvalidateGrid
         RaiseEvent LeftColChange
     End If
 End Property
@@ -1125,7 +1125,7 @@ Public Property Let FirstItem(ByVal lValue As Long)
     End If
     If m_lFirstItem <> lValue Then
         m_lFirstItem = lValue
-        pvInvalidate
+        pvInvalidateGrid
         RaiseEvent FirstItemChange
     End If
 End Property
@@ -1137,7 +1137,7 @@ End Property
 
 Public Property Let GridLines(ByVal eValue As jgexGridLinesConstants)
     m_eGridLines = eValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get GridLinesColor() As OLE_COLOR
@@ -1147,7 +1147,7 @@ End Property
 
 Public Property Let GridLinesColor(ByVal lValue As OLE_COLOR)
     m_clrGridLinesColor = lValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get BackColorBkg() As OLE_COLOR
@@ -1157,7 +1157,7 @@ End Property
 
 Public Property Let BackColorBkg(ByVal lValue As OLE_COLOR)
     m_clrBackColorBkg = lValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get CardSpacing() As Long
@@ -1198,13 +1198,13 @@ Public Property Let Row(ByVal lValue As Long)
     End If
     lValue = Clamp(lValue, 1, RowCount)
     If m_lRow <> lValue Then
-        pvEditEnd
-        pvEditCommit
+        pvEndEdit
+        pvCommitEdit
         pvSetRow lValue
         m_oSelectedItems.Clear
-        pvAddSel m_lRow
+        pvSelectRow m_lRow
         m_lSelAnchor = m_lRow
-        pvInvalidate SkipScroll:=True
+        pvInvalidateGrid SkipScroll:=True
     End If
 End Property
 
@@ -1260,7 +1260,7 @@ End Property
 
 Public Property Let GroupByBoxInfoText(ByVal sValue As String)
     m_sGroupByBoxInfoText = sValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get ForeColorHeader() As OLE_COLOR
@@ -1270,7 +1270,7 @@ End Property
 
 Public Property Let ForeColorHeader(ByVal lValue As OLE_COLOR)
     m_clrForeColorHeader = lValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get ForeColorRowGroup() As OLE_COLOR
@@ -1280,7 +1280,7 @@ End Property
 
 Public Property Let ForeColorRowGroup(ByVal lValue As OLE_COLOR)
     m_clrForeColorRowGroup = lValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get BackColorInfoText() As OLE_COLOR
@@ -1290,7 +1290,7 @@ End Property
 
 Public Property Let BackColorInfoText(ByVal lValue As OLE_COLOR)
     m_clrBackColorInfoText = lValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get ForeColorInfoText() As OLE_COLOR
@@ -1300,7 +1300,7 @@ End Property
 
 Public Property Let ForeColorInfoText(ByVal lValue As OLE_COLOR)
     m_clrForeColorInfoText = lValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get AutomaticArrange() As Boolean
@@ -1437,7 +1437,7 @@ Public Property Let Value(ByVal ColIndex As Integer, ByVal vntValue As Variant)
     End If
     m_oRowData.frAllowUpdate = True
     m_oRowData.Value(ColIndex) = vntValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get FullyLoaded() As Boolean
@@ -1479,7 +1479,7 @@ End Property
 
 Public Property Let UseEvenOddColor(ByVal bValue As Boolean)
     m_bUseEvenOddColor = bValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get HeaderStyle() As jgexHeaderStyleConstants
@@ -1489,7 +1489,7 @@ End Property
 
 Public Property Let HeaderStyle(ByVal eValue As jgexHeaderStyleConstants)
     m_eHeaderStyle = eValue
-    pvInvalidate
+    pvInvalidateGrid
 End Property
 
 Public Property Get HideSelection() As jgexHideSelectionConstants
@@ -1585,7 +1585,7 @@ End Property
 
 Public Property Let RowExpanded(ByVal RowPosition As Long, ByVal bValue As Boolean)
     m_pDataModel.RowExpanded(RowPosition) = bValue
-    pvRecalcVisible
+    pvRecalcVisibleRows
 End Property
 
 Public Property Get CursorLocation() As jgexCursorLocationConstants
@@ -1622,7 +1622,7 @@ End Property
 
 Public Property Let ColumnAutoResize(ByVal bValue As Boolean)
     m_bColumnAutoResize = bValue
-    pvInvalidate
+    pvInvalidateGrid
 End Property
 
 Public Property Get FormatStyles() As JSFormatStyles
@@ -1718,7 +1718,7 @@ End Property
 
 Public Property Let GridLineStyle(ByVal eValue As jgexGridLineStyleConstants)
     m_eGridLineStyle = eValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get EmptyRows() As Boolean
@@ -1728,7 +1728,7 @@ End Property
 
 Public Property Let EmptyRows(ByVal bValue As Boolean)
     m_bEmptyRows = bValue
-    pvInvalidate SkipScroll:=True
+    pvInvalidateGrid SkipScroll:=True
 End Property
 
 Public Property Get Redraw() As Boolean
@@ -1742,7 +1742,7 @@ Public Property Let Redraw(ByVal bValue As Boolean)
     End If
     m_bRedraw = bValue
     If bValue Then
-        pvInvalidate
+        pvInvalidateGrid
     End If
 End Property
 
@@ -1771,7 +1771,7 @@ End Property
 
 Public Property Let RecordNavigatorString(ByVal sValue As String)
     m_sRecordNavigatorString = sValue
-    pvInvalidate
+    pvInvalidateGrid
 End Property
 
 Public Property Get ShowToolTips() As Boolean
@@ -1858,7 +1858,7 @@ Attribute Refetch.VB_Description = "Forces a GridEX control to refresh its conte
     pvApplyHoldSort HoldSortSettings
     m_lWindowCount = 0
     m_bWindowDirty = True
-    pvInvalidate
+    pvInvalidateGrid
 End Sub
 
 Public Sub PrintGrid(Optional UsePrintSetupDlg As Boolean, Optional PrintSelectedItems As Boolean)
@@ -1876,14 +1876,14 @@ End Sub
 Public Sub CollapseAll()
 Attribute CollapseAll.VB_Description = "Collapses all group rows."
     m_pDataModel.SetAllExpanded False
-    pvRecalcVisible
+    pvRecalcVisibleRows
 End Sub
 
 Public Sub RefreshSort()
 Attribute RefreshSort.VB_Description = "Forces the re-sort of the records."
     m_pDataModel.RefreshSort
     pvSyncProjection
-    pvInvalidate
+    pvInvalidateGrid
 End Sub
 
 Public Function RowIndex(ByVal RowPosition As Long) As Long
@@ -1900,7 +1900,7 @@ Public Sub RefreshGroups(Optional ByVal AllCollapsed As Boolean)
 Attribute RefreshGroups.VB_Description = "Forces recalculation of groups."
     m_pDataModel.RefreshGroups AllCollapsed
     pvSyncProjection
-    pvInvalidate
+    pvInvalidateGrid
 End Sub
 
 Public Sub EnsureVisible(Optional ByVal Row As Long, Optional ByVal Col As Integer)
@@ -1914,16 +1914,16 @@ Attribute EnsureVisible.VB_Description = "Ensures visibility of a cell."
     If Row < 1 Or RowCount = 0 Then
         Exit Sub
     End If
-    lVisible = pvVisibleRows()
+    lVisible = pvCountVisibleRows()
     If Row < m_lFirstItem Then
         FirstItem = Row
     ElseIf Row > m_lFirstItem + lVisible - 1 Then
         FirstItem = Row - lVisible + 1
     End If
     If Col >= 1 Then
-        Set oCol = pvColByPosition(Col)
+        Set oCol = pvGetColByPosition(Col)
         If Not oCol Is Nothing Then
-            pvEnsureColVisible Row, oCol.Index
+            pvEnsureVisibleCol Row, oCol.Index
         End If
     End If
 End Sub
@@ -1938,13 +1938,13 @@ Attribute Rebind.VB_Description = "Forces re-creation of the recordset."
     m_oSelectedItems.Clear
     If RowCount > 0 Then
         m_lFirstItem = 1
-        If pvNewRowBandH() > 0 Then
+        If pvGetNewRowBandH() > 0 Then
             m_lRow = -1
             m_lSelAnchor = -1
-            pvNewRowData
+            pvInitNewRow
         Else
             m_lRow = 1
-            pvAddSel 1
+            pvSelectRow 1
             m_lSelAnchor = 1
         End If
     Else
@@ -1957,7 +1957,7 @@ Attribute Rebind.VB_Description = "Forces re-creation of the recordset."
     m_bInSet = False
     m_lHoldRowIndex = 0
     pvSyncProjection
-    pvInvalidate
+    pvInvalidateGrid
 End Sub
 
 Public Function IsGroupItem(ByVal Row As Long) As Boolean
@@ -1967,7 +1967,7 @@ End Function
 
 Public Sub Refresh()
 Attribute Refresh.VB_Description = "Forces a complete repaint of a GridEX control."
-    pvInvalidate
+    pvInvalidateGrid
 End Sub
 
 Public Sub HoldFields()
@@ -1990,7 +1990,7 @@ End Sub
 Public Sub ExpandAll()
 Attribute ExpandAll.VB_Description = "Expands all group rows."
     m_pDataModel.SetAllExpanded True
-    pvRecalcVisible
+    pvRecalcVisibleRows
 End Sub
 
 Public Function HitTest(ByVal X As Long, ByVal Y As Long) As jgexHitTestConstants
@@ -2057,7 +2057,7 @@ Attribute Delete.VB_Description = "Deletes selected rows."
         If oItem.frInitRowIndex > 0 Then
             aIdx(lCount) = oItem.frInitRowIndex
             AssignVariant avBmk(lCount), m_pDataModel.RowBookmark(aIdx(lCount))
-            If DataIsBlank(avBmk(lCount)) Then
+            If DataIsBlankValue(avBmk(lCount)) Then
                 avBmk(lCount) = aIdx(lCount)
             End If
             lCount = lCount + 1
@@ -2071,7 +2071,7 @@ Attribute Delete.VB_Description = "Deletes selected rows."
     If oCancel.Value Then
         Exit Sub
     End If
-    pvEditEnd bCancel:=True
+    pvEndEdit bCancel:=True
     lLand = m_lRow
     m_lRow = 0
     m_lHoldRowIndex = 0
@@ -2096,7 +2096,7 @@ Attribute Delete.VB_Description = "Deletes selected rows."
         pvSetRow lLand
     End If
     pvUpdateScrollBars
-    pvInvalidate
+    pvInvalidateGrid
     RaiseEvent AfterDelete
 End Sub
 
@@ -2116,7 +2116,7 @@ Attribute RefreshRowBookmark.VB_Description = "Refreshes data of the record that
     m_pDataModel.RefreshRowIndex lRowIndex
     m_lWindowCount = 0
     m_bWindowDirty = True
-    pvInvalidate
+    pvInvalidateGrid
 End Sub
 
 Public Sub RefreshRowIndex(ByVal RowIndex As Long)
@@ -2124,14 +2124,14 @@ Attribute RefreshRowIndex.VB_Description = "Refreshes data of the record that ma
     m_pDataModel.RefreshRowIndex RowIndex
     m_lWindowCount = 0
     m_bWindowDirty = True
-    pvInvalidate
+    pvInvalidateGrid
 End Sub
 
 Public Function GroupRowLevel(ByVal RowPosition As Long) As Integer
 Attribute GroupRowLevel.VB_Description = "Returns the level of a group row."
     Dim oRowData        As JSRowData
 
-    Set oRowData = pvRowDataAt(RowPosition)
+    Set oRowData = pvFetchRowData(RowPosition)
     If Not oRowData Is Nothing Then
         GroupRowLevel = oRowData.GroupLevel
     End If
@@ -2191,7 +2191,7 @@ End Sub
 
 Public Function GetRowData(ByVal RowPosition As Long) As JSRowData
 Attribute GetRowData.VB_Description = "Returns a JSRowData object representing a row."
-    Set GetRowData = pvRowDataAt(RowPosition)
+    Set GetRowData = pvFetchRowData(RowPosition)
     If GetRowData Is Nothing Then
         Set GetRowData = New JSRowData
         GetRowData.frReset m_oColumns.Count
@@ -2205,7 +2205,7 @@ Friend Sub frNotifySortChanged()
     m_lWindowCount = 0
     m_bWindowDirty = True
     If Not m_bInSet Then
-        pvInvalidate
+        pvInvalidateGrid
     End If
 End Sub
 
@@ -2267,11 +2267,11 @@ Friend Sub frColAutoSize(oCol As JSColumn)
     Dim oCancel         As JSRetBoolean
     Dim lWidth          As Long
 
-    lWidth = pvAutoSizeWidth(oCol.Index)
+    lWidth = pvCalcAutoSizeWidth(oCol.Index)
     If lWidth < MIN_COL_W Then
         lWidth = MIN_COL_W
     End If
-    m_lSizeStartW = pvColWidth(oCol)
+    m_lSizeStartW = pvGetColWidth(oCol)
     oCol.frWidthPx = lWidth
     lWidth = oCol.Width
     oCol.frWidthPx = m_lSizeStartW
@@ -2280,7 +2280,7 @@ Friend Sub frColAutoSize(oCol As JSColumn)
     If Not oCancel.Value Then
         oCol.Width = lWidth
     End If
-    pvInvalidate
+    pvInvalidateGrid
 End Sub
 
 Friend Sub frRaiseUnboundReadData(ByVal lRowIndex As Long, vBookmark As Variant, oValues As JSRowData)
@@ -2339,8 +2339,8 @@ Friend Function frBeforeTranslateAccel(uMsg As APIMSG) As Boolean
         Case vbKeyDown, vbKeyUp, vbKeyLeft, vbKeyRight, vbKeyPageDown, vbKeyPageUp, vbKeyHome, vbKeyEnd, vbKeyEscape, vbKeyReturn
             frBeforeTranslateAccel = True
         Case vbKeyTab
-            If (pvShiftState() And vbCtrlMask) <> 0 Then
-                frBeforeTranslateAccel = pvSiteTranslateKey(vbKeyTab, pvShiftState() And vbShiftMask)
+            If (pvGetShiftState() And vbCtrlMask) <> 0 Then
+                frBeforeTranslateAccel = pvTranslateSiteKey(vbKeyTab, pvGetShiftState() And vbShiftMask)
                 Exit Function
             End If
             frBeforeTranslateAccel = (m_eTabKeyBehavior = jgexColumnNavigation) And m_bAllowEdit
@@ -2350,9 +2350,9 @@ Friend Function frBeforeTranslateAccel(uMsg As APIMSG) As Boolean
         Case vbKeyDown, vbKeyUp, vbKeyLeft, vbKeyRight, vbKeyReturn, vbKeyEscape
             frBeforeTranslateAccel = True
         Case vbKeyTab
-            If (pvShiftState() And vbCtrlMask) <> 0 Then
-                pvEditEnd
-                frBeforeTranslateAccel = pvSiteTranslateKey(vbKeyTab, pvShiftState() And vbShiftMask)
+            If (pvGetShiftState() And vbCtrlMask) <> 0 Then
+                pvEndEdit
+                frBeforeTranslateAccel = pvTranslateSiteKey(vbKeyTab, pvGetShiftState() And vbShiftMask)
                 Exit Function
             End If
             frBeforeTranslateAccel = (m_eTabKeyBehavior = jgexColumnNavigation)
@@ -2368,383 +2368,16 @@ Friend Function frBeforeTranslateAccel(uMsg As APIMSG) As Boolean
 End Function
 
 Friend Sub frAfterTranslateAccel(uMsg As APIMSG)
+    #If uMsg Then '--- touch args
+    #End If
 End Sub
 
 '= private ===============================================================
 
-Private Function pvSiteTranslateKey(ByVal lKeyCode As Long, ByVal lShift As Long) As Boolean
-    Const FUNC_NAME     As String = "pvSiteTranslateKey"
-    Const S_OK                                  As Long = 0
-    Const S_FALSE                               As Long = 1
-    Dim pOleObject      As IOleObject
-    Dim pOleControlSite As IOleControlSite
-    Dim uMsg            As APIMSG
-    Dim oParent         As Object
+'--- Painting ------------------------------------------------------------
 
-    On Error GoTo EH
-    With uMsg
-        .hWnd = UserControl.hWnd
-        .Message = WM_KEYDOWN
-        .wParam = lKeyCode
-        .lParam = &H10001
-    End With
-    If Not TypeOf Me Is IOleObject Then
-        Exit Function
-    End If
-    Set pOleObject = Me
-    If pOleObject.GetClientSite(pOleControlSite) <> S_OK Then
-        Exit Function
-    End If
-    If pOleControlSite Is Nothing Then
-        Exit Function
-    End If
-    If pOleControlSite.TranslateAccelerator(VarPtr(uMsg), lShift) = S_OK Then
-        pvSiteTranslateKey = True
-        Exit Function
-    End If
-    Set oParent = UserControl.Parent
-    If oParent Is Nothing Then
-        Exit Function
-    End If
-    If Not TypeOf oParent Is IOleObject Then
-        Exit Function
-    End If
-    Set pOleObject = oParent
-    Set pOleControlSite = Nothing
-    If pOleObject.GetClientSite(pOleControlSite) <> S_OK Then
-        Exit Function
-    End If
-    If pOleControlSite Is Nothing Then
-        Exit Function
-    End If
-    pvSiteTranslateKey = (pOleControlSite.TranslateAccelerator(VarPtr(uMsg), lShift) = S_OK)
-    Exit Function
-EH:
-    PrintError FUNC_NAME
-End Function
-
-Private Sub pvCreateDataModel()
-    Dim oUnbound        As cUnboundDataModel
-    Dim oAdo            As cAdoDataModel
-
-    If Not m_pDataModel Is Nothing Then
-        m_pDataModel.Terminate
-        Set m_pDataModel = Nothing
-    End If
-    '--- jgexDAO gets the unbound model too: DAO binding is out of scope, and
-    '--- a control in that mode with no recordset behaves as an empty unbound
-    '--- one rather than raising
-    Select Case m_eDataMode
-    Case jgexADO
-        Set oAdo = New cAdoDataModel
-        oAdo.frInit Me
-        Set m_pDataModel = oAdo
-    Case Else
-        Set oUnbound = New cUnboundDataModel
-        oUnbound.frInit Me
-        Set m_pDataModel = oUnbound
-    End Select
-End Sub
-
-Private Sub pvPopulateWindow()
-    Dim lFirst          As Long
-    Dim lCount          As Long
-    Dim aPrev()         As JSRowData
-    Dim lPrevCount      As Long
-    Dim lIdx            As Long
-    Dim lRowIndex         As Long
-    Dim oCarry          As JSRowData
-    Dim lJdx            As Long
-
-    lFirst = m_lFirstItem
-    If lFirst < 1 Then
-        lFirst = 1
-    End If
-    lCount = pvVisibleRows() + 1
-    If lFirst + lCount - 1 > RowCount Then
-        lCount = RowCount - lFirst + 1
-    End If
-    If lCount < 0 Then
-        lCount = 0
-    End If
-    If Not m_bWindowDirty Then
-        If lFirst = m_lWindowFirst And lCount = m_lWindowCount Then
-            Exit Sub
-        End If
-    End If
-    If m_lWindowCount > 0 Then
-        aPrev = m_aWindow
-        lPrevCount = m_lWindowCount
-    End If
-    Erase m_aWindow
-    m_bWindowDirty = False
-    m_lWindowFirst = lFirst
-    m_lWindowCount = lCount
-    If lCount = 0 Then
-        Exit Sub
-    End If
-    ReDim m_aWindow(1 To lCount) As JSRowData
-    For lIdx = 1 To lCount
-        If lFirst + lIdx - 1 = m_lRow And DataChanged Then
-            Set m_aWindow(lIdx) = m_oRowData
-            If lPrevCount = 0 Then
-                pvRaiseRowFormat m_aWindow(lIdx)
-            End If
-        Else
-            Set oCarry = Nothing
-            If lPrevCount > 0 Then
-                lRowIndex = m_pDataModel.RowIndex(lFirst + lIdx - 1)
-                If lRowIndex <> 0 Then
-                    For lJdx = 1 To lPrevCount
-                        If Not aPrev(lJdx) Is Nothing Then
-                            If aPrev(lJdx).frInitRowIndex = lRowIndex Then
-                                Set oCarry = aPrev(lJdx)
-                                Exit For
-                            End If
-                        End If
-                    Next
-                End If
-            End If
-            If Not oCarry Is Nothing Then
-                Set m_aWindow(lIdx) = oCarry
-            Else
-                Set m_aWindow(lIdx) = m_pDataModel.GetRowData(lFirst + lIdx - 1)
-                pvRaiseRowFormat m_aWindow(lIdx)
-            End If
-        End If
-    Next
-    pvSyncRowData
-End Sub
-
-Private Sub pvRemapCurrent()
-    Dim lPos            As Long
-    Dim oItem           As JSSelectedItem
-
-    If m_lHoldRowIndex <> 0 Then
-        lPos = m_pDataModel.GetRowPosition(m_lHoldRowIndex)
-        If lPos >= 1 Then
-            m_lRow = lPos
-            pvSyncRowData
-        End If
-    End If
-    For Each oItem In m_oSelectedItems
-        oItem.frRowPosition = m_pDataModel.GetRowPosition(oItem.frInitRowIndex)
-    Next
-End Sub
-
-Private Sub pvSyncProjection()
-    Dim lCount          As Long
-    Dim lVersion        As Long
-    Dim lRowIndex       As Long
-
-    lCount = m_pDataModel.RowCount
-    lVersion = m_pDataModel.Version
-    If lVersion <> m_lVersion Then
-        m_lVersion = lVersion
-        pvRemapCurrent
-        m_lWindowCount = 0
-        m_bWindowDirty = True
-    End If
-    lRowIndex = m_pDataModel.RowIndex(m_lRow)
-    If lRowIndex <> 0 Then
-        m_lHoldRowIndex = lRowIndex
-    End If
-End Sub
-
-Private Sub pvSyncRowData()
-    Dim oRowData        As JSRowData
-
-    If pvIsNewRow(m_lRow) Then
-        Exit Sub
-    End If
-    Set oRowData = pvRowDataAt(m_lRow)
-    If Not oRowData Is m_oRowData And DataChanged Then
-        Err.Raise vbObjectError, , "Internal error: DataChanged=" & DataChanged
-    End If
-    Set m_oRowData = oRowData
-End Sub
-
-Private Function pvRowDataAt(ByVal lRowPosition As Long) As JSRowData
-    Set pvRowDataAt = pvWindowRow(lRowPosition)
-    If pvRowDataAt Is Nothing Then
-        If lRowPosition >= 1 And lRowPosition <= m_pDataModel.RowCount Then
-            Set pvRowDataAt = m_pDataModel.GetRowData(lRowPosition)
-            pvSetDisplayValues pvRowDataAt
-        End If
-    End If
-End Function
-
-Private Function pvWindowRow(ByVal lPos As Long) As JSRowData
-    If lPos >= m_lWindowFirst And lPos < m_lWindowFirst + m_lWindowCount Then
-        Set pvWindowRow = m_aWindow(lPos - m_lWindowFirst + 1)
-    End If
-End Function
-
-Private Sub pvRecalcVisible()
-    Dim lMax            As Long
-
-    lMax = pvScrollRowCount() - pvVisibleRows() + 1
-    If lMax < 1 Then
-        lMax = 1
-    End If
-    If m_lFirstItem > lMax Then
-        FirstItem = lMax
-    End If
-    pvRemapCurrent
-    m_bWindowDirty = True
-    pvInvalidate
-End Sub
-
-Private Sub pvScrollCurrentToTop()
-    Dim lMax            As Long
-
-    If m_lRow < 1 Or m_pDataModel.RowCount = 0 Then
-        Exit Sub
-    End If
-    lMax = m_pDataModel.RowCount - pvVisibleRows() + 1
-    If lMax < 1 Then
-        lMax = 1
-    End If
-    FirstItem = Clamp(m_lRow, 1, lMax)
-End Sub
-
-Private Function pvIsGroupRow(ByVal lPos As Long) As Boolean
-    If lPos < 1 Then
-        Exit Function
-    End If
-    pvIsGroupRow = (m_pDataModel.RowIndex(lPos) < 0)
-End Function
-
-Private Function pvNewRowShown() As Boolean
-    If m_bAllowAddNew Then
-        If m_eNewRowPos = jgexTop Then
-            pvNewRowShown = True
-        Else
-            pvNewRowShown = (m_oGroups.Count = 0)
-        End If
-    End If
-End Function
-
-Private Function pvNewRow() As Long
-    If pvNewRowShown() Then
-        If m_eNewRowPos = jgexTop Then
-            pvNewRow = -1
-        Else
-            pvNewRow = RowCount + 1
-        End If
-    End If
-End Function
-
-Private Function pvIsNewRow(ByVal lRow As Long) As Boolean
-    If lRow <> 0 Then
-        pvIsNewRow = (lRow = pvNewRow())
-    End If
-End Function
-
-Private Function pvNewRowBandH() As Long
-    If pvNewRowShown() And m_eNewRowPos = jgexTop Then
-        pvNewRowBandH = m_lRowHeight + NEWROW_DIVIDER_H
-    End If
-End Function
-
-Private Function pvRowTopAt(ByVal lRow As Long) As Long
-    If pvIsNewRow(lRow) And m_eNewRowPos = jgexTop Then
-        pvRowTopAt = pvRowsTop()
-    Else
-        pvRowTopAt = pvRowsTop() + pvNewRowBandH() + (lRow - m_lFirstItem) * m_lRowHeight
-    End If
-End Function
-
-Private Function pvRowAtY(ByVal lY As Long) As Long
-    Dim lTop            As Long
-
-    lTop = pvRowsTop()
-    If m_lRowHeight <= 0 Or lY < lTop Then
-        Exit Function
-    End If
-    If pvNewRowBandH() > 0 Then
-        If lY < lTop + m_lRowHeight Then
-            pvRowAtY = -1
-            Exit Function
-        End If
-        If lY < lTop + pvNewRowBandH() Then
-            '--- the divider is nobody's row
-            Exit Function
-        End If
-        lTop = lTop + pvNewRowBandH()
-    End If
-    pvRowAtY = m_lFirstItem + (lY - lTop) \ m_lRowHeight
-End Function
-
-Private Sub pvClearCol()
-    Dim lLastCol        As Long
-
-    If m_lCol <> 0 Then
-        pvEditEnd
-        lLastCol = m_lCol
-        m_lCol = 0
-        pvInvalidate SkipScroll:=True
-        RaiseEvent RowColChange(m_lRow, lLastCol)
-    End If
-End Sub
-
-Private Function pvRowSelZoneAt(ByVal lX As Long, ByVal lY As Long) As Boolean
-    Dim lZone           As Long
-    Dim lRow            As Long
-
-    lZone = pvRowHeaderWidth()
-    If lZone = 0 Then
-        lZone = ROWSEL_ZONE_W
-    End If
-    If lX < 0 Or lX >= lZone Then
-        Exit Function
-    End If
-    If m_lRowHeight <= 0 Or lY < pvRowsTop() Then
-        Exit Function
-    End If
-    lRow = pvRowAtY(lY)
-    If lRow >= 1 And lRow <= RowCount Then
-        pvRowSelZoneAt = Not pvIsGroupRow(lRow)
-    End If
-End Function
-
-Private Function pvIsGroupHeader(ByVal lPos As Long) As Boolean
-    Dim oRowData        As JSRowData
-
-    If pvIsGroupRow(lPos) Then
-        pvPopulateWindow
-        Set oRowData = pvWindowRow(lPos)
-        If Not oRowData Is Nothing Then
-            pvIsGroupHeader = (oRowData.RowType = jgexRowTypeGroupHeader)
-        End If
-    End If
-End Function
-
-Private Function pvIsBlank(vValue As Variant) As Boolean
-    Select Case VarType(vValue)
-    Case vbEmpty, vbNull, vbError
-        pvIsBlank = True
-    Case vbString
-        pvIsBlank = (LenB(vValue) = 0)
-    End Select
-End Function
-
-Private Sub pvApplyHoldSort(HoldSortSettings As Variant)
-    Dim bHold           As Boolean
-
-    If IsMissing(HoldSortSettings) Then
-        bHold = m_bHoldSortSettings
-    Else
-        bHold = CBool(HoldSortSettings)
-    End If
-    If Not bHold Then
-        m_oSortKeys.Clear
-        m_oGroups.Clear
-    End If
-End Sub
-
-Private Sub pvOnPaint(ByVal hWnd As Long)
-    Const FUNC_NAME     As String = "pvOnPaint"
+Private Sub pvHandlePaint(ByVal hWnd As Long)
+    Const FUNC_NAME     As String = "pvHandlePaint"
     Dim uPS             As PAINTSTRUCT
     Dim lWidth          As Long
     Dim lHeight         As Long
@@ -2754,17 +2387,17 @@ Private Sub pvOnPaint(ByVal hWnd As Long)
     On Error GoTo EH
     Call BeginPaint(hWnd, uPS)
     If hWnd = picGrid.hWnd Then
-        pvPaint uPS.hDC, uPS.rcPaint
+        pvPaintGrid uPS.hDC, uPS.rcPaint
     Else
         lWidth = UserControl.ScaleWidth
         lHeight = GetSystemMetrics(SM_CYHSCROLL)
         lTop = UserControl.ScaleHeight - lHeight
         If pvNeedRepaint(uPS.rcPaint, lTop, lHeight) Then
-            hMemDC = pvBufferInit(uPS.hDC, lWidth, lHeight)
-            pvBufferBand hMemDC, lTop, lWidth, lHeight
+            hMemDC = pvInitBuffer(uPS.hDC, lWidth, lHeight)
+            pvSetBufferBand hMemDC, lTop, lWidth, lHeight
             pvPaintNavigator hMemDC
-            pvBufferFlush uPS.hDC, hMemDC, lTop, lWidth, lHeight
-            pvBufferTermiante
+            pvFlushBuffer uPS.hDC, hMemDC, lTop, lWidth, lHeight
+            pvFreeBuffer
         End If
     End If
 QH:
@@ -2775,7 +2408,7 @@ EH:
     Resume QH
 End Sub
 
-Private Sub pvPaint(ByVal hDC As Long, uClip As RECT)
+Private Sub pvPaintGrid(ByVal hDC As Long, uClip As RECT)
     Dim lY              As Long
     Dim lWidth          As Long
     Dim lHeight         As Long
@@ -2784,266 +2417,34 @@ Private Sub pvPaint(ByVal hDC As Long, uClip As RECT)
 
     pvSyncProjection
     lWidth = picGrid.ScaleWidth
-    lHeight = pvGroupByBoxHeight()
+    lHeight = pvGetGroupByBoxHeight()
     If m_bColumnHeaders And m_lColumnHeaderHeight > lHeight Then
         lHeight = m_lColumnHeaderHeight
     End If
     If m_lRowHeight + 1 > lHeight Then
         lHeight = m_lRowHeight + 1
     End If
-    hMemDC = pvBufferInit(hDC, lWidth, lHeight)
+    hMemDC = pvInitBuffer(hDC, lWidth, lHeight)
     If m_bGroupByBoxVisible Then
-        lBandH = pvGroupByBoxHeight()
+        lBandH = pvGetGroupByBoxHeight()
         If pvNeedRepaint(uClip, lY, lBandH) Then
-            pvBufferBand hMemDC, lY, lWidth, lBandH
+            pvSetBufferBand hMemDC, lY, lWidth, lBandH
             pvPaintGroupByBox hMemDC
-            pvBufferFlush hDC, hMemDC, lY, lWidth, lBandH
+            pvFlushBuffer hDC, hMemDC, lY, lWidth, lBandH
         End If
         lY = lY + lBandH
     End If
     If m_bColumnHeaders Then
         lBandH = m_lColumnHeaderHeight
         If pvNeedRepaint(uClip, lY, lBandH) Then
-            pvBufferBand hMemDC, lY, lWidth, lBandH
+            pvSetBufferBand hMemDC, lY, lWidth, lBandH
             pvPaintHeaders hMemDC, lY
-            pvBufferFlush hDC, hMemDC, lY, lWidth, lBandH
+            pvFlushBuffer hDC, hMemDC, lY, lWidth, lBandH
         End If
         lY = lY + lBandH
     End If
     pvPaintRows hDC, hMemDC, lY, uClip
-    pvBufferTermiante
-End Sub
-
-Private Sub pvPaintGroupByBox(ByVal hDC As Long)
-    Dim lBoxH           As Long
-    Dim lTotalH         As Long
-    Dim uRect           As RECT
-    Dim hPrevFont       As Long
-    Dim uMetrics        As TEXTMETRICW
-    Dim lIdx            As Long
-    Dim oGroup          As JSGroup
-    Dim sCaption        As String
-    Dim lLeft           As Long
-    Dim lTop            As Long
-    Dim lChipW          As Long
-    Dim lChipH          As Long
-    Dim lElbowTop       As Long
-
-    hPrevFont = pvSelectFont(hDC, m_oFont)
-    lBoxH = m_lColumnHeaderHeight + 4
-    lTotalH = pvGroupByBoxHeight()
-    pvFillRect hDC, 0, 0, picGrid.ScaleWidth, lTotalH, m_clrBackColorGBBox
-    If m_oGroups.Count > 0 Then
-        uMetrics = FontTextMetrics(m_oColumnHeaderFont, hDC)
-        pvLayoutGroupChips hDC:=hDC
-        For Each oGroup In m_oGroups
-            lIdx = lIdx + 1
-            If oGroup.ColIndex >= 1 And oGroup.ColIndex <= m_oColumns.Count Then
-                sCaption = m_oColumns.Item(oGroup.ColIndex).Caption
-                lLeft = oGroup.frChipRect.Left
-                lTop = oGroup.frChipRect.Top
-                lChipW = oGroup.frChipRect.Right - lLeft
-                lChipH = oGroup.frChipRect.Bottom - lTop
-                pvFillRect hDC, lLeft, lTop, lLeft + lChipW, lTop + lChipH, m_clrBackColorHeader
-                pvLine hDC, lLeft, lTop, lLeft + lChipW - 1, lTop, vb3DHighlight, PS_SOLID
-                pvLine hDC, lLeft, lTop, lLeft, lTop + lChipH - 1, vb3DHighlight, PS_SOLID
-                pvLine hDC, lLeft, lTop + lChipH - 2, lLeft + lChipW - 1, lTop + lChipH - 2, vb3DShadow, PS_SOLID
-                pvLine hDC, lLeft + lChipW - 2, lTop, lLeft + lChipW - 2, lTop + lChipH - 1, vb3DShadow, PS_SOLID
-                pvLine hDC, lLeft, lTop + lChipH - 1, lLeft + lChipW, lTop + lChipH - 1, vb3DDKShadow, PS_SOLID
-                pvLine hDC, lLeft + lChipW - 1, lTop, lLeft + lChipW - 1, lTop + lChipH, vb3DDKShadow, PS_SOLID
-                pvDrawText hDC, sCaption, lLeft + 2, lTop + 1, lLeft + lChipW - 2, lTop + lChipH, _
-                    m_clrForeColorHeader, m_clrBackColorHeader, jgexAlignLeft, lLeft + 2, lLeft + lChipW - 2
-                If oGroup.SortOrder <> 0 Then
-                    pvPaintSortGlyph hDC, lLeft + 2 + pvTextWidth(hDC, sCaption) + 4, _
-                        lTop + 3 + uMetrics.tmHeight \ 2 + 4, oGroup.SortOrder
-                End If
-                If oGroup Is m_oDragGroup Then
-                    Call PatBlt(hDC, lLeft, lTop + 1, lChipW - 1, lChipH - 2, DSTINVERT)
-                End If
-                If lIdx < m_oGroups.Count Then
-                    lElbowTop = lTop + m_lColumnHeaderHeight \ 2 + CLng((3 * lChipH - 4) / 4)
-                    pvLine hDC, lLeft + lChipW - 5, lTop + lChipH, lLeft + lChipW - 5, lElbowTop + 1, vb3DDKShadow, PS_SOLID
-                    pvLine hDC, lLeft + lChipW - 5, lElbowTop, lLeft + lChipW + CHIP_GAP, lElbowTop, vb3DDKShadow, PS_SOLID
-                End If
-            End If
-        Next
-    Else
-        Call DrawText(hDC, StrPtr(m_sGroupByBoxInfoText), Len(m_sGroupByBoxInfoText), uRect, DT_SINGLELINE Or DT_CALCRECT)
-        pvFillRect hDC, 4, 5, 12 + uRect.Right, 5 + lBoxH, m_clrBackColorInfoText
-        pvDrawText hDC, m_sGroupByBoxInfoText, 7, 5, 7 + uRect.Right, 5 + lBoxH, m_clrForeColorInfoText, m_clrBackColorInfoText, jgexAlignLeft, 7, 7 + uRect.Right
-    End If
-    If m_bDropInGBox And pvGBoxDropMark(lLeft, lTop) Then
-        lChipH = FontTextMetrics(m_oColumnHeaderFont, hDC).tmHeight + 6
-        pvFillRect hDC, lLeft - 2, lTop, lLeft + 1, lTop + lChipH, vbRed
-    End If
-    Call SelectObject(hDC, hPrevFont)
-End Sub
-
-Private Sub pvLayoutGroupChips(Optional ByVal hDC As Long)
-    Dim hOwnDC          As Long
-    Dim hPrevFont       As Long
-    Dim uMetrics        As TEXTMETRICW
-    Dim lChipH          As Long
-    Dim lLeft           As Long
-    Dim lTop            As Long
-    Dim oGroup          As JSGroup
-    Dim uRect           As RECT
-
-    If hDC = 0 Then
-        hOwnDC = GetDC(picGrid.hWnd)
-        hDC = hOwnDC
-        hPrevFont = pvSelectFont(hDC, m_oFont)
-    End If
-    uMetrics = FontTextMetrics(m_oColumnHeaderFont, hDC)
-    lChipH = uMetrics.tmHeight + 6
-    lLeft = CHIP_LEFT
-    lTop = CHIP_TOP
-    For Each oGroup In m_oGroups
-        uRect.Left = 0
-        uRect.Top = 0
-        uRect.Right = 0
-        uRect.Bottom = 0
-        If oGroup.ColIndex >= 1 And oGroup.ColIndex <= m_oColumns.Count Then
-            uRect.Left = lLeft
-            uRect.Top = lTop
-            uRect.Right = lLeft + pvTextWidth(hDC, m_oColumns.Item(oGroup.ColIndex).Caption) + CHIP_PAD
-            uRect.Bottom = lTop + lChipH
-            lLeft = uRect.Right + CHIP_GAP
-            lTop = lTop + m_lColumnHeaderHeight \ 2
-        End If
-        oGroup.frChipRect = uRect
-    Next
-    If hOwnDC <> 0 Then
-        Call SelectObject(hDC, hPrevFont)
-        Call ReleaseDC(picGrid.hWnd, hOwnDC)
-    End If
-End Sub
-
-Private Sub pvPaintHeaders(ByVal hDC As Long, ByVal lY As Long)
-    Dim lHdrH           As Long
-    Dim uMetrics        As TEXTMETRICW
-    Dim lX              As Long
-    Dim oCol            As JSColumn
-    Dim lW              As Long
-    Dim hPrevFont       As Long
-    Dim vOrder          As Variant
-    Dim lIdx            As Long
-    Dim lMarkX          As Long
-    Dim bMark           As Boolean
-
-    lHdrH = m_lColumnHeaderHeight
-    lMarkX = -1
-    pvFillRect hDC, 0, lY, picGrid.ScaleWidth, lY + lHdrH, picGrid.BackColor
-    hPrevFont = pvSelectFont(hDC, m_oColumnHeaderFont)
-    Select Case m_eHeaderStyle
-    Case jgexHSDouble3D
-        pvLine hDC, 0, lY, picGrid.ScaleWidth, lY, vb3DHighlight, PS_SOLID
-        pvLine hDC, 0, lY + lHdrH - 2, picGrid.ScaleWidth, lY + lHdrH - 2, vb3DShadow, PS_SOLID
-        pvLine hDC, 0, lY + lHdrH - 1, picGrid.ScaleWidth, lY + lHdrH - 1, vb3DDKShadow, PS_SOLID
-    Case jgexHSSingleFlat
-        pvLine hDC, 0, lY, picGrid.ScaleWidth, lY, vb3DDKShadow, PS_SOLID
-        pvLine hDC, 0, lY + lHdrH - 1, picGrid.ScaleWidth, lY + lHdrH - 1, vb3DDKShadow, PS_SOLID
-    Case jgexHSSingle3D
-        pvLine hDC, 0, lY, picGrid.ScaleWidth, lY, vb3DHighlight, PS_SOLID
-        pvLine hDC, 0, lY + lHdrH - 1, picGrid.ScaleWidth, lY + lHdrH - 1, vb3DShadow, PS_SOLID
-    End Select
-    If m_bRowHeaders Then
-        pvPaintHeaderCell hDC, 0, lY, CHROME_COL_W, lHdrH, vbNullString, jgexAlignLeft
-    End If
-    lX = pvBlockLeft()
-    vOrder = pvColOrder()
-    For lIdx = 0 To pvOrderMax(vOrder)
-        Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
-        lW = pvColWidth(oCol)
-        pvPaintHeaderCell hDC, lX, lY, lW, lHdrH, oCol.Caption, oCol.HeaderAlignment
-        If frColSortOrder(oCol.Index) <> 0 Then
-            uMetrics = FontTextMetrics(m_oColumnHeaderFont, hDC)
-            pvPaintSortGlyph hDC, lX + 2 + pvTextWidth(hDC, oCol.Caption) + 4, _
-                lY + (lHdrH - uMetrics.tmHeight + 1) \ 2 + uMetrics.tmHeight \ 2 + 4, frColSortOrder(oCol.Index)
-        End If
-        If oCol Is m_oDragCol Then
-            Call PatBlt(hDC, lX, lY + 1, lW - 1, lHdrH - 2, DSTINVERT)
-        End If
-        If m_bDragging And oCol Is m_oDropCol And Not oCol Is pvGetDragColumn() Then
-            If m_oDragCol Is Nothing Then
-                bMark = True
-            Else
-                bMark = pvDropMoves(m_oDragCol.ColPosition, oCol.ColPosition, m_bDropAfter)
-            End If
-            If bMark Then
-                lMarkX = lX
-                If m_bDropAfter Then
-                    lMarkX = lX + lW
-                End If
-            End If
-        End If
-        lX = lX + lW
-    Next
-    If pvGroupIndent() > 0 Then
-        pvFillRect hDC, IIf(m_bRowHeaders, CHROME_COL_W, 1), lY + 1, pvBlockLeft() + 1, lY + lHdrH - 2, m_clrBackColorHeader
-    End If
-    If lX < picGrid.ScaleWidth Then
-        pvPaintHeaderCell hDC, lX, lY, picGrid.ScaleWidth - lX + 2, lHdrH, vbNullString, jgexAlignLeft
-    End If
-    If lMarkX >= 0 Then
-        pvFillRect hDC, lMarkX - 2, lY, lMarkX + 1, lY + lHdrH, vbRed
-    End If
-    Call SelectObject(hDC, hPrevFont)
-End Sub
-
-Private Sub pvPaintSortGlyph(ByVal hDC As Long, ByVal lX As Long, ByVal lBottom As Long, ByVal eOrder As jgexSortOrderConstants)
-    Const GLYPH_W       As Long = 8
-    Const GLYPH_H       As Long = 7
-    Dim lRow            As Long
-    Dim lEdge           As Long
-    Dim lStep           As Long
-    Dim lTop            As Long
-
-    lTop = lBottom - GLYPH_H + 1
-    For lRow = 0 To GLYPH_H - 1
-        lEdge = lRow
-        If eOrder = jgexSortDescending Then
-            lEdge = GLYPH_H - 1 - lRow
-        End If
-        lStep = (lEdge + 1) \ 2
-        pvSetPixel hDC, lX + GLYPH_W \ 2 - 1 - lStep, lTop + lRow, vb3DShadow
-        pvSetPixel hDC, lX + GLYPH_W \ 2 + lStep, lTop + lRow, vb3DHighlight
-        If lEdge Mod 2 = 1 Then
-            pvSetPixel hDC, lX + GLYPH_W \ 2 - lStep, lTop + lRow, vb3DShadow
-            pvSetPixel hDC, lX + GLYPH_W \ 2 - 1 + lStep, lTop + lRow, vb3DHighlight
-        End If
-    Next
-    If eOrder = jgexSortDescending Then
-        pvLine hDC, lX, lTop, lX + GLYPH_W - 1, lTop, vb3DShadow, PS_SOLID
-    Else
-        pvLine hDC, lX + 1, lBottom, lX + GLYPH_W, lBottom, vb3DHighlight, PS_SOLID
-    End If
-End Sub
-
-Private Sub pvSetPixel(ByVal hDC As Long, ByVal lX As Long, ByVal lY As Long, ByVal clrColor As OLE_COLOR)
-    pvFillRect hDC, lX, lY, lX + 1, lY + 1, clrColor
-End Sub
-
-Private Sub pvPaintHeaderCell(ByVal hDC As Long, ByVal lX As Long, ByVal lY As Long, ByVal lW As Long, ByVal lH As Long, sCaption As String, ByVal eAlign As jgexAlignmentConstants)
-    Select Case m_eHeaderStyle
-    Case jgexHSNoBorder
-        pvFillRect hDC, lX, lY, lX + lW, lY + lH, m_clrBackColorHeader
-    Case jgexHSSingleFlat
-        pvFillRect hDC, lX, lY + 1, lX + lW - 1, lY + lH - 1, m_clrBackColorHeader
-        pvLine hDC, lX + lW - 1, lY, lX + lW - 1, lY + lH, vb3DDKShadow, PS_SOLID
-    Case jgexHSSingle3D
-        pvFillRect hDC, lX + 1, lY + 1, lX + lW - 1, lY + lH - 1, m_clrBackColorHeader
-        pvLine hDC, lX, lY, lX, lY + lH - 1, vb3DHighlight, PS_SOLID
-        pvLine hDC, lX + lW - 1, lY, lX + lW - 1, lY + lH, vb3DShadow, PS_SOLID
-    Case Else
-        pvFillRect hDC, lX + 1, lY + 1, lX + lW - 2, lY + lH - 2, m_clrBackColorHeader
-        pvLine hDC, lX, lY, lX, lY + lH - 2, vb3DHighlight, PS_SOLID
-        pvLine hDC, lX + lW - 2, lY, lX + lW - 2, lY + lH - 2, vb3DShadow, PS_SOLID
-        pvLine hDC, lX + lW - 1, lY, lX + lW - 1, lY + lH, vb3DDKShadow, PS_SOLID
-    End Select
-    If LenB(sCaption) <> 0 Then
-        pvDrawText hDC, sCaption, lX + 2, lY, lX + lW - 2, lY + lH, m_clrForeColorHeader, m_clrBackColorHeader, eAlign, lX + 2, lX + lW - 2, bEllipsis:=True
-    End If
+    pvFreeBuffer
 End Sub
 
 Private Sub pvPaintRows(ByVal hDC As Long, ByVal hMemDC As Long, ByVal lY As Long, uClip As RECT)
@@ -3063,10 +2464,10 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal hMemDC As Long, ByVal lY As Lon
     Dim vOrder          As Variant
     Dim lIdx            As Long
 
-    lHdrW = pvBlockLeft()
-    vOrder = pvColOrder()
-    For lIdx = 0 To pvOrderMax(vOrder)
-        lTotalW = lTotalW + pvColWidth(m_oColumns.ItemByPosition(vOrder(lIdx)))
+    lHdrW = pvGetBlockLeft()
+    vOrder = pvBuildColOrder()
+    For lIdx = 0 To pvGetOrderMax(vOrder)
+        lTotalW = lTotalW + pvGetColWidth(m_oColumns.ItemByPosition(vOrder(lIdx)))
     Next
     pvSyncProjection
     pvPopulateWindow
@@ -3080,13 +2481,13 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal hMemDC As Long, ByVal lY As Lon
     lRowTop = lY
     lRowsBottom = lY
     lRow = lFirst
-    If pvNewRowBandH() > 0 And m_lRowHeight > 0 Then
+    If pvGetNewRowBandH() > 0 And m_lRowHeight > 0 Then
         lBandTop = lRowTop - 1
         If lBandTop < 0 Then
             lBandTop = 0
         End If
-        If pvNeedRepaint(uClip, lBandTop, lRowTop + pvNewRowBandH() - lBandTop) Then
-            pvBufferBand hMemDC, lBandTop, picGrid.ScaleWidth, lRowTop + pvNewRowBandH() - lBandTop
+        If pvNeedRepaint(uClip, lBandTop, lRowTop + pvGetNewRowBandH() - lBandTop) Then
+            pvSetBufferBand hMemDC, lBandTop, picGrid.ScaleWidth, lRowTop + pvGetNewRowBandH() - lBandTop
             hPrevFont = pvSelectFont(hMemDC, m_oFont)
             pvFillRect hMemDC, lHdrW + lTotalW, lRowTop, picGrid.ScaleWidth, lRowTop + m_lRowHeight, m_clrBackColorBkg
             pvPaintDataRow hMemDC, -1, lRowTop, m_lRowHeight, lHdrW, lTotalW
@@ -3094,11 +2495,11 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal hMemDC As Long, ByVal lY As Lon
                 pvPaintRowMarquee hMemDC, lRowTop, m_lRowHeight, lHdrW, lTotalW
             End If
             pvPaintRowRules hMemDC, -1, lRowTop - 1, m_lRowHeight + 1, lHdrW, vOrder
-            pvPaintNewRowDivider hMemDC, lRowTop + m_lRowHeight, pvRowHeaderWidth(), lHdrW + lTotalW - pvRowHeaderWidth()
-            pvBufferFlush hDC, hMemDC, lBandTop, picGrid.ScaleWidth, lRowTop + pvNewRowBandH() - lBandTop
+            pvPaintNewRowDivider hMemDC, lRowTop + m_lRowHeight, pvGetRowHeaderWidth(), lHdrW + lTotalW - pvGetRowHeaderWidth()
+            pvFlushBuffer hDC, hMemDC, lBandTop, picGrid.ScaleWidth, lRowTop + pvGetNewRowBandH() - lBandTop
             Call SelectObject(hMemDC, hPrevFont)
         End If
-        lRowTop = lRowTop + pvNewRowBandH()
+        lRowTop = lRowTop + pvGetNewRowBandH()
         lRowsBottom = lRowTop
     End If
     Do While lRowTop < picGrid.ScaleHeight
@@ -3120,7 +2521,7 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal hMemDC As Long, ByVal lY As Lon
             lRowsBottom = lRowTop + lRowH
         End If
         If pvNeedRepaint(uClip, lBandTop, lRowTop + lRowH - lBandTop) Then
-            pvBufferBand hMemDC, lBandTop, picGrid.ScaleWidth, lRowTop + lRowH - lBandTop
+            pvSetBufferBand hMemDC, lBandTop, picGrid.ScaleWidth, lRowTop + lRowH - lBandTop
             hPrevFont = pvSelectFont(hMemDC, m_oFont)
             pvFillRect hMemDC, lHdrW + lTotalW, lRowTop, picGrid.ScaleWidth, lRowTop + lRowH, m_clrBackColorBkg
             If pvIsNewRow(lRow) Then
@@ -3137,11 +2538,11 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal hMemDC As Long, ByVal lY As Lon
                         If m_eGridLines = jgexGLHorizontal Then
                             lLineR = lLineR + 1
                         End If
-                        pvLine hMemDC, lHdrW, lRowTop + lRowH - 1, lLineR, lRowTop + lRowH - 1, m_clrGridLinesColor, pvPenStyle()
+                        pvDrawLine hMemDC, lHdrW, lRowTop + lRowH - 1, lLineR, lRowTop + lRowH - 1, m_clrGridLinesColor, pvGetPenStyle()
                     End If
                 End If
             ElseIf pvIsGroupRow(lRow) Then
-                pvPaintGroupRow hMemDC, lRow, lRowTop, lRowH, lHdrW + lTotalW, lY + pvNewRowBandH()
+                pvPaintGroupRow hMemDC, lRow, lRowTop, lRowH, lHdrW + lTotalW, lY + pvGetNewRowBandH()
             Else
                 pvPaintDataRow hMemDC, lRow, lRowTop, lRowH, lHdrW, lTotalW
             End If
@@ -3149,14 +2550,14 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal hMemDC As Long, ByVal lY As Lon
                 pvPaintRowMarquee hMemDC, lRowTop, lRowH, lHdrW, lTotalW
             End If
             pvPaintRowRules hMemDC, lRow, lRowTop, lRowH, lHdrW, vOrder
-            pvBufferFlush hDC, hMemDC, lBandTop, picGrid.ScaleWidth, lRowTop + lRowH - lBandTop
+            pvFlushBuffer hDC, hMemDC, lBandTop, picGrid.ScaleWidth, lRowTop + lRowH - lBandTop
             Call SelectObject(hMemDC, hPrevFont)
         End If
         lRowTop = lRowTop + lRowH
         lRow = lRow + 1
     Loop
     If lExtra > 0 And lPainted > 0 And m_bRowHeaders Then
-        pvLine hDC, 0, lRowsBottom, CHROME_COL_W, lRowsBottom, vb3DDKShadow, PS_SOLID
+        pvDrawLine hDC, 0, lRowsBottom, CHROME_COL_W, lRowsBottom, vb3DDKShadow, PS_SOLID
     End If
     If m_bEmptyRows Then
         lRowsBottom = picGrid.ScaleHeight
@@ -3164,69 +2565,18 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal hMemDC As Long, ByVal lY As Lon
         pvFillRect hDC, 0, lRowsBottom + lExtra, lHdrW, picGrid.ScaleHeight, m_clrBackColorBkg
         pvFillRect hDC, lHdrW, lRowsBottom, picGrid.ScaleWidth, picGrid.ScaleHeight, m_clrBackColorBkg
         If m_oGroups.Count > 0 And lPainted > 0 Then
-            pvLine hDC, 0, lRowsBottom - 1, lHdrW, lRowsBottom - 1, m_clrGridLinesColor, pvPenStyle()
+            pvDrawLine hDC, 0, lRowsBottom - 1, lHdrW, lRowsBottom - 1, m_clrGridLinesColor, pvGetPenStyle()
         End If
         If lExtra > 0 And lPainted > 0 And m_oGroups.Count = 0 Then
-            For lIdx = 0 To pvOrderMax(vOrder)
-                lCum = lCum + pvColWidth(m_oColumns.ItemByPosition(vOrder(lIdx)))
-                pvLine hDC, lHdrW + lCum - 1, lRowsBottom, lHdrW + lCum - 1, lRowsBottom + lExtra, m_clrGridLinesColor, pvPenStyle(), DashAnchor:=lRowsBottom - m_lRowHeight
+            For lIdx = 0 To pvGetOrderMax(vOrder)
+                lCum = lCum + pvGetColWidth(m_oColumns.ItemByPosition(vOrder(lIdx)))
+                pvDrawLine hDC, lHdrW + lCum - 1, lRowsBottom, lHdrW + lCum - 1, lRowsBottom + lExtra, m_clrGridLinesColor, pvGetPenStyle(), DashAnchor:=lRowsBottom - m_lRowHeight
             Next
         End If
     End If
     If m_bBandVisible Then
-        pvLine hDC, 0, picGrid.ScaleHeight - 1, picGrid.ScaleWidth, picGrid.ScaleHeight - 1, UserControl.BackColor, PS_SOLID
+        pvDrawLine hDC, 0, picGrid.ScaleHeight - 1, picGrid.ScaleWidth, picGrid.ScaleHeight - 1, UserControl.BackColor, PS_SOLID
     End If
-End Sub
-
-Private Sub pvPaintNewRowDivider(ByVal hDC As Long, ByVal lTop As Long, ByVal lHdrW As Long, ByVal lTotalW As Long)
-    Dim lRight          As Long
-
-    lRight = lHdrW + lTotalW
-    If lRight > picGrid.ScaleWidth Then
-        lRight = picGrid.ScaleWidth
-    End If
-    If lRight < picGrid.ScaleWidth Then
-        pvFillRect hDC, lRight, lTop, picGrid.ScaleWidth, lTop + NEWROW_DIVIDER_H, m_clrBackColorBkg
-    End If
-    Select Case m_eHeaderStyle
-    Case jgexHSNoBorder, jgexHSSingleFlat
-        pvFillRect hDC, lHdrW, lTop, lRight, lTop + 4, vbButtonFace
-        pvFillRect hDC, lRight - 1, lTop, lRight, lTop + 4, vb3DDKShadow
-        pvFillRect hDC, lHdrW, lTop + 4, lRight, lTop + 5, vb3DDKShadow
-    Case jgexHSSingle3D
-        pvFillRect hDC, lHdrW, lTop, lRight, lTop + 1, m_clrBackColor
-        pvFillRect hDC, lHdrW, lTop + 1, lRight, lTop + 4, vbButtonFace
-        pvFillRect hDC, lHdrW, lTop + 1, lHdrW + 1, lTop + 4, vb3DHighlight
-        pvFillRect hDC, lRight - 1, lTop, lRight, lTop + 4, vb3DShadow
-        pvFillRect hDC, lHdrW, lTop + 4, lRight, lTop + 5, vb3DDKShadow
-    Case Else
-        pvFillRect hDC, lHdrW, lTop, lRight, lTop + 3, m_clrBackColor
-        pvFillRect hDC, lHdrW + 1, lTop + 1, lRight, lTop + 3, vbButtonFace
-        pvFillRect hDC, lHdrW, lTop + 3, lRight, lTop + 4, vb3DShadow
-        pvFillRect hDC, lHdrW, lTop + 4, lRight, lTop + 5, vb3DDKShadow
-        pvFillRect hDC, lRight - 2, lTop, lRight - 1, lTop + 4, vb3DShadow
-        pvFillRect hDC, lRight - 1, lTop, lRight, lTop + 4, vb3DDKShadow
-    End Select
-End Sub
-
-Private Sub pvPaintRowRules(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, vOrder As Variant)
-    Dim lIdx            As Long
-    Dim lCum            As Long
-    Dim lX              As Long
-
-    If m_eGridLines <> jgexGLBoth And m_eGridLines <> jgexGLVertical Then
-        Exit Sub
-    End If
-    If lRow <= RowCount Then
-        If pvIsGroupRow(lRow) Then
-            Exit Sub
-        End If
-    End If
-    For lIdx = 0 To pvOrderMax(vOrder)
-        lCum = lCum + pvColWidth(m_oColumns.ItemByPosition(vOrder(lIdx)))
-        lX = lHdrW + lCum - 1
-        pvLine hDC, lX, lRowTop, lX, lRowTop + lRowH, m_clrGridLinesColor, pvPenStyle()
-    Next
 End Sub
 
 Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, ByVal lTotalW As Long)
@@ -3258,13 +2608,13 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
     Dim vOrder          As Variant
     Dim lIdx            As Long
 
-    Set oRowData = pvWindowRow(lRow)
+    Set oRowData = pvGetWindowRow(lRow)
     If oRowData Is Nothing Then
         If pvIsNewRow(lRow) And lRow = m_lRow Then
             Set oRowData = m_oRowData
         End If
     End If
-    bSelected = pvIsRowSelected(lRow) Or (m_lRow >= 1 And lRow = m_lRow And Not m_bCurRowDeselected)
+    bSelected = pvIsSelectedRow(lRow) Or (m_lRow >= 1 And lRow = m_lRow And Not m_bCurRowDeselected)
     If pvIsNewRow(lRow) And lRow = m_lRow Then
         If m_oGroups.Count = 0 Then
             bSelected = True
@@ -3287,7 +2637,7 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         clrBack = vbButtonFace
         clrText = m_clrForeColor
     ElseIf bSelected Then
-        pvSelColors clrBack, clrText
+        pvGetSelColors clrBack, clrText
     ElseIf m_bUseEvenOddColor Then
         If lRow Mod 2 = 0 Then
             clrBack = m_clrRowColorEven
@@ -3306,12 +2656,12 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         End If
         pvPaintRowHeader hDC, lRowTop, lRowH, CHROME_COL_W, (lRow = m_lRow)
     End If
-    If pvGroupIndent() > 0 Then
+    If pvGetGroupIndent() > 0 Then
         If pvIsNewRow(lRow) Then
-            pvFillRect hDC, pvRowHeaderWidth(), lRowTop, lHdrW, lRowTop + lRowH, m_clrBackColor
+            pvFillRect hDC, pvGetRowHeaderWidth(), lRowTop, lHdrW, lRowTop + lRowH, m_clrBackColor
         Else
-            pvFillRect hDC, pvRowHeaderWidth(), lRowTop, lHdrW, lRowTop + lRowH, m_clrBackColorRowGroup
-            pvPaintIndentRules hDC, lRowTop, lRowH, pvGroupIndent()
+            pvFillRect hDC, pvGetRowHeaderWidth(), lRowTop, lHdrW, lRowTop + lRowH, m_clrBackColorRowGroup
+            pvPaintIndentRules hDC, lRowTop, lRowH, pvGetGroupIndent()
         End If
     End If
     If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLVertical Then
@@ -3330,7 +2680,7 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         lLineR = lLineR + 1
     End If
     clrHLine = m_clrGridLinesColor
-    lPenH = pvPenStyle()
+    lPenH = pvGetPenStyle()
     If lRow = RowCount And Not pvIsNewRow(RowCount + 1) Or pvIsNewRow(lRow) And lRow > RowCount Then
         clrHLine = vb3DDKShadow
         lPenH = PS_SOLID
@@ -3340,25 +2690,25 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         clrHGap = m_clrBackColor
     End If
     lX = lHdrW
-    vOrder = pvColOrder()
-    For lIdx = 0 To pvOrderMax(vOrder)
+    vOrder = pvBuildColOrder()
+    For lIdx = 0 To pvGetOrderMax(vOrder)
         Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
-        lPos = pvVisiblePosition(vOrder(lIdx))
-        lW = pvColWidth(oCol)
-        pvFillRect hDC, lX, lRowTop, lX + lW - lVLine, lRowTop + pvRowContentH(lRowH), clrBack
+        lPos = pvGetVisiblePosition(vOrder(lIdx))
+        lW = pvGetColWidth(oCol)
+        pvFillRect hDC, lX, lRowTop, lX + lW - lVLine, lRowTop + pvGetRowContentH(lRowH), clrBack
         If bCurrentRow And m_lCol = lPos Then
             lFillL = lX
             lFillR = lX + lW
             If lFillL <= lHdrW Then
                 lFillL = lHdrW + 1
             End If
-            If lFillR > pvMarqueeRight(lHdrW, lTotalW) Then
-                lFillR = pvMarqueeRight(lHdrW, lTotalW)
+            If lFillR > pvGetMarqueeRight(lHdrW, lTotalW) Then
+                lFillR = pvGetMarqueeRight(lHdrW, lTotalW)
             End If
             If lFillR > lX + lW - lVLine Then
                 lFillR = lX + lW - lVLine
             End If
-            pvFillRect hDC, lFillL, lRowTop + 1, lFillR, lRowTop + pvRowContentH(lRowH) - 1, m_clrBackColor
+            pvFillRect hDC, lFillL, lRowTop + 1, lFillR, lRowTop + pvGetRowContentH(lRowH) - 1, m_clrBackColor
             clrCellBack = m_clrBackColor
             clrCellText = m_clrForeColor
         Else
@@ -3366,39 +2716,39 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
             clrCellText = clrText
         End If
         If oCol.ColumnType = jgexCheckBox Then
-            pvPaintCheckBox hDC, lX + (lW - CHECK_BOX_W) \ 2 - 1, lRowTop + (pvRowContentH(lRowH) - CHECK_BOX_H) \ 2, _
-                pvIsChecked(oRowData, oCol.Index), (bCurrentRow And m_lCol = lPos)
+            pvPaintCheckBox hDC, lX + (lW - CHECK_BOX_W) \ 2 - 1, lRowTop + (pvGetRowContentH(lRowH) - CHECK_BOX_H) \ 2, _
+                pvGetCheckState(oRowData, oCol.Index), (bCurrentRow And m_lCol = lPos)
             sText = vbNullString
         Else
-            sText = pvCellText(oRowData, oCol)
+            sText = pvGetCellText(oRowData, oCol)
         End If
         If LenB(sText) <> 0 Then
             lClipR = lX + lW
             If lMarqueeR >= 0 And lClipR > lMarqueeR Then
                 lClipR = lMarqueeR
             End If
-            pvDrawText hDC, sText, lX + 2, lRowTop, lX + lW - 3, lRowTop + pvRowContentH(lRowH), clrCellText, clrCellBack, oCol.TextAlignment, lX, lClipR, oCol.WordWrap, bEllipsis:=True
+            pvDrawText hDC, sText, lX + 2, lRowTop, lX + lW - 3, lRowTop + pvGetRowContentH(lRowH), clrCellText, clrCellBack, oCol.TextAlignment, lX, lClipR, oCol.WordWrap, bEllipsis:=True
         End If
         If bHLine Then
-            pvLine hDC, lX, lRowTop + lRowH - 1, lX + lW, lRowTop + lRowH - 1, clrHLine, lPenH, DashAnchor:=lLineR - 1, GapColor:=clrHGap
+            pvDrawLine hDC, lX, lRowTop + lRowH - 1, lX + lW, lRowTop + lRowH - 1, clrHLine, lPenH, DashAnchor:=lLineR - 1, GapColor:=clrHGap
         End If
         lX = lX + lW
     Next
     If bHLine And lLineR > lX Then
-        pvLine hDC, lX, lRowTop + lRowH - 1, lLineR, lRowTop + lRowH - 1, clrHLine, lPenH, DashAnchor:=lLineR - 1, GapColor:=clrHGap
+        pvDrawLine hDC, lX, lRowTop + lRowH - 1, lLineR, lRowTop + lRowH - 1, clrHLine, lPenH, DashAnchor:=lLineR - 1, GapColor:=clrHGap
     End If
-    If bHLine And pvIsNewRow(lRow) And lHdrW > pvRowHeaderWidth() Then
-        pvLine hDC, pvRowHeaderWidth(), lRowTop + lRowH - 1, lHdrW, lRowTop + lRowH - 1, clrHLine, lPenH, DashAnchor:=lLineR - 1, GapColor:=clrHGap
+    If bHLine And pvIsNewRow(lRow) And lHdrW > pvGetRowHeaderWidth() Then
+        pvDrawLine hDC, pvGetRowHeaderWidth(), lRowTop + lRowH - 1, lHdrW, lRowTop + lRowH - 1, clrHLine, lPenH, DashAnchor:=lLineR - 1, GapColor:=clrHGap
     End If
     If bSelOutline Then
         lOutR = lHdrW + lTotalW - 2
         If lOutR > picGrid.ScaleWidth - 1 Then
             lOutR = picGrid.ScaleWidth - 1
         End If
-        pvFillRect hDC, pvRowHeaderWidth(), lRowTop, lOutR + 1, lRowTop + 1, vbHighlight
-        pvFillRect hDC, pvRowHeaderWidth(), lRowTop + pvRowContentH(lRowH) - 1, lOutR + 1, lRowTop + pvRowContentH(lRowH), vbHighlight
-        pvFillRect hDC, pvRowHeaderWidth(), lRowTop, pvRowHeaderWidth() + 1, lRowTop + pvRowContentH(lRowH), vbHighlight
-        pvFillRect hDC, lOutR, lRowTop, lOutR + 1, lRowTop + pvRowContentH(lRowH), vbHighlight
+        pvFillRect hDC, pvGetRowHeaderWidth(), lRowTop, lOutR + 1, lRowTop + 1, vbHighlight
+        pvFillRect hDC, pvGetRowHeaderWidth(), lRowTop + pvGetRowContentH(lRowH) - 1, lOutR + 1, lRowTop + pvGetRowContentH(lRowH), vbHighlight
+        pvFillRect hDC, pvGetRowHeaderWidth(), lRowTop, pvGetRowHeaderWidth() + 1, lRowTop + pvGetRowContentH(lRowH), vbHighlight
+        pvFillRect hDC, lOutR, lRowTop, lOutR + 1, lRowTop + pvGetRowContentH(lRowH), vbHighlight
     End If
 End Sub
 
@@ -3424,8 +2774,8 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
     lLeft = lHdrW
     If bGroupRow Then
         lLeft = 0
-    ElseIf pvIsNewRow(m_lRow) And pvGroupIndent() > 0 Then
-        lLeft = pvRowHeaderWidth()
+    ElseIf pvIsNewRow(m_lRow) And pvGetGroupIndent() > 0 Then
+        lLeft = pvGetRowHeaderWidth()
     End If
     lRight = lHdrW + lTotalW - 1
     If Not bGroupRow Then
@@ -3436,7 +2786,7 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
     If lRight > picGrid.ScaleWidth - 1 Then
         lRight = picGrid.ScaleWidth - 1
     End If
-    lBottom = lRowTop + pvRowContentH(lRowH) - 1
+    lBottom = lRowTop + pvGetRowContentH(lRowH) - 1
     lStartB = 1
     If (lBottom - lRowTop) Mod 2 = 1 Then
         lStartB = 0
@@ -3446,12 +2796,12 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
         If lPass = 0 Then
             hBrush = CreateSolidBrush(vbWhite)
         Else
-            hBrush = CreateSolidBrush(pvColor(m_clrForeColor))
+            hBrush = CreateSolidBrush(pvTranslateColor(m_clrForeColor))
         End If
         hPrevBrush = SelectObject(hDC, hBrush)
         lCum = lLeft
-        vOrder = pvColOrder()
-        For lIdx = -1 To pvOrderMax(vOrder)
+        vOrder = pvBuildColOrder()
+        For lIdx = -1 To pvGetOrderMax(vOrder)
             lW = 0
             If lIdx = -1 Then
                 If lLeft < lHdrW Then
@@ -3464,7 +2814,7 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
             Else
                 Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
                 If oCol.Visible Then
-                    lW = pvColWidth(oCol)
+                    lW = pvGetColWidth(oCol)
                 End If
             End If
             If lW > 0 Then
@@ -3502,6 +2852,97 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
     Next
 End Sub
 
+Private Sub pvPaintRowHeader(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, ByVal bCurrent As Boolean, Optional ByVal EmptyRow As Boolean)
+    Dim lIdx            As Long
+    Dim lC              As Long
+
+    If EmptyRow Then
+        lC = lRowH - 1
+    Else
+        Select Case m_eGridLines
+        Case jgexGLVertical
+            lC = lRowH
+        Case jgexGLHorizontal
+            lC = lRowH - 2
+        Case Else
+            lC = lRowH - 1
+        End Select
+    End If
+    pvFillRect hDC, 1, lRowTop + 1, lHdrW - 2, lRowTop + lC - 1, m_clrBackColorHeader
+    pvDrawLine hDC, 0, lRowTop, lHdrW, lRowTop, vb3DHighlight, PS_SOLID
+    pvDrawLine hDC, 0, lRowTop, 0, lRowTop + lC - 1, vb3DHighlight, PS_SOLID
+    pvDrawLine hDC, 0, lRowTop + lC - 1, lHdrW, lRowTop + lC - 1, vb3DShadow, PS_SOLID
+    If lC < lRowH Then
+        pvDrawLine hDC, 0, lRowTop + lC, lHdrW, lRowTop + lC, vb3DDKShadow, PS_SOLID
+    End If
+    pvDrawLine hDC, lHdrW - 2, lRowTop, lHdrW - 2, lRowTop + lC - 1, vb3DShadow, PS_SOLID
+    pvDrawLine hDC, lHdrW - 1, lRowTop, lHdrW - 1, lRowTop + lC, vb3DDKShadow, PS_SOLID
+    If bCurrent Then
+        For lIdx = 0 To 5
+            pvDrawLine hDC, 6 + lIdx, lRowTop + 3 + lIdx, 6 + lIdx, lRowTop + 15 - lIdx, vbButtonText, PS_SOLID
+        Next
+    End If
+End Sub
+
+Private Sub pvPaintRowRules(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, vOrder As Variant)
+    Dim lIdx            As Long
+    Dim lCum            As Long
+    Dim lX              As Long
+
+    If m_eGridLines <> jgexGLBoth And m_eGridLines <> jgexGLVertical Then
+        Exit Sub
+    End If
+    If lRow <= RowCount Then
+        If pvIsGroupRow(lRow) Then
+            Exit Sub
+        End If
+    End If
+    For lIdx = 0 To pvGetOrderMax(vOrder)
+        lCum = lCum + pvGetColWidth(m_oColumns.ItemByPosition(vOrder(lIdx)))
+        lX = lHdrW + lCum - 1
+        pvDrawLine hDC, lX, lRowTop, lX, lRowTop + lRowH, m_clrGridLinesColor, pvGetPenStyle()
+    Next
+End Sub
+
+Private Sub pvPaintIndentRules(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lIndent As Long)
+    Dim lIdx            As Long
+
+    For lIdx = GROUP_INDENT_W To lIndent Step GROUP_INDENT_W
+        pvDrawLine hDC, pvGetRowHeaderWidth() + lIdx - 1, lRowTop, pvGetRowHeaderWidth() + lIdx - 1, lRowTop + lRowH, m_clrGridLinesColor, pvGetPenStyle()
+    Next
+End Sub
+
+Private Sub pvPaintNewRowDivider(ByVal hDC As Long, ByVal lTop As Long, ByVal lHdrW As Long, ByVal lTotalW As Long)
+    Dim lRight          As Long
+
+    lRight = lHdrW + lTotalW
+    If lRight > picGrid.ScaleWidth Then
+        lRight = picGrid.ScaleWidth
+    End If
+    If lRight < picGrid.ScaleWidth Then
+        pvFillRect hDC, lRight, lTop, picGrid.ScaleWidth, lTop + NEWROW_DIVIDER_H, m_clrBackColorBkg
+    End If
+    Select Case m_eHeaderStyle
+    Case jgexHSNoBorder, jgexHSSingleFlat
+        pvFillRect hDC, lHdrW, lTop, lRight, lTop + 4, vbButtonFace
+        pvFillRect hDC, lRight - 1, lTop, lRight, lTop + 4, vb3DDKShadow
+        pvFillRect hDC, lHdrW, lTop + 4, lRight, lTop + 5, vb3DDKShadow
+    Case jgexHSSingle3D
+        pvFillRect hDC, lHdrW, lTop, lRight, lTop + 1, m_clrBackColor
+        pvFillRect hDC, lHdrW, lTop + 1, lRight, lTop + 4, vbButtonFace
+        pvFillRect hDC, lHdrW, lTop + 1, lHdrW + 1, lTop + 4, vb3DHighlight
+        pvFillRect hDC, lRight - 1, lTop, lRight, lTop + 4, vb3DShadow
+        pvFillRect hDC, lHdrW, lTop + 4, lRight, lTop + 5, vb3DDKShadow
+    Case Else
+        pvFillRect hDC, lHdrW, lTop, lRight, lTop + 3, m_clrBackColor
+        pvFillRect hDC, lHdrW + 1, lTop + 1, lRight, lTop + 3, vbButtonFace
+        pvFillRect hDC, lHdrW, lTop + 3, lRight, lTop + 4, vb3DShadow
+        pvFillRect hDC, lHdrW, lTop + 4, lRight, lTop + 5, vb3DDKShadow
+        pvFillRect hDC, lRight - 2, lTop, lRight - 1, lTop + 4, vb3DShadow
+        pvFillRect hDC, lRight - 1, lTop, lRight, lTop + 4, vb3DDKShadow
+    End Select
+End Sub
+
 Private Sub pvPaintGroupRow(ByVal hDC As Long, ByVal lPos As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lRight As Long, ByVal lBlockTop As Long)
     Dim oRowData        As JSRowData
     Dim bFooter         As Boolean
@@ -3516,30 +2957,30 @@ Private Sub pvPaintGroupRow(ByVal hDC As Long, ByVal lPos As Long, ByVal lRowTop
     Dim lLineLeft       As Long
     Dim uMetrics        As TEXTMETRICW
 
-    Set oRowData = pvWindowRow(lPos)
+    Set oRowData = pvGetWindowRow(lPos)
     If oRowData Is Nothing Then
         Exit Sub
     End If
     bFooter = (oRowData.RowType = jgexRowTypeGroupFooter)
-    lIndent = pvRowIndent(lPos)
-    If pvIsRowSelected(lPos) Or (m_lRow >= 1 And lPos = m_lRow) Then
-        pvSelColors clrBack, clrText
+    lIndent = pvGetRowIndent(lPos)
+    If pvIsSelectedRow(lPos) Or (m_lRow >= 1 And lPos = m_lRow) Then
+        pvGetSelColors clrBack, clrText
     Else
         clrBack = m_clrBackColorRowGroup
         clrText = m_clrForeColorRowGroup
     End If
     pvFillRect hDC, 0, lRowTop, lRight, lRowTop + lRowH, clrBack
-    pvFillRect hDC, 0, lRowTop + lRowH - 1, pvBlockLeft() - 1, lRowTop + lRowH, m_clrBackColorRowGroup
+    pvFillRect hDC, 0, lRowTop + lRowH - 1, pvGetBlockLeft() - 1, lRowTop + lRowH, m_clrBackColorRowGroup
     pvPaintIndentRules hDC, lRowTop, lRowH, lIndent
-    pvLine hDC, pvBlockLeft() - 1, lRowTop + lRowH - 1, lRight, lRowTop + lRowH - 1, m_clrGridLinesColor, pvPenStyle()
+    pvDrawLine hDC, pvGetBlockLeft() - 1, lRowTop + lRowH - 1, lRight, lRowTop + lRowH - 1, m_clrGridLinesColor, pvGetPenStyle()
     If lRowTop > lBlockTop Then
-        lLineLeft = pvRowHeaderWidth() + lIndent - 1
+        lLineLeft = pvGetRowHeaderWidth() + lIndent - 1
         If bFooter Then
-            lLineLeft = pvBlockLeft() - 1
+            lLineLeft = pvGetBlockLeft() - 1
         End If
-        pvLine hDC, lLineLeft, lRowTop - 1, lRight, lRowTop - 1, m_clrGridLinesColor, pvPenStyle()
+        pvDrawLine hDC, lLineLeft, lRowTop - 1, lRight, lRowTop - 1, m_clrGridLinesColor, pvGetPenStyle()
     End If
-    If pvGroupBoxRect(lPos, lRowTop, uBox) Then
+    If pvGetGroupBoxRect(lPos, lRowTop, uBox) Then
         lBoxLeft = uBox.Left
         lBoxTop = uBox.Top
     End If
@@ -3555,7 +2996,7 @@ Private Sub pvPaintGroupRow(ByVal hDC As Long, ByVal lPos As Long, ByVal lRowTop
     lTextTop = lRowTop + (lRowH - 1 - uMetrics.tmHeight) \ 2
     lTextLeft = lBoxLeft + GROUP_BOX_W + 2
     If Not oRowData.frGroupPrefixed Then
-        lTextLeft = lTextLeft + pvTextWidth(hDC, " ")
+        lTextLeft = lTextLeft + pvGetTextWidth(hDC, " ")
     End If
     pvDrawText hDC, oRowData.GroupCaption, lTextLeft, lTextTop, lRight, lTextTop + uMetrics.tmHeight, _
         clrText, clrBack, jgexAlignLeft, lTextLeft, lRight
@@ -3574,12 +3015,12 @@ Private Sub pvPaintGroupTotals(ByVal hDC As Long, oRowData As JSRowData, ByVal l
 
     uMetrics = FontTextMetrics(m_oFont, hDC)
     lTextTop = lRowTop + (lRowH - 1 - uMetrics.tmHeight) \ 2
-    lX = pvBlockLeft()
-    vOrder = pvColOrder()
-    For lIdx = 0 To pvOrderMax(vOrder)
+    lX = pvGetBlockLeft()
+    vOrder = pvBuildColOrder()
+    For lIdx = 0 To pvGetOrderMax(vOrder)
         Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
         If oCol.Visible Then
-            lW = pvColWidth(oCol)
+            lW = pvGetColWidth(oCol)
             If oCol.AggregateFunction <> jgexAggregateNone Then
                 vValue = oRowData.Value(oCol.Index)
                 sText = vbNullString
@@ -3603,48 +3044,16 @@ Private Sub pvPaintGroupBox(ByVal hDC As Long, ByVal lX As Long, ByVal lY As Lon
     Dim lMid            As Long
 
     pvFillRect hDC, lX + 1, lY + 1, lX + GROUP_BOX_W - 2, lY + GROUP_BOX_W - 2, vbButtonFace
-    pvLine hDC, lX, lY, lX + GROUP_BOX_W - 1, lY, vb3DHighlight, PS_SOLID
-    pvLine hDC, lX, lY, lX, lY + GROUP_BOX_W - 1, vb3DHighlight, PS_SOLID
-    pvLine hDC, lX + GROUP_BOX_W - 2, lY, lX + GROUP_BOX_W - 2, lY + GROUP_BOX_W - 1, vb3DShadow, PS_SOLID
-    pvLine hDC, lX, lY + GROUP_BOX_W - 2, lX + GROUP_BOX_W - 1, lY + GROUP_BOX_W - 2, vb3DShadow, PS_SOLID
-    pvLine hDC, lX + GROUP_BOX_W - 1, lY, lX + GROUP_BOX_W - 1, lY + GROUP_BOX_W, vb3DDKShadow, PS_SOLID
-    pvLine hDC, lX, lY + GROUP_BOX_W - 1, lX + GROUP_BOX_W, lY + GROUP_BOX_W - 1, vb3DDKShadow, PS_SOLID
+    pvDrawLine hDC, lX, lY, lX + GROUP_BOX_W - 1, lY, vb3DHighlight, PS_SOLID
+    pvDrawLine hDC, lX, lY, lX, lY + GROUP_BOX_W - 1, vb3DHighlight, PS_SOLID
+    pvDrawLine hDC, lX + GROUP_BOX_W - 2, lY, lX + GROUP_BOX_W - 2, lY + GROUP_BOX_W - 1, vb3DShadow, PS_SOLID
+    pvDrawLine hDC, lX, lY + GROUP_BOX_W - 2, lX + GROUP_BOX_W - 1, lY + GROUP_BOX_W - 2, vb3DShadow, PS_SOLID
+    pvDrawLine hDC, lX + GROUP_BOX_W - 1, lY, lX + GROUP_BOX_W - 1, lY + GROUP_BOX_W, vb3DDKShadow, PS_SOLID
+    pvDrawLine hDC, lX, lY + GROUP_BOX_W - 1, lX + GROUP_BOX_W, lY + GROUP_BOX_W - 1, vb3DDKShadow, PS_SOLID
     lMid = lY + (GROUP_BOX_W - 2) \ 2
     pvFillRect hDC, lX + 3, lMid, lX + GROUP_BOX_W - 4, lMid + 1, m_clrForeColorRowGroup
     If Not bExpanded Then
         pvFillRect hDC, lX + (GROUP_BOX_W - 2) \ 2, lY + 3, lX + (GROUP_BOX_W - 2) \ 2 + 1, lY + GROUP_BOX_W - 4, m_clrForeColorRowGroup
-    End If
-End Sub
-
-Private Sub pvPaintRowHeader(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, ByVal bCurrent As Boolean, Optional ByVal EmptyRow As Boolean)
-    Dim lIdx            As Long
-    Dim lC              As Long
-
-    If EmptyRow Then
-        lC = lRowH - 1
-    Else
-        Select Case m_eGridLines
-        Case jgexGLVertical
-            lC = lRowH
-        Case jgexGLHorizontal
-            lC = lRowH - 2
-        Case Else
-            lC = lRowH - 1
-        End Select
-    End If
-    pvFillRect hDC, 1, lRowTop + 1, lHdrW - 2, lRowTop + lC - 1, m_clrBackColorHeader
-    pvLine hDC, 0, lRowTop, lHdrW, lRowTop, vb3DHighlight, PS_SOLID
-    pvLine hDC, 0, lRowTop, 0, lRowTop + lC - 1, vb3DHighlight, PS_SOLID
-    pvLine hDC, 0, lRowTop + lC - 1, lHdrW, lRowTop + lC - 1, vb3DShadow, PS_SOLID
-    If lC < lRowH Then
-        pvLine hDC, 0, lRowTop + lC, lHdrW, lRowTop + lC, vb3DDKShadow, PS_SOLID
-    End If
-    pvLine hDC, lHdrW - 2, lRowTop, lHdrW - 2, lRowTop + lC - 1, vb3DShadow, PS_SOLID
-    pvLine hDC, lHdrW - 1, lRowTop, lHdrW - 1, lRowTop + lC, vb3DDKShadow, PS_SOLID
-    If bCurrent Then
-        For lIdx = 0 To 5
-            pvLine hDC, 6 + lIdx, lRowTop + 3 + lIdx, 6 + lIdx, lRowTop + 15 - lIdx, vbButtonText, PS_SOLID
-        Next
     End If
 End Sub
 
@@ -3667,7 +3076,7 @@ Private Sub pvPaintCheckBox(ByVal hDC As Long, ByVal lLeft As Long, ByVal lTop A
     If Not bChecked Then
         Exit Sub
     End If
-    Select Case pvScreenDpi()
+    Select Case pvGetScreenDpi()
     Case Is >= 144
         lOffX = 3
         lOffY = 8
@@ -3689,107 +3098,7 @@ Private Sub pvPaintCheckBox(ByVal hDC As Long, ByVal lLeft As Long, ByVal lTop A
     Next
 End Sub
 
-Private Function pvNeedRepaint(uClip As RECT, ByVal lTop As Long, ByVal lHeight As Long) As Boolean
-    pvNeedRepaint = (uClip.Bottom > lTop And uClip.Top < lTop + lHeight)
-End Function
-
-Private Function pvBufferInit(ByVal hDC As Long, ByVal lWidth As Long, ByVal lHeight As Long) As Long
-    pvBufferInit = hDC
-    pvBufferTermiante
-    m_lBufLastY = -1
-    m_lBufLastRow = 0
-    If lWidth <= 0 Or lHeight <= 0 Then
-        Exit Function
-    End If
-#If FORCE_BUFFER = 0 Then
-    If GetSystemMetrics(SM_REMOTESESSION) <> 0 Then
-        Exit Function
-    End If
-#End If
-    m_hBufDC = CreateCompatibleDC(hDC)
-    If m_hBufDC = 0 Then
-        Exit Function
-    End If
-    m_hBufBmp = CreateCompatibleBitmap(hDC, lWidth, lHeight)
-    If m_hBufBmp = 0 Then
-        pvBufferTermiante
-        Exit Function
-    End If
-    m_hBufOldBmp = SelectObject(m_hBufDC, m_hBufBmp)
-    pvBufferInit = m_hBufDC
-End Function
-
-Private Sub pvBufferBand(ByVal hMemDC As Long, ByVal lTop As Long, ByVal lWidth As Long, ByVal lHeight As Long)
-    If m_hBufDC = 0 Or hMemDC <> m_hBufDC Then
-        Exit Sub
-    End If
-    If m_lBufLastY = lTop Then
-        Call SetViewportOrgEx(m_hBufDC, 0, 0, 0)
-        Call BitBlt(m_hBufDC, 0, 0, lWidth, 1, m_hBufDC, 0, m_lBufLastRow, SRCCOPY)
-    End If
-    Call SetViewportOrgEx(m_hBufDC, 0, -lTop, 0)
-    Call SelectClipRgn(m_hBufDC, 0)
-    Call IntersectClipRect(m_hBufDC, 0, lTop, lWidth, lTop + lHeight)
-End Sub
-
-Private Sub pvBufferFlush(ByVal hDC As Long, ByVal hMemDC As Long, ByVal lTop As Long, ByVal lWidth As Long, ByVal lHeight As Long)
-    If hMemDC = hDC Then
-        Exit Sub
-    End If
-    Call BitBlt(hDC, 0, lTop, lWidth, lHeight, hMemDC, 0, lTop, SRCCOPY)
-    m_lBufLastRow = lHeight - 1
-    m_lBufLastY = lTop + lHeight - 1
-End Sub
-
-Private Sub pvBufferTermiante()
-    If m_hBufOldBmp <> 0 Then
-        Call SelectObject(m_hBufDC, m_hBufOldBmp)
-        m_hBufOldBmp = 0
-    End If
-    If m_hBufBmp <> 0 Then
-        Call DeleteObject(m_hBufBmp)
-        m_hBufBmp = 0
-    End If
-    If m_hBufDC <> 0 Then
-        Call DeleteDC(m_hBufDC)
-        m_hBufDC = 0
-    End If
-End Sub
-
-Private Function pvRowIndent(ByVal lPos As Long) As Long
-    If pvIsGroupRow(lPos) Then
-        pvRowIndent = (pvWindowRow(lPos).GroupLevel - 1) * GROUP_INDENT_W
-    Else
-        pvRowIndent = pvGroupIndent()
-    End If
-End Function
-
-Private Sub pvPaintIndentRules(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lIndent As Long)
-    Dim lIdx            As Long
-
-    For lIdx = GROUP_INDENT_W To lIndent Step GROUP_INDENT_W
-        pvLine hDC, pvRowHeaderWidth() + lIdx - 1, lRowTop, pvRowHeaderWidth() + lIdx - 1, lRowTop + lRowH, m_clrGridLinesColor, pvPenStyle()
-    Next
-End Sub
-
-Private Function pvRowHeaderWidth() As Long
-    If m_bRowHeaders Then
-        pvRowHeaderWidth = CHROME_COL_W
-    End If
-End Function
-
-Private Function pvBlockLeft() As Long
-    If m_bRowHeaders Then
-        pvBlockLeft = CHROME_COL_W
-    End If
-    pvBlockLeft = pvBlockLeft + pvGroupIndent()
-End Function
-
-Private Function pvGroupIndent() As Long
-    pvGroupIndent = m_oGroups.Count * GROUP_INDENT_W
-End Function
-
-Private Function pvIsChecked(oRowData As JSRowData, ByVal lColIndex As Long) As Boolean
+Private Function pvGetCheckState(oRowData As JSRowData, ByVal lColIndex As Long) As Boolean
     Dim vValue          As Variant
 
     If oRowData Is Nothing Then
@@ -3797,133 +3106,202 @@ Private Function pvIsChecked(oRowData As JSRowData, ByVal lColIndex As Long) As 
     End If
     vValue = oRowData.Value(lColIndex)
     If Not IsObject(vValue) And Not IsArray(vValue) Then
-        If Not pvIsBlank(vValue) Then
-            pvIsChecked = CBool(vValue)
+        If Not pvIsBlankValue(vValue) Then
+            pvGetCheckState = CBool(vValue)
         End If
     End If
 End Function
 
-Private Function pvMarqueeRight(ByVal lHdrW As Long, ByVal lTotalW As Long) As Long
-    pvMarqueeRight = lHdrW + lTotalW - 1
-    If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLVertical Then
-        pvMarqueeRight = pvMarqueeRight - 1
-    End If
-End Function
-
-Private Function pvScreenDpi() As Long
-    Dim hScreenDC       As Long
-
-    hScreenDC = GetDC(0)
-    pvScreenDpi = GetDeviceCaps(hScreenDC, LOGPIXELSY)
-    Call ReleaseDC(0, hScreenDC)
-End Function
-
-Private Function pvCellText(oRowData As JSRowData, oCol As JSColumn) As String
-    Dim vValue          As Variant
-
-    If oRowData Is Nothing Then
-        Exit Function
-    End If
-    If oRowData.frCellDirty(oCol.Index) Then
-        AssignVariant vValue, oRowData.Value(oCol.Index)
-        pvCellText = pvColDisplayText(oCol, vValue)
-        Exit Function
-    End If
-    pvCellText = oRowData.DisplayValue(oCol.Index)
-    If LenB(pvCellText) = 0 Then
-        If pvColReplaces(oCol) Then
-            Exit Function
-        End If
-        pvCellText = C2Str(oRowData.Value(oCol.Index))
-    End If
-End Function
-
-Private Function pvColReplaces(oCol As JSColumn) As Boolean
-    If oCol.HasValueList And oCol.ReplaceValues Then
-        pvColReplaces = Not oCol.ValueList Is Nothing
-    End If
-End Function
-
-Private Function pvColDisplayText(oCol As JSColumn, vValue As Variant) As String
-    Dim oItem           As JSValueItem
-
-    If pvColReplaces(oCol) Then
-        Set oItem = oCol.ValueList.ItemByValue(vValue)
-        If Not oItem Is Nothing Then
-            pvColDisplayText = oItem.Text
-        End If
-        Exit Function
-    End If
-    pvColDisplayText = C2Str(vValue)
-    If LenB(pvColDisplayText) = 0 Then
-        Exit Function
-    End If
-    If LenB(oCol.Format) <> 0 Then
-        pvColDisplayText = VBA.Format$(vValue, oCol.Format)
-    End If
-End Function
-
-Private Function pvValueItemByText(oCol As JSColumn, sText As String) As JSValueItem
-    Dim oItem           As JSValueItem
-
-    For Each oItem In oCol.ValueList
-        If oItem.Text = sText Then
-            Set pvValueItemByText = oItem
-            Exit Function
-        End If
-    Next
-End Function
-
-Private Sub pvSetDisplayValues(oRowData As JSRowData)
+Private Sub pvPaintHeaders(ByVal hDC As Long, ByVal lY As Long)
+    Dim lHdrH           As Long
+    Dim uMetrics        As TEXTMETRICW
+    Dim lX              As Long
     Dim oCol            As JSColumn
+    Dim lW              As Long
+    Dim hPrevFont       As Long
+    Dim vOrder          As Variant
+    Dim lIdx            As Long
+    Dim lMarkX          As Long
+    Dim bMark           As Boolean
 
-    If oRowData Is Nothing Then
-        Exit Sub
-    End If
-    If oRowData.RowType <> jgexRowTypeRecord Then
-        Exit Sub
-    End If
-    For Each oCol In m_oColumns
-        oRowData.DisplayValue(oCol.Index) = pvColDisplayText(oCol, oRowData.Value(oCol.Index))
-    Next
-End Sub
-
-Private Sub pvRaiseRowFormat(oRowData As JSRowData)
-    pvSetDisplayValues oRowData
-    RaiseEvent RowFormat(oRowData)
-End Sub
-
-Private Function pvEditInitText(oRowData As JSRowData, oCol As JSColumn) As String
-    If oRowData Is Nothing Then
-        Exit Function
-    End If
-    If pvColReplaces(oCol) Then
-        pvEditInitText = pvCellText(oRowData, oCol)
-    Else
-        pvEditInitText = C2Str(oRowData.Value(oCol.Index))
-    End If
-End Function
-
-Private Function pvRowContentH(ByVal lRowH As Long) As Long
-    pvRowContentH = lRowH
-    If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLHorizontal Then
-        pvRowContentH = lRowH - 1
-    End If
-End Function
-
-Private Function pvPenStyle() As Long
-    Select Case m_eGridLineStyle
-    Case jgexGLSDashes
-        pvPenStyle = PS_DASH
-    Case jgexGLSSmallDots
-        pvPenStyle = PS_DOT
-    Case Else
-        pvPenStyle = PS_SOLID
+    lHdrH = m_lColumnHeaderHeight
+    lMarkX = -1
+    pvFillRect hDC, 0, lY, picGrid.ScaleWidth, lY + lHdrH, picGrid.BackColor
+    hPrevFont = pvSelectFont(hDC, m_oColumnHeaderFont)
+    Select Case m_eHeaderStyle
+    Case jgexHSDouble3D
+        pvDrawLine hDC, 0, lY, picGrid.ScaleWidth, lY, vb3DHighlight, PS_SOLID
+        pvDrawLine hDC, 0, lY + lHdrH - 2, picGrid.ScaleWidth, lY + lHdrH - 2, vb3DShadow, PS_SOLID
+        pvDrawLine hDC, 0, lY + lHdrH - 1, picGrid.ScaleWidth, lY + lHdrH - 1, vb3DDKShadow, PS_SOLID
+    Case jgexHSSingleFlat
+        pvDrawLine hDC, 0, lY, picGrid.ScaleWidth, lY, vb3DDKShadow, PS_SOLID
+        pvDrawLine hDC, 0, lY + lHdrH - 1, picGrid.ScaleWidth, lY + lHdrH - 1, vb3DDKShadow, PS_SOLID
+    Case jgexHSSingle3D
+        pvDrawLine hDC, 0, lY, picGrid.ScaleWidth, lY, vb3DHighlight, PS_SOLID
+        pvDrawLine hDC, 0, lY + lHdrH - 1, picGrid.ScaleWidth, lY + lHdrH - 1, vb3DShadow, PS_SOLID
     End Select
-End Function
+    If m_bRowHeaders Then
+        pvPaintHeaderCell hDC, 0, lY, CHROME_COL_W, lHdrH, vbNullString, jgexAlignLeft
+    End If
+    lX = pvGetBlockLeft()
+    vOrder = pvBuildColOrder()
+    For lIdx = 0 To pvGetOrderMax(vOrder)
+        Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
+        lW = pvGetColWidth(oCol)
+        pvPaintHeaderCell hDC, lX, lY, lW, lHdrH, oCol.Caption, oCol.HeaderAlignment
+        If frColSortOrder(oCol.Index) <> 0 Then
+            uMetrics = FontTextMetrics(m_oColumnHeaderFont, hDC)
+            pvPaintSortGlyph hDC, lX + 2 + pvGetTextWidth(hDC, oCol.Caption) + 4, _
+                lY + (lHdrH - uMetrics.tmHeight + 1) \ 2 + uMetrics.tmHeight \ 2 + 4, frColSortOrder(oCol.Index)
+        End If
+        If oCol Is m_oDragCol Then
+            Call PatBlt(hDC, lX, lY + 1, lW - 1, lHdrH - 2, DSTINVERT)
+        End If
+        If m_bDragging And oCol Is m_oDropCol And Not oCol Is pvGetDragColumn() Then
+            If m_oDragCol Is Nothing Then
+                bMark = True
+            Else
+                bMark = pvIsDropMove(m_oDragCol.ColPosition, oCol.ColPosition, m_bDropAfter)
+            End If
+            If bMark Then
+                lMarkX = lX
+                If m_bDropAfter Then
+                    lMarkX = lX + lW
+                End If
+            End If
+        End If
+        lX = lX + lW
+    Next
+    If pvGetGroupIndent() > 0 Then
+        pvFillRect hDC, IIf(m_bRowHeaders, CHROME_COL_W, 1), lY + 1, pvGetBlockLeft() + 1, lY + lHdrH - 2, m_clrBackColorHeader
+    End If
+    If lX < picGrid.ScaleWidth Then
+        pvPaintHeaderCell hDC, lX, lY, picGrid.ScaleWidth - lX + 2, lHdrH, vbNullString, jgexAlignLeft
+    End If
+    If lMarkX >= 0 Then
+        pvFillRect hDC, lMarkX - 2, lY, lMarkX + 1, lY + lHdrH, vbRed
+    End If
+    Call SelectObject(hDC, hPrevFont)
+End Sub
 
-Private Sub pvInvalidate(Optional ByVal SkipScroll As Boolean)
-    Const FUNC_NAME     As String = "pvInvalidate"
+Private Sub pvPaintHeaderCell(ByVal hDC As Long, ByVal lX As Long, ByVal lY As Long, ByVal lW As Long, ByVal lH As Long, sCaption As String, ByVal eAlign As jgexAlignmentConstants)
+    Select Case m_eHeaderStyle
+    Case jgexHSNoBorder
+        pvFillRect hDC, lX, lY, lX + lW, lY + lH, m_clrBackColorHeader
+    Case jgexHSSingleFlat
+        pvFillRect hDC, lX, lY + 1, lX + lW - 1, lY + lH - 1, m_clrBackColorHeader
+        pvDrawLine hDC, lX + lW - 1, lY, lX + lW - 1, lY + lH, vb3DDKShadow, PS_SOLID
+    Case jgexHSSingle3D
+        pvFillRect hDC, lX + 1, lY + 1, lX + lW - 1, lY + lH - 1, m_clrBackColorHeader
+        pvDrawLine hDC, lX, lY, lX, lY + lH - 1, vb3DHighlight, PS_SOLID
+        pvDrawLine hDC, lX + lW - 1, lY, lX + lW - 1, lY + lH, vb3DShadow, PS_SOLID
+    Case Else
+        pvFillRect hDC, lX + 1, lY + 1, lX + lW - 2, lY + lH - 2, m_clrBackColorHeader
+        pvDrawLine hDC, lX, lY, lX, lY + lH - 2, vb3DHighlight, PS_SOLID
+        pvDrawLine hDC, lX + lW - 2, lY, lX + lW - 2, lY + lH - 2, vb3DShadow, PS_SOLID
+        pvDrawLine hDC, lX + lW - 1, lY, lX + lW - 1, lY + lH, vb3DDKShadow, PS_SOLID
+    End Select
+    If LenB(sCaption) <> 0 Then
+        pvDrawText hDC, sCaption, lX + 2, lY, lX + lW - 2, lY + lH, m_clrForeColorHeader, m_clrBackColorHeader, eAlign, lX + 2, lX + lW - 2, bEllipsis:=True
+    End If
+End Sub
+
+Private Sub pvPaintSortGlyph(ByVal hDC As Long, ByVal lX As Long, ByVal lBottom As Long, ByVal eOrder As jgexSortOrderConstants)
+    Const GLYPH_W       As Long = 8
+    Const GLYPH_H       As Long = 7
+    Dim lRow            As Long
+    Dim lEdge           As Long
+    Dim lStep           As Long
+    Dim lTop            As Long
+
+    lTop = lBottom - GLYPH_H + 1
+    For lRow = 0 To GLYPH_H - 1
+        lEdge = lRow
+        If eOrder = jgexSortDescending Then
+            lEdge = GLYPH_H - 1 - lRow
+        End If
+        lStep = (lEdge + 1) \ 2
+        pvSetPixel hDC, lX + GLYPH_W \ 2 - 1 - lStep, lTop + lRow, vb3DShadow
+        pvSetPixel hDC, lX + GLYPH_W \ 2 + lStep, lTop + lRow, vb3DHighlight
+        If lEdge Mod 2 = 1 Then
+            pvSetPixel hDC, lX + GLYPH_W \ 2 - lStep, lTop + lRow, vb3DShadow
+            pvSetPixel hDC, lX + GLYPH_W \ 2 - 1 + lStep, lTop + lRow, vb3DHighlight
+        End If
+    Next
+    If eOrder = jgexSortDescending Then
+        pvDrawLine hDC, lX, lTop, lX + GLYPH_W - 1, lTop, vb3DShadow, PS_SOLID
+    Else
+        pvDrawLine hDC, lX + 1, lBottom, lX + GLYPH_W, lBottom, vb3DHighlight, PS_SOLID
+    End If
+End Sub
+
+Private Sub pvPaintGroupByBox(ByVal hDC As Long)
+    Dim lBoxH           As Long
+    Dim lTotalH         As Long
+    Dim uRect           As RECT
+    Dim hPrevFont       As Long
+    Dim uMetrics        As TEXTMETRICW
+    Dim lIdx            As Long
+    Dim oGroup          As JSGroup
+    Dim sCaption        As String
+    Dim lLeft           As Long
+    Dim lTop            As Long
+    Dim lChipW          As Long
+    Dim lChipH          As Long
+    Dim lElbowTop       As Long
+
+    hPrevFont = pvSelectFont(hDC, m_oFont)
+    lBoxH = m_lColumnHeaderHeight + 4
+    lTotalH = pvGetGroupByBoxHeight()
+    pvFillRect hDC, 0, 0, picGrid.ScaleWidth, lTotalH, m_clrBackColorGBBox
+    If m_oGroups.Count > 0 Then
+        uMetrics = FontTextMetrics(m_oColumnHeaderFont, hDC)
+        pvLayoutGroupChips hDC:=hDC
+        For Each oGroup In m_oGroups
+            lIdx = lIdx + 1
+            If oGroup.ColIndex >= 1 And oGroup.ColIndex <= m_oColumns.Count Then
+                sCaption = m_oColumns.Item(oGroup.ColIndex).Caption
+                lLeft = oGroup.frChipRect.Left
+                lTop = oGroup.frChipRect.Top
+                lChipW = oGroup.frChipRect.Right - lLeft
+                lChipH = oGroup.frChipRect.Bottom - lTop
+                pvFillRect hDC, lLeft, lTop, lLeft + lChipW, lTop + lChipH, m_clrBackColorHeader
+                pvDrawLine hDC, lLeft, lTop, lLeft + lChipW - 1, lTop, vb3DHighlight, PS_SOLID
+                pvDrawLine hDC, lLeft, lTop, lLeft, lTop + lChipH - 1, vb3DHighlight, PS_SOLID
+                pvDrawLine hDC, lLeft, lTop + lChipH - 2, lLeft + lChipW - 1, lTop + lChipH - 2, vb3DShadow, PS_SOLID
+                pvDrawLine hDC, lLeft + lChipW - 2, lTop, lLeft + lChipW - 2, lTop + lChipH - 1, vb3DShadow, PS_SOLID
+                pvDrawLine hDC, lLeft, lTop + lChipH - 1, lLeft + lChipW, lTop + lChipH - 1, vb3DDKShadow, PS_SOLID
+                pvDrawLine hDC, lLeft + lChipW - 1, lTop, lLeft + lChipW - 1, lTop + lChipH, vb3DDKShadow, PS_SOLID
+                pvDrawText hDC, sCaption, lLeft + 2, lTop + 1, lLeft + lChipW - 2, lTop + lChipH, _
+                    m_clrForeColorHeader, m_clrBackColorHeader, jgexAlignLeft, lLeft + 2, lLeft + lChipW - 2
+                If oGroup.SortOrder <> 0 Then
+                    pvPaintSortGlyph hDC, lLeft + 2 + pvGetTextWidth(hDC, sCaption) + 4, _
+                        lTop + 3 + uMetrics.tmHeight \ 2 + 4, oGroup.SortOrder
+                End If
+                If oGroup Is m_oDragGroup Then
+                    Call PatBlt(hDC, lLeft, lTop + 1, lChipW - 1, lChipH - 2, DSTINVERT)
+                End If
+                If lIdx < m_oGroups.Count Then
+                    lElbowTop = lTop + m_lColumnHeaderHeight \ 2 + CLng((3 * lChipH - 4) / 4)
+                    pvDrawLine hDC, lLeft + lChipW - 5, lTop + lChipH, lLeft + lChipW - 5, lElbowTop + 1, vb3DDKShadow, PS_SOLID
+                    pvDrawLine hDC, lLeft + lChipW - 5, lElbowTop, lLeft + lChipW + CHIP_GAP, lElbowTop, vb3DDKShadow, PS_SOLID
+                End If
+            End If
+        Next
+    Else
+        Call DrawText(hDC, StrPtr(m_sGroupByBoxInfoText), Len(m_sGroupByBoxInfoText), uRect, DT_SINGLELINE Or DT_CALCRECT)
+        pvFillRect hDC, 4, 5, 12 + uRect.Right, 5 + lBoxH, m_clrBackColorInfoText
+        pvDrawText hDC, m_sGroupByBoxInfoText, 7, 5, 7 + uRect.Right, 5 + lBoxH, m_clrForeColorInfoText, m_clrBackColorInfoText, jgexAlignLeft, 7, 7 + uRect.Right
+    End If
+    If m_bDropInGBox And pvGetGBoxDropMark(lLeft, lTop) Then
+        lChipH = FontTextMetrics(m_oColumnHeaderFont, hDC).tmHeight + 6
+        pvFillRect hDC, lLeft - 2, lTop, lLeft + 1, lTop + lChipH, vbRed
+    End If
+    Call SelectObject(hDC, hPrevFont)
+End Sub
+
+Private Sub pvInvalidateGrid(Optional ByVal SkipScroll As Boolean)
+    Const FUNC_NAME     As String = "pvInvalidateGrid"
 
     On Error GoTo EH
     If Not m_bRedraw Then
@@ -3952,778 +3330,429 @@ Private Sub pvInvalidateHeaders()
         Exit Sub
     End If
     uRect.Right = picGrid.ScaleWidth
-    uRect.Bottom = pvRowsTop()
+    uRect.Bottom = pvGetRowsTop()
     Call InvalidateRect(picGrid.hWnd, VarPtr(uRect), 0)
 End Sub
 
-Private Function pvTopHeight() As Long
-    pvTopHeight = pvGroupByBoxHeight()
-    If m_bColumnHeaders Then
-        pvTopHeight = pvTopHeight + m_lColumnHeaderHeight
-    End If
+Private Function pvNeedRepaint(uClip As RECT, ByVal lTop As Long, ByVal lHeight As Long) As Boolean
+    pvNeedRepaint = (uClip.Bottom > lTop And uClip.Top < lTop + lHeight)
 End Function
 
-Private Function pvVisibleRows() As Long
-    If m_lRowHeight > 0 Then
-        pvVisibleRows = (picGrid.ScaleHeight - pvTopHeight() - pvNewRowBandH()) \ m_lRowHeight
+Private Function pvInitBuffer(ByVal hDC As Long, ByVal lWidth As Long, ByVal lHeight As Long) As Long
+    pvInitBuffer = hDC
+    pvFreeBuffer
+    m_lBufLastY = -1
+    m_lBufLastRow = 0
+    If lWidth <= 0 Or lHeight <= 0 Then
+        Exit Function
     End If
-    If pvVisibleRows < 1 Then
-        pvVisibleRows = 1
+#If FORCE_BUFFER = 0 Then
+    If GetSystemMetrics(SM_REMOTESESSION) <> 0 Then
+        Exit Function
     End If
+#End If
+    m_hBufDC = CreateCompatibleDC(hDC)
+    If m_hBufDC = 0 Then
+        Exit Function
+    End If
+    m_hBufBmp = CreateCompatibleBitmap(hDC, lWidth, lHeight)
+    If m_hBufBmp = 0 Then
+        pvFreeBuffer
+        Exit Function
+    End If
+    m_hBufOldBmp = SelectObject(m_hBufDC, m_hBufBmp)
+    pvInitBuffer = m_hBufDC
 End Function
 
-Private Function pvScrollRowCount() As Long
-    pvScrollRowCount = m_pDataModel.RowCount
-    If pvNewRowShown() And m_eNewRowPos = jgexBottom Then
-        pvScrollRowCount = pvScrollRowCount + 1
+Private Sub pvSetBufferBand(ByVal hMemDC As Long, ByVal lTop As Long, ByVal lWidth As Long, ByVal lHeight As Long)
+    If m_hBufDC = 0 Or hMemDC <> m_hBufDC Then
+        Exit Sub
     End If
-End Function
+    If m_lBufLastY = lTop Then
+        Call SetViewportOrgEx(m_hBufDC, 0, 0, 0)
+        Call BitBlt(m_hBufDC, 0, 0, lWidth, 1, m_hBufDC, 0, m_lBufLastRow, SRCCOPY)
+    End If
+    Call SetViewportOrgEx(m_hBufDC, 0, -lTop, 0)
+    Call SelectClipRgn(m_hBufDC, 0)
+    Call IntersectClipRect(m_hBufDC, 0, lTop, lWidth, lTop + lHeight)
+End Sub
 
-Private Function pvFirstCol() As Long
-    pvFirstCol = m_lLeftCol
-    If pvFirstCol < 1 Then
-        pvFirstCol = 1
+Private Sub pvFlushBuffer(ByVal hDC As Long, ByVal hMemDC As Long, ByVal lTop As Long, ByVal lWidth As Long, ByVal lHeight As Long)
+    If hMemDC = hDC Then
+        Exit Sub
     End If
-    If pvFirstCol > m_oColumns.Count Then
-        pvFirstCol = m_oColumns.Count
-    End If
-End Function
+    Call BitBlt(hDC, 0, lTop, lWidth, lHeight, hMemDC, 0, lTop, SRCCOPY)
+    m_lBufLastRow = lHeight - 1
+    m_lBufLastY = lTop + lHeight - 1
+End Sub
 
-Private Function pvScrollableWidth() As Long
-    Dim lIdx            As Long
+Private Sub pvFreeBuffer()
+    If m_hBufOldBmp <> 0 Then
+        Call SelectObject(m_hBufDC, m_hBufOldBmp)
+        m_hBufOldBmp = 0
+    End If
+    If m_hBufBmp <> 0 Then
+        Call DeleteObject(m_hBufBmp)
+        m_hBufBmp = 0
+    End If
+    If m_hBufDC <> 0 Then
+        Call DeleteDC(m_hBufDC)
+        m_hBufDC = 0
+    End If
+End Sub
+
+'--- Editing -------------------------------------------------------------
+
+Private Function pvOpenEditor(ByVal lPos As Long, ByVal lCol As Long, ByVal bSelectAll As Boolean, Optional ByVal lClickX As Long = -1, Optional ByVal lClickY As Long = -1) As Boolean
     Dim oCol            As JSColumn
-    Dim lFrozen         As Long
-
-    pvScrollableWidth = picGrid.ScaleWidth - pvBlockLeft()
-    lFrozen = pvFrozenCount()
-    For lIdx = 1 To lFrozen
-        Set oCol = m_oColumns.ItemByPosition(lIdx)
-        If oCol.Visible Then
-            pvScrollableWidth = pvScrollableWidth - pvColWidth(oCol)
-        End If
-    Next
-End Function
-
-Private Function pvVisibleColCount() As Long
-    Dim oCol            As JSColumn
-
-    For Each oCol In m_oColumns
-        If oCol.Visible Then
-            pvVisibleColCount = pvVisibleColCount + 1
-        End If
-    Next
-End Function
-
-Private Function pvVisiblePosition(ByVal lPosition As Long) As Long
-    Dim lIdx            As Long
-
-    For lIdx = 1 To lPosition
-        If m_oColumns.ItemByPosition(lIdx).Visible Then
-            pvVisiblePosition = pvVisiblePosition + 1
-        End If
-    Next
-End Function
-
-Private Function pvClampRow(ByVal lRow As Long) As Long
-    pvClampRow = Clamp(lRow, 1, RowCount)
-End Function
-
-Private Function pvHitScrollBar() As Boolean
-    Dim uPt             As POINTAPI
-
-    If m_hWndHScroll = 0 Then
-        Exit Function
-    End If
-    Call GetCursorPos(uPt)
-    pvHitScrollBar = (WindowFromPoint(uPt.X, uPt.Y) = m_hWndHScroll)
-End Function
-
-Private Function pvNavLayout(uNav As UcsNavLayout) As Boolean
-    Dim lBtnW           As Long
-    Dim lBtnTop         As Long
-    Dim lBtnH           As Long
-    Dim lBoxW           As Long
-    Dim hDC             As Long
-    Dim hPrevFont       As Long
+    Dim oCancel         As JSRetBoolean
+    Dim lRowIndex       As Long
     Dim lX              As Long
-    Dim vSplit          As Variant
-
-    If Not m_bRecordNavigator Then
-        Exit Function
-    End If
-    uNav.BandH = GetSystemMetrics(SM_CYHSCROLL)
-    uNav.BandTop = UserControl.ScaleHeight - uNav.BandH
-    If uNav.BandH <= 0 Then
-        Exit Function
-    End If
-    vSplit = Split(m_sRecordNavigatorString & "|", "|")
-    uNav.Prefix = vSplit(0)
-    uNav.Middle = vSplit(1) & " " & RowCount
-    lBtnW = uNav.BandH + 1
-    lBtnTop = uNav.BandTop + 1
-    lBtnH = uNav.BandH - 1
-    hDC = GetDC(UserControl.hWnd)
-    hPrevFont = pvSelectFont(hDC, m_oFont)
-    lX = 4
-    uNav.PrefixX = lX
-    lX = lX + pvTextWidth(hDC, uNav.Prefix) + 4
-    pvSetRect uNav.BtnFirst, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
-    lX = lX + lBtnW
-    pvSetRect uNav.BtnPrev, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
-    lX = lX + lBtnW + 4
-    lBoxW = pvTextWidth(hDC, "9999999") + 4
-    pvSetRect uNav.Box, lX, uNav.BandTop, lX + lBoxW, uNav.BandTop + uNav.BandH + 4
-    lX = lX + lBoxW + 4
-    uNav.MiddleX = lX
-    lX = lX + pvTextWidth(hDC, uNav.Middle) + 8
-    pvSetRect uNav.BtnNext, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
-    lX = lX + lBtnW
-    pvSetRect uNav.BtnLast, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
-    lX = lX + lBtnW
-    uNav.Width = lX
-    Call SelectObject(hDC, hPrevFont)
-    Call ReleaseDC(UserControl.hWnd, hDC)
-    pvNavLayout = True
-End Function
-
-Private Sub pvSetRect(uRect As RECT, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long)
-    uRect.Left = lLeft
-    uRect.Top = lTop
-    uRect.Right = lRight
-    uRect.Bottom = lBottom
-End Sub
-
-Private Function pvTextWidth(ByVal hDC As Long, sText As String) As Long
-    Dim uSize           As SIZEAPI
-
-    Call GetTextExtentPoint32(hDC, StrPtr(sText), Len(sText), uSize)
-    pvTextWidth = uSize.cx
-End Function
-
-Private Sub pvOnNavigatorClick(ByVal lX As Long, ByVal lY As Long)
-    Dim uNav            As UcsNavLayout
-
-    If Not pvNavLayout(uNav) Then
-        Exit Sub
-    End If
-    If pvPtInRect(uNav.BtnFirst, lX, lY) Then
-        Row = 1
-    ElseIf pvPtInRect(uNav.BtnPrev, lX, lY) Then
-        If m_lRow > 1 Then
-            Row = m_lRow - 1
-        End If
-    ElseIf pvPtInRect(uNav.BtnNext, lX, lY) Then
-        If m_lRow < RowCount Then
-            Row = m_lRow + 1
-        End If
-    ElseIf pvPtInRect(uNav.BtnLast, lX, lY) Then
-        Row = RowCount
-    Else
-        Exit Sub
-    End If
-    EnsureVisible m_lRow
-End Sub
-
-Private Function pvPtInRect(uRect As RECT, ByVal lX As Long, ByVal lY As Long) As Boolean
-    pvPtInRect = (lX >= uRect.Left And lX < uRect.Right And lY >= uRect.Top And lY < uRect.Bottom)
-End Function
-
-Private Sub pvNavButton(ByVal hDC As Long, uBtn As RECT)
-    pvFillRect hDC, uBtn.Left, uBtn.Top, uBtn.Right, uBtn.Bottom, UserControl.BackColor
-    pvLine hDC, uBtn.Left, uBtn.Top, uBtn.Right, uBtn.Top, vb3DHighlight, PS_SOLID
-    pvLine hDC, uBtn.Left, uBtn.Top, uBtn.Left, uBtn.Bottom, vb3DHighlight, PS_SOLID
-    pvLine hDC, uBtn.Right - 2, uBtn.Top + 1, uBtn.Right - 2, uBtn.Bottom - 1, vb3DShadow, PS_SOLID
-    pvLine hDC, uBtn.Left + 1, uBtn.Bottom - 2, uBtn.Right - 1, uBtn.Bottom - 2, vb3DShadow, PS_SOLID
-    pvLine hDC, uBtn.Right - 1, uBtn.Top, uBtn.Right - 1, uBtn.Bottom, vb3DDKShadow, PS_SOLID
-    pvLine hDC, uBtn.Left, uBtn.Bottom - 1, uBtn.Right, uBtn.Bottom - 1, vb3DDKShadow, PS_SOLID
-End Sub
-
-Private Sub pvNavArrow(ByVal hDC As Long, uBtn As RECT, ByVal bRight As Boolean, ByVal bDisabled As Boolean, ByVal bEnd As Boolean, ByVal lBandH As Long)
-    Dim lApex           As Long
-    Dim lCenter         As Long
-    Dim lHalf           As Long
-    Dim lOfs            As Long
-
-    lHalf = lBandH \ 4
-    If bEnd Then
-        lOfs = lBandH \ 4 + lBandH \ 7 + lBandH \ 5
-    Else
-        lOfs = (uBtn.Right - uBtn.Left - lHalf - 1) \ 2 + 1
-    End If
-    lCenter = uBtn.Top + (uBtn.Bottom - uBtn.Top) \ 2 - 1
-    If bRight Then
-        lApex = uBtn.Right - 1 - lOfs
-    Else
-        lApex = uBtn.Left + lOfs
-    End If
-    If bDisabled Then
-        pvNavTriangle hDC, lApex + 1, lCenter + 1, bRight, vb3DHighlight, lHalf
-        pvNavTriangle hDC, lApex, lCenter, bRight, vb3DShadow, lHalf
-    Else
-        pvNavTriangle hDC, lApex, lCenter, bRight, vbBlack, lHalf
-    End If
-End Sub
-
-Private Sub pvNavTriangle(ByVal hDC As Long, ByVal lApex As Long, ByVal lCenter As Long, ByVal bRight As Boolean, ByVal clrFill As OLE_COLOR, ByVal lHalf As Long)
-    Dim lIdx            As Long
-    Dim lX              As Long
-
-    For lIdx = 0 To lHalf
-        If bRight Then
-            lX = lApex - lIdx
-        Else
-            lX = lApex + lIdx
-        End If
-        pvFillRect hDC, lX, lCenter - lIdx, lX + 1, lCenter + lIdx + 1, clrFill
-    Next
-End Sub
-
-Private Sub pvPaintNavigator(ByVal hDC As Long)
-    Dim uNav            As UcsNavLayout
-    Dim hPrevFont       As Long
-    Dim uBox            As RECT
-    Dim lAtFirst        As Long
-    Dim lAtLast         As Long
-    Dim lBarX           As Long
-    Dim lBarW           As Long
-    Dim lBarY           As Long
-    Dim lBarHalf        As Long
-    Dim lTextH          As Long
-    Dim lTextTop        As Long
-
-    pvFillRect hDC, 0, UserControl.ScaleHeight - GetSystemMetrics(SM_CYHSCROLL), UserControl.ScaleWidth, UserControl.ScaleHeight, UserControl.BackColor
-    If Not m_bRecordNavigator Then
-        Exit Sub
-    End If
-    If Not pvNavLayout(uNav) Then
-        Exit Sub
-    End If
-    pvFillRect hDC, 0, uNav.BandTop, uNav.Width, uNav.BandTop + uNav.BandH, UserControl.BackColor
-    lAtFirst = 0
-    If m_lRow <= 1 Then
-        lAtFirst = DFCS_INACTIVE
-    End If
-    lAtLast = 0
-    If m_lRow >= RowCount Then
-        lAtLast = DFCS_INACTIVE
-    End If
-    pvNavButton hDC, uNav.BtnFirst
-    pvNavButton hDC, uNav.BtnPrev
-    pvNavButton hDC, uNav.BtnNext
-    pvNavButton hDC, uNav.BtnLast
-    pvNavArrow hDC, uNav.BtnFirst, False, False, True, uNav.BandH
-    pvNavArrow hDC, uNav.BtnPrev, False, (m_lRow <= 1), False, uNav.BandH
-    pvNavArrow hDC, uNav.BtnNext, True, (m_lRow >= RowCount), False, uNav.BandH
-    pvNavArrow hDC, uNav.BtnLast, True, False, True, uNav.BandH
-    lBarX = (uNav.BandH + 2) \ 4
-    lBarW = uNav.BandH \ 7
-    lBarHalf = uNav.BandH \ 4
-    lBarY = uNav.BtnFirst.Top + (uNav.BtnFirst.Bottom - uNav.BtnFirst.Top) \ 2 - 1 - lBarHalf
-    pvFillRect hDC, uNav.BtnFirst.Left + lBarX, lBarY, uNav.BtnFirst.Left + lBarX + lBarW, lBarY + 2 * lBarHalf + 1, vbBlack
-    pvFillRect hDC, uNav.BtnLast.Right - 1 - lBarX - lBarW, lBarY, uNav.BtnLast.Right - 1 - lBarX, lBarY + 2 * lBarHalf + 1, vbBlack
-    uBox = uNav.Box
-    Call DrawEdge(hDC, uBox, EDGE_SUNKEN, BF_RECT)
-    pvFillRect hDC, uNav.Box.Left + 2, uNav.Box.Top + 2, uNav.Box.Right - 2, uNav.Box.Bottom - 2, vbWindowBackground
-    hPrevFont = pvSelectFont(hDC, m_oFont)
-    lTextH = FontTextMetrics(m_oFont, hDC).tmHeight
-    lTextTop = uNav.BandTop + (uNav.BandH - lTextH + 1) \ 2
-    pvDrawText hDC, uNav.Prefix, uNav.PrefixX, lTextTop, uNav.PrefixX + pvTextWidth(hDC, uNav.Prefix), lTextTop + lTextH, vbButtonText, UserControl.BackColor, jgexAlignLeft, uNav.PrefixX, uNav.Width
-    pvDrawText hDC, uNav.Middle, uNav.MiddleX, lTextTop, uNav.MiddleX + pvTextWidth(hDC, uNav.Middle), lTextTop + lTextH, vbButtonText, UserControl.BackColor, jgexAlignLeft, uNav.MiddleX, uNav.Width
-    pvDrawText hDC, CStr(m_lRow), uNav.Box.Left + 2, uNav.Box.Top + 2, uNav.Box.Right - 4, uNav.Box.Top + 2 + lTextH, m_clrForeColor, vbWindowBackground, jgexAlignRight, uNav.Box.Left + 2, uNav.Box.Right - 2
-    Call SelectObject(hDC, hPrevFont)
-End Sub
-
-Private Sub pvLayoutGrid()
-    Dim lBandH          As Long
-
-    If m_bBandVisible Then
-        lBandH = GetSystemMetrics(SM_CYHSCROLL)
-    End If
-    picGrid.Move 0, 0, Clamp(UserControl.ScaleWidth, lMin:=0), Clamp(UserControl.ScaleHeight - lBandH, lMin:=0)
-End Sub
-
-Private Sub pvLayoutHScroll(ByVal bNeedH As Boolean)
-    Dim lBandH          As Long
-    Dim lNavW           As Long
-    Dim uNav            As UcsNavLayout
-
-    If Not bNeedH Then
-        hsbGrid.Visible = False
-        m_hWndHScroll = 0
-        Exit Sub
-    End If
-    lBandH = GetSystemMetrics(SM_CYHSCROLL)
-    If pvNavLayout(uNav) Then
-        lNavW = uNav.Width
-    End If
-    hsbGrid.Move lNavW, UserControl.ScaleHeight - lBandH, Clamp(picGrid.ScaleWidth - lNavW, lMin:=0), lBandH
-    hsbGrid.Visible = True
-    m_hWndHScroll = hsbGrid.hWnd
-End Sub
-
-Private Sub pvUpdateScrollBars()
-    Dim lTopH           As Long
-    Dim lAvailH         As Long
-    Dim lAvailW         As Long
-    Dim lFullH          As Long
-    Dim lFullW          As Long
-    Dim lHdrW           As Long
-    Dim lColsW          As Long
+    Dim lY              As Long
+    Dim lW              As Long
     Dim lStyle          As Long
-    Dim lNewStyle       As Long
-    Dim bNeedV          As Boolean
-    Dim bNeedH          As Boolean
-    Dim lScrollRows     As Long
-    Dim uSi             As SCROLLINFO
+    Dim lCaret          As Long
+    Dim lTextTop        As Long
+    Dim lEditH          As Long
+    Dim pFont           As IFont
+    Dim uMetrics        As TEXTMETRICW
 
-    If m_bScrollUpdating Then
-        Exit Sub
-    End If
-    m_bScrollUpdating = True
-    lTopH = pvTopHeight()
-    lHdrW = pvBlockLeft()
-    lColsW = lHdrW + pvTotalColWidth()
-    lFullH = picGrid.ScaleHeight
-    If m_bBandVisible Then
-        lFullH = lFullH + GetSystemMetrics(SM_CYHSCROLL)
-    End If
-    lFullW = picGrid.ScaleWidth
-    If (GetWindowLong(picGrid.hWnd, GWL_STYLE) And WS_VSCROLL) <> 0 Then
-        lFullW = lFullW + GetSystemMetrics(SM_CXVSCROLL)
-    End If
-    lAvailH = lFullH - lTopH
-    If m_bRecordNavigator Then
-        lAvailH = lAvailH - GetSystemMetrics(SM_CYHSCROLL)
-    End If
-    lAvailH = lAvailH - pvNewRowBandH()
-    pvSyncProjection
-    lScrollRows = pvScrollRowCount()
-    lAvailW = lFullW
-    bNeedV = (m_lRowHeight > 0 And lScrollRows > 0 And lScrollRows * m_lRowHeight > lAvailH)
-    bNeedH = (lColsW > lAvailW)
-    If bNeedV Then
-        lAvailW = lFullW - GetSystemMetrics(SM_CXVSCROLL)
-        bNeedH = (lColsW > lAvailW)
-    End If
-    If bNeedH And Not m_bRecordNavigator Then
-        lAvailH = lAvailH - GetSystemMetrics(SM_CYHSCROLL)
-        bNeedV = (m_lRowHeight > 0 And lScrollRows > 0 And lScrollRows * m_lRowHeight > lAvailH)
-        If bNeedV Then
-            lAvailW = lFullW - GetSystemMetrics(SM_CXVSCROLL)
-        End If
-    End If
-    lStyle = GetWindowLong(picGrid.hWnd, GWL_STYLE)
-    lNewStyle = lStyle And Not WS_VSCROLL And Not WS_HSCROLL
-    If bNeedV Then
-        lNewStyle = lNewStyle Or WS_VSCROLL
-    End If
-    If lNewStyle <> lStyle Then
-        Call SetWindowLong(picGrid.hWnd, GWL_STYLE, lNewStyle)
-        Call SetWindowPos(picGrid.hWnd, 0, 0, 0, 0, 0, SWP_NOSIZE Or SWP_NOMOVE Or SWP_NOZORDER Or SWP_FRAMECHANGED)
-    End If
-    If bNeedV Then
-        With uSi
-            .cbSize = Len(uSi)
-            .fMask = SIF_RANGE Or SIF_PAGE Or SIF_POS
-            .nMax = lScrollRows - 1
-            If m_lRowHeight > 0 Then
-                .nPage = lAvailH \ m_lRowHeight
-            End If
-            m_lFirstItem = Clamp(m_lFirstItem, 1, lScrollRows - .nPage + 1)
-            .nPos = m_lFirstItem - 1
-        End With
-        Call SetScrollInfo(picGrid.hWnd, SB_VERT, uSi, 1)
-    End If
-    m_bBandVisible = bNeedH Or m_bRecordNavigator
-    pvLayoutGrid
-    pvLayoutHScroll bNeedH
-    If bNeedH Then
-        With uSi
-            .cbSize = Len(uSi)
-            .fMask = SIF_RANGE Or SIF_PAGE Or SIF_POS
-            .nMin = pvFrozenCount() + 1
-            .nMax = pvMaxLeftCol()
-            If .nMax < .nMin Then
-                .nMax = .nMin
-            End If
-            .nPage = 1
-            m_lLeftCol = Clamp(m_lLeftCol, .nMin, .nMax)
-            .nPos = m_lLeftCol
-        End With
-        Call SetScrollInfo(hsbGrid.hWnd, SB_CTL, uSi, 1)
-    ElseIf m_lLeftCol > 1 Then
-        m_lLeftCol = 1
-    End If
-    m_bScrollUpdating = False
-End Sub
-
-Private Function pvTotalColWidth() As Long
-    Dim oCol            As JSColumn
-
-    For Each oCol In m_oColumns
-        If oCol.Visible Then
-            pvTotalColWidth = pvTotalColWidth + pvColWidth(oCol)
-        End If
-    Next
-End Function
-
-Private Function pvColWidth(oCol As JSColumn) As Long
-    Dim lIdx            As Long
-    Dim oItem           As JSColumn
-    Dim lTotal          As Long
-    Dim lAvail          As Long
-    Dim lCum            As Long
-    Dim lPrev           As Long
-
-    If Not m_bColumnAutoResize Then
-        pvColWidth = ToPixels(oCol.Width)
+    If Not m_bAllowEdit Or m_bEditing Then
         Exit Function
     End If
-    lAvail = picGrid.ScaleWidth - pvBlockLeft()
-    For lIdx = 1 To m_oColumns.Count
-        Set oItem = m_oColumns.ItemByPosition(lIdx)
-        If oItem.Visible Then
-            lTotal = lTotal + ToPixels(oItem.Width)
+    If pvIsNewRow(lPos) Then
+        If m_oRowData Is Nothing Then
+            pvInitNewRow
         End If
-    Next
-    If lTotal <= 0 Or lAvail <= 0 Then
-        pvColWidth = ToPixels(oCol.Width)
+        lRowIndex = pvGetNewRow()
+    Else
+        lRowIndex = m_pDataModel.RowIndex(lPos)
+        If lRowIndex <= 0 Then
+            Exit Function
+        End If
+    End If
+    Set oCol = pvGetColByPosition(lCol)
+    If oCol Is Nothing Then
         Exit Function
     End If
-    For lIdx = 1 To m_oColumns.Count
-        Set oItem = m_oColumns.ItemByPosition(lIdx)
-        If oItem.Visible Then
-            lPrev = (lCum * lAvail + lTotal \ 2) \ lTotal
-            lCum = lCum + ToPixels(oItem.Width)
-            If oItem Is oCol Then
-                pvColWidth = (lCum * lAvail + lTotal \ 2) \ lTotal - lPrev
-                Exit Function
-            End If
-        End If
-    Next
-    pvColWidth = ToPixels(oCol.Width)
-End Function
-
-Private Function pvColOrder() As Variant
-    Dim lIdx            As Long
-    Dim oCol            As JSColumn
-    Dim aOrder()        As Long
-    Dim lCount          As Long
-    Dim lFrozen         As Long
-
-    ReDim aOrder(0 To m_oColumns.Count) As Long
-    lFrozen = pvFrozenCount()
-    For lIdx = 1 To lFrozen
-        Set oCol = m_oColumns.ItemByPosition(lIdx)
-        If oCol.Visible Then
-            aOrder(lCount) = lIdx
-            lCount = lCount + 1
-        End If
-    Next
-    For lIdx = pvFirstCol() To m_oColumns.Count
-        If lIdx > lFrozen Then
-            Set oCol = m_oColumns.ItemByPosition(lIdx)
-            If oCol.Visible Then
-                aOrder(lCount) = lIdx
-                lCount = lCount + 1
-            End If
-        End If
-    Next
-    If lCount = 0 Then
-        pvColOrder = Array()
+    If Not pvGetCellRect(lPos, oCol.Index, lX, lY, lW) Then
         Exit Function
     End If
-    ReDim Preserve aOrder(0 To lCount - 1) As Long
-    pvColOrder = aOrder
-End Function
-
-Private Function pvOrderMax(vOrder As Variant) As Long
-    pvOrderMax = -1
-    If IsArray(vOrder) Then
-        pvOrderMax = UBound(vOrder)
+    If lClickX >= 0 Then
+        lClickX = lClickX - lX
+        lClickY = lClickY - lY
     End If
-End Function
-
-Private Function pvFrozenCount() As Long
-    pvFrozenCount = m_lFrozenColumns
-    If pvFrozenCount < 0 Then
-        pvFrozenCount = 0
+    EnsureVisible lPos
+    pvEnsureVisibleCol lPos, oCol.Index
+    If Not pvGetCellRect(lPos, oCol.Index, lX, lY, lW) Then
+        Exit Function
     End If
-    If pvFrozenCount > m_oColumns.Count Then
-        pvFrozenCount = m_oColumns.Count
+    If lClickX >= 0 Then
+        lClickX = lClickX + lX
+        lClickY = lClickY + lY
     End If
-End Function
-
-Private Function pvColsFitFrom(ByVal lWidth As Long, ByVal lStart As Long) As Long
-    Dim lIdx            As Long
-    Dim oCol            As JSColumn
-    Dim lCum            As Long
-
-    For lIdx = lStart To m_oColumns.Count
-        Set oCol = m_oColumns.ItemByPosition(lIdx)
-        If oCol.Visible Then
-            lCum = lCum + pvColWidth(oCol)
-            If lCum >= lWidth Then
-                Exit Function
-            End If
-            pvColsFitFrom = pvColsFitFrom + 1
-        End If
-    Next
-    If pvColsFitFrom < 1 Then
-        pvColsFitFrom = 1
+    Set oCancel = New JSRetBoolean
+    RaiseEvent BeforeColEdit(oCol.Index, oCancel)
+    If oCancel.Value Then
+        Exit Function
     End If
-End Function
-
-Private Function pvMaxLeftCol() As Long
-    Dim lWidth          As Long
-    Dim lIdx            As Long
-    Dim oCol            As JSColumn
-    Dim lCum            As Long
-
-    lWidth = pvScrollableWidth()
-    pvMaxLeftCol = m_oColumns.Count
-    For lIdx = m_oColumns.Count To pvFrozenCount() + 1 Step -1
-        Set oCol = m_oColumns.ItemByPosition(lIdx)
-        If oCol.Visible Then
-            lCum = lCum + pvColWidth(oCol)
-            If lCum >= lWidth Then
-                Exit For
-            End If
-            pvMaxLeftCol = lIdx
-        End If
-    Next
-    If pvMaxLeftCol < 1 Then
-        pvMaxLeftCol = 1
+    If oCol.EditType = jgexEditCheckBox Then
+        Value(oCol.Index) = Not pvGetCheckState(pvFetchRowData(lPos), oCol.Index)
+        pvInvalidateGrid SkipScroll:=True
+        RaiseEvent Change
+        pvOpenEditor = True
+        Exit Function
     End If
-End Function
-
-Private Function pvColsFitBefore(ByVal lWidth As Long, ByVal lStart As Long) As Long
-    Dim lIdx            As Long
-    Dim oCol            As JSColumn
-    Dim lCum            As Long
-
-    For lIdx = lStart - 1 To pvFrozenCount() + 1 Step -1
-        Set oCol = m_oColumns.ItemByPosition(lIdx)
-        If oCol.Visible Then
-            lCum = lCum + pvColWidth(oCol)
-            If lCum >= lWidth Then
-                Exit For
-            End If
-            pvColsFitBefore = pvColsFitBefore + 1
-        End If
-    Next
-    If pvColsFitBefore < 1 Then
-        pvColsFitBefore = 1
+    If oCol.EditType <> jgexEditTextBox Then
+        m_bEditing = True
+        m_lEditRow = lRowIndex
+        m_lEditCol = oCol.Index
+        m_sEditOldValue = pvGetInitialEditText(pvFetchRowData(lPos), oCol)
+        pvOpenEditor = True
+        Exit Function
     End If
-End Function
-
-Private Function pvColor(ByVal clrValue As OLE_COLOR) As Long
-    Call OleTranslateColor(clrValue, 0, pvColor)
-End Function
-
-Private Sub pvSelColors(clrBack As OLE_COLOR, clrFore As OLE_COLOR)
-    Dim oStyle          As JSFormatStyle
-
-    Set oStyle = m_oFormatStyles.frItemOrNothing("SelectedRow")
-    If oStyle Is Nothing Then
-        clrBack = vbHighlight
-        clrFore = vbHighlightText
-    Else
-        clrBack = oStyle.BackColor
-        clrFore = oStyle.ForeColor
-    End If
-End Sub
-
-Private Sub pvStampedLine(ByVal hDC As Long, ByVal lX1 As Long, ByVal lY1 As Long, ByVal lX2 As Long, ByVal lY2 As Long, ByVal lAnchor As Long, ByVal lPeriod As Long, ByVal lOn As Long, ByVal clrLine As OLE_COLOR, ByVal clrGap As OLE_COLOR)
-    Dim hBrush          As Long
-    Dim hPrevBrush      As Long
-    Dim lIdx            As Long
-
-    If lY1 = lY2 Then
-        pvFillRect hDC, lX1, lY1, lX2, lY1 + 1, clrGap
-    Else
-        pvFillRect hDC, lX1, lY1, lX1 + 1, lY2, clrGap
-    End If
-    hBrush = CreateSolidBrush(pvColor(clrLine))
-    hPrevBrush = SelectObject(hDC, hBrush)
-    If lY1 = lY2 Then
-        For lIdx = lX1 To lX2 - 1
-            If Abs(lIdx - lAnchor) Mod lPeriod < lOn Then
-                Call PatBlt(hDC, lIdx, lY1, 1, 1, PATCOPY)
-            End If
-        Next
-    Else
-        For lIdx = lY1 To lY2 - 1
-            If Abs(lIdx - lAnchor) Mod lPeriod < lOn Then
-                Call PatBlt(hDC, lX1, lIdx, 1, 1, PATCOPY)
-            End If
-        Next
-    End If
-    Call SelectObject(hDC, hPrevBrush)
-    Call DeleteObject(hBrush)
-End Sub
-
-Private Sub pvFillRect(ByVal hDC As Long, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long, ByVal clrFill As OLE_COLOR)
-    Dim uRect           As RECT
-    Dim hBrush          As Long
-
-    If lRight <= lLeft Or lBottom <= lTop Then
-        Exit Sub
-    End If
-    uRect.Left = lLeft
-    uRect.Top = lTop
-    uRect.Right = lRight
-    uRect.Bottom = lBottom
-    hBrush = CreateSolidBrush(pvColor(clrFill))
-    Call FillRect(hDC, uRect, hBrush)
-    Call DeleteObject(hBrush)
-End Sub
-
-Private Sub pvLine(ByVal hDC As Long, ByVal lX1 As Long, ByVal lY1 As Long, ByVal lX2 As Long, ByVal lY2 As Long, ByVal clrLine As OLE_COLOR, ByVal lPenStyle As Long, Optional ByVal DashAnchor As Long = -1, Optional ByVal GapColor As Long = -1)
-    Dim hPen            As Long
-    Dim hPrevPen        As Long
-    Dim clrGap          As OLE_COLOR
-
-    If lPenStyle = PS_DOT Or lPenStyle = PS_DASH Then
-        clrGap = m_clrBackColorBkg
-        If GapColor <> -1 Then
-            clrGap = GapColor
-        End If
-        If lPenStyle = PS_DOT Then
-            pvStampedLine hDC, lX1, lY1, lX2, lY2, IIf(lY1 = lY2, lY1, lX1), 2, 1, clrLine, clrGap
-        Else
-            If DashAnchor < 0 Then
-                DashAnchor = IIf(lY1 = lY2, lX2 - 1, lY1)
-            End If
-            pvStampedLine hDC, lX1, lY1, lX2, lY2, DashAnchor, 6, 3, clrLine, clrGap
-        End If
-        Exit Sub
-    End If
-    hPen = CreatePen(lPenStyle, 1, pvColor(clrLine))
-    hPrevPen = SelectObject(hDC, hPen)
-    Call MoveToEx(hDC, lX1, lY1, 0)
-    Call LineTo(hDC, lX2, lY2)
-    Call SelectObject(hDC, hPrevPen)
-    Call DeleteObject(hPen)
-End Sub
-
-Private Sub pvDrawText(ByVal hDC As Long, sText As String, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long, ByVal clrText As OLE_COLOR, ByVal clrBack As OLE_COLOR, ByVal eAlign As jgexAlignmentConstants, ByVal ClipLeft As Long, ByVal ClipRight As Long, Optional ByVal bWordWrap As Boolean, Optional ByVal bEllipsis As Boolean)
-    Dim uRect           As RECT
-    Dim lFlags          As Long
-    Dim lSaved          As Long
-
-    uRect.Left = lLeft
-    uRect.Top = lTop
-    uRect.Right = lRight
-    uRect.Bottom = lBottom
-    If bWordWrap Then
-        uRect.Top = lTop + 1
-        uRect.Bottom = lBottom - 1
-        lFlags = DT_WORDBREAK Or DT_NOPREFIX
-    Else
-        lFlags = DT_SINGLELINE Or DT_VCENTER Or DT_NOPREFIX
-        If bEllipsis Then
-            lFlags = lFlags Or DT_END_ELLIPSIS
-        End If
-    End If
-    Select Case eAlign
-    Case jgexAlignCenter
-        lFlags = lFlags Or DT_CENTER
+    m_bInEditSetup = True
+    m_bEditing = True
+    m_lEditRow = lRowIndex
+    m_lEditCol = oCol.Index
+    m_sEditOldValue = pvGetInitialEditText(pvFetchRowData(lPos), oCol)
+    lStyle = WS_CHILD Or WS_VISIBLE
+    Select Case oCol.TextAlignment
     Case jgexAlignRight
-        lFlags = lFlags Or DT_RIGHT
+        lStyle = lStyle Or ES_RIGHT
+    Case jgexAlignCenter
+        lStyle = lStyle Or ES_CENTER
+    Case Else
+        lStyle = lStyle Or ES_LEFT
     End Select
-    lSaved = SaveDC(hDC)
-    Call IntersectClipRect(hDC, ClipLeft, uRect.Top, ClipRight, uRect.Bottom)
-    lFlags = lFlags Or DT_NOCLIP
-    Call SetBkMode(hDC, OPAQUE)
-    Call SetBkColor(hDC, pvColor(clrBack))
-    Call SetTextColor(hDC, pvColor(clrText))
-    Call DrawText(hDC, StrPtr(sText), Len(sText), uRect, lFlags)
-    Call RestoreDC(hDC, lSaved)
-End Sub
-
-Private Function pvSelectFont(ByVal hDC As Long, pFont As IFont) As Long
-    pvSelectFont = SelectObject(hDC, pFont.hFont)
+    If oCol.WordWrap Then
+        lStyle = lStyle Or ES_MULTILINE Or ES_AUTOVSCROLL
+    Else
+        lStyle = lStyle Or ES_AUTOHSCROLL
+    End If
+    uMetrics = FontTextMetrics(m_oFont)
+    lTextTop = lY + (pvGetRowContentH(m_lRowHeight) - uMetrics.tmHeight) \ 2
+    lEditH = uMetrics.tmHeight
+    If oCol.WordWrap Then
+        lTextTop = lY + 1
+        lEditH = pvGetRowContentH(m_lRowHeight) - 2
+    End If
+    m_hWndEdit = CreateWindowEx(0, StrPtr("EDIT"), 0, lStyle, lX + 1, lTextTop, lW - 4, lEditH, hWnd, 0, App.hInstance, ByVal 0&)
+    If m_hWndEdit = 0 Then
+        m_bEditing = False
+        m_bInEditSetup = False
+        Exit Function
+    End If
+    Set pFont = m_oFont
+    Call SendMessage(m_hWndEdit, WM_SETFONT, pFont.hFont, 1)
+    Call SendMessage(m_hWndEdit, EM_SETMARGINS, EC_LEFTMARGIN, 1)
+    Call SendMessage(m_hWndEdit, EM_LIMITTEXT, oCol.MaxLength, 0)
+    Call SendMessage(m_hWndEdit, WM_SETTEXT, 0, ByVal StrPtr(m_sEditOldValue))
+    If bSelectAll Then
+        Call SendMessage(m_hWndEdit, EM_SETSEL, 0, -1)
+    ElseIf lClickY >= 0 Then
+        If lClickY - lTextTop >= uMetrics.tmHeight Then
+            lCaret = Len(m_sEditOldValue)
+        Else
+            lCaret = SendMessage(m_hWndEdit, EM_CHARFROMPOS, 0, MakeDWord(lClickX - lX, lClickY - lTextTop))
+            If lCaret = -1 Then
+                lCaret = Len(m_sEditOldValue)
+            Else
+                lCaret = lCaret And &HFFFF&
+            End If
+        End If
+        Call SendMessage(m_hWndEdit, EM_SETSEL, lCaret, lCaret)
+    Else
+        Call SendMessage(m_hWndEdit, EM_SETSEL, Len(m_sEditOldValue), Len(m_sEditOldValue))
+    End If
+    Set m_pSubclassEdit = InitSubclassingThunk(m_hWndEdit, Me, pvAddressOfSubclassProc.EditSubclassProc(0, 0, 0, 0, 0))
+    Call SetFocusApi(m_hWndEdit)
+    m_bInEditSetup = False
+    pvOpenEditor = True
 End Function
 
-Private Sub pvInheritAmbientFont()
-    Const FUNC_NAME     As String = "pvInheritAmbientFont"
+Private Sub pvEndEdit(Optional ByVal bCancel As Boolean)
+    Dim oCancel         As JSRetBoolean
+    Dim lCol            As Long
+    Dim lRowIndex       As Long
+    Dim sText           As String
+    Dim oRowData        As JSRowData
+    Dim oCol            As JSColumn
+    Dim oItem           As JSValueItem
 
-    On Error GoTo EH
-    Set m_oFont = CloneFont(Ambient.Font)
-    Set m_oColumnHeaderFont = CloneFont(Ambient.Font)
-    m_oFont_FontChanged vbNullString
-    m_oColumnHeaderFont_FontChanged vbNullString
-    Exit Sub
-EH:
-    PrintError FUNC_NAME
+    If Not m_bEditing Then
+        Exit Sub
+    End If
+    lCol = m_lEditCol
+    lRowIndex = m_lEditRow
+    sText = pvGetEditText()
+    m_bEditing = False
+    pvDestroyEditor
+    Set oRowData = m_oRowData
+    If Not bCancel And sText <> m_sEditOldValue Then
+        Set oCancel = New JSRetBoolean
+        RaiseEvent BeforeColUpdate(lRowIndex, lCol, m_sEditOldValue, oCancel)
+        If oCancel.Value Then
+            GoTo QH
+        End If
+        If Not oRowData Is Nothing Then
+            Set oCol = m_oColumns.Item(lCol)
+            If pvUsesValueList(oCol) Then
+                Set oItem = pvFindValueItem(oCol, sText)
+                If Not oItem Is Nothing Then
+                    oRowData.frAllowUpdate = True
+                    oRowData.Value(lCol) = oItem.Value
+                End If
+            Else
+                oRowData.frAllowUpdate = True
+                oRowData.Value(lCol) = sText
+            End If
+        End If
+        RaiseEvent AfterColUpdate(lCol)
+    Else
+        If sText <> m_sEditOldValue And Not DataChanged Then
+            pvRaiseRowFormat m_oRowData
+        End If
+    End If
+QH:
+    pvInvalidateGrid SkipScroll:=True
+    RaiseEvent AfterColEdit(lCol)
+    Call SetFocusApi(hWnd)
 End Sub
 
-Private Sub pvSubclass()
+Private Sub pvCommitEdit()
+    Dim oCancel         As JSRetBoolean
+
+    If Not DataChanged Or m_bInPendCommit Then
+        Exit Sub
+    End If
+    Set oCancel = New JSRetBoolean
+    RaiseEvent BeforeUpdate(oCancel)
+    If oCancel.Value Then
+        Exit Sub
+    End If
+    m_bInPendCommit = True
+    m_pDataModel.UpdateRowData m_oRowData
+    m_bInPendCommit = False
+    If m_lItemCount < m_pDataModel.ItemCount Then
+        m_lItemCount = m_pDataModel.ItemCount
+        pvUpdateScrollBars
+    End If
+    m_oRowData.frAllowUpdate = False
+    pvRaiseRowFormat m_oRowData
+    RaiseEvent AfterUpdate
+End Sub
+
+Private Sub pvCancelEdit()
+    If Not DataChanged Then
+        Exit Sub
+    End If
+    If pvIsNewRow(m_lRow) Then
+        pvInitNewRow
+        pvInvalidateGrid SkipScroll:=True
+        pvRaiseRowFormat m_oRowData
+        Exit Sub
+    End If
+    Set m_oRowData = m_pDataModel.GetRowData(m_lRow)
+    If m_lRow >= m_lWindowFirst And m_lRow < m_lWindowFirst + m_lWindowCount Then
+        Set m_aWindow(m_lRow - m_lWindowFirst + 1) = m_oRowData
+    End If
+    pvInvalidateGrid SkipScroll:=True
+    pvRaiseRowFormat m_oRowData
+End Sub
+
+Private Function pvIsLeaveKey(ByVal nKeyCode As Integer) As Boolean
+    Dim lStart          As Long
+    Dim lEnd            As Long
+
+    Select Case nKeyCode
+    Case vbKeyTab
+        pvIsLeaveKey = True
+    Case vbKeyDown, vbKeyUp
+        pvIsLeaveKey = ((GetWindowLong(m_hWndEdit, GWL_STYLE) And ES_MULTILINE) = 0)
+    Case vbKeyLeft, vbKeyRight
+        Call SendMessage(m_hWndEdit, EM_GETSEL, VarPtr(lStart), VarPtr(lEnd))
+        If lStart = lEnd Then
+            If nKeyCode = vbKeyRight Then
+                pvIsLeaveKey = (lEnd = GetWindowTextLength(m_hWndEdit))
+            ElseIf (GetWindowLong(m_hWndEdit, GWL_STYLE) And ES_MULTILINE) = 0 Then
+                pvIsLeaveKey = (lStart = 0)
+            End If
+        End If
+    End Select
+End Function
+
+Private Sub pvHandleFocusLoss()
+    Dim sText           As String
+
+    If Not m_bEditing Then
+        Exit Sub
+    End If
+    sText = pvGetEditText()
+    m_bEditing = False
+    pvDestroyEditor
+    If sText <> m_sEditOldValue Then
+        If Not m_oRowData Is Nothing Then
+            m_oRowData.frAllowUpdate = True
+            m_oRowData.Value(m_lEditCol) = sText
+        End If
+    End If
+    pvInvalidateGrid SkipScroll:=True
+End Sub
+
+Private Sub pvDestroyEditor()
+    If m_hWndEdit = 0 Then
+        Exit Sub
+    End If
+    TerminateSubclassingThunk m_pSubclassEdit, Me
+    Set m_pSubclassEdit = Nothing
+    Call DestroyWindow(m_hWndEdit)
+    m_hWndEdit = 0
+End Sub
+
+Private Function pvGetEditText() As String
+    Dim lLen            As Long
+
+    If m_hWndEdit = 0 Then
+        pvGetEditText = m_sEditOldValue
+        Exit Function
+    End If
+    lLen = SendMessage(m_hWndEdit, WM_GETTEXTLENGTH, 0, 0)
+    pvGetEditText = String$(lLen + 1, 0)
+    lLen = SendMessage(m_hWndEdit, WM_GETTEXT, lLen + 1, ByVal StrPtr(pvGetEditText))
+    pvGetEditText = Left$(pvGetEditText, lLen)
+End Function
+
+Private Function pvGetInitialEditText(oRowData As JSRowData, oCol As JSColumn) As String
+    If oRowData Is Nothing Then
+        Exit Function
+    End If
+    If pvUsesValueList(oCol) Then
+        pvGetInitialEditText = pvGetCellText(oRowData, oCol)
+    Else
+        pvGetInitialEditText = C2Str(oRowData.Value(oCol.Index))
+    End If
+End Function
+
+Private Function pvGetEditorRect(lX As Long, lTop As Long, lW As Long, lH As Long) As Boolean
+    Dim lPos            As Long
+    Dim lY              As Long
+    Dim lCellW          As Long
+    Dim oCol            As JSColumn
+    Dim uMetrics        As TEXTMETRICW
+
+    If m_oSelectedItems.Count > 1 Then
+        Exit Function
+    End If
+    If pvIsNewRow(m_lEditRow) Then
+        lPos = m_lEditRow
+    Else
+        lPos = m_pDataModel.GetRowPosition(m_lEditRow)
+        If lPos < 1 Then
+            Exit Function
+        End If
+    End If
+    If Not pvGetCellRect(lPos, m_lEditCol, lX, lY, lCellW) Then
+        Exit Function
+    End If
+    Set oCol = m_oColumns.Item(m_lEditCol)
+    uMetrics = FontTextMetrics(m_oFont)
+    lTop = lY + (pvGetRowContentH(m_lRowHeight) - uMetrics.tmHeight) \ 2
+    lH = uMetrics.tmHeight
+    If oCol.WordWrap Then
+        lTop = lY + 1
+        lH = pvGetRowContentH(m_lRowHeight) - 2
+    End If
+    lX = lX + 1
+    lW = lCellW - 4
+    If lW > picGrid.ScaleWidth - lX Then
+        lW = picGrid.ScaleWidth - lX
+    End If
+    pvGetEditorRect = (lW > 0 And lTop < picGrid.ScaleHeight)
+End Function
+
+Private Sub pvLayoutEditor()
+    Dim lX              As Long
+    Dim lTop            As Long
+    Dim lW              As Long
+    Dim lH              As Long
+
+    If m_hWndEdit = 0 Then
+        Exit Sub
+    End If
+    If pvGetEditorRect(lX, lTop, lW, lH) Then
+        Call SetWindowPos(m_hWndEdit, 0, lX, lTop, lW, lH, SWP_NOZORDER Or SWP_SHOWWINDOW)
+    Else
+        Call SetWindowPos(m_hWndEdit, 0, 0, 0, 0, 0, SWP_NOMOVE Or SWP_NOSIZE Or SWP_NOZORDER Or SWP_HIDEWINDOW)
+    End If
+End Sub
+
+'--- Input: subclass, keyboard and mouse ---------------------------------
+
+Private Sub pvSubclassWindows()
     Set m_pSubclassPic = InitSubclassingThunk(hWnd, Me, pvAddressOfSubclassProc.ControlSubclassProc(0, 0, 0, 0, 0))
     Set m_pSubclassCtl = InitSubclassingThunk(UserControl.hWnd, Me, pvAddressOfSubclassProc.ControlSubclassProc(0, 0, 0, 0, 0))
 End Sub
-
-Public Function EditSubclassProc(ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long, Handled As Boolean) As Long
-Attribute EditSubclassProc.VB_MemberFlags = "40"
-    #If hWnd Then '--- touch args
-    #End If
-    Dim nKeyCode        As Integer
-    Dim nShift          As Integer
-
-    Select Case wMsg
-    Case WM_KEYDOWN
-        nKeyCode = LoWordInt(wParam)
-        If pvEditKeyLeaves(nKeyCode) Then
-            Call SendMessage(picGrid.hWnd, WM_KEYDOWN, wParam, lParam)
-            Handled = True
-        Else
-            nShift = pvShiftState()
-            RaiseEvent KeyDown(nKeyCode, nShift)
-            Select Case nKeyCode
-            Case vbKeyReturn
-                pvEditEnd
-                pvEditCommit
-                If pvIsNewRow(m_lRow) Then
-                    pvNavigate m_pDataModel.GetRowPosition(m_oRowData.frInitRowIndex), m_lCol, 0, False
-                    m_oSelectedItems.Clear
-                    RaiseEvent SelectionChange
-                    pvSetRow pvNewRow()
-                    pvNewRowData
-                    pvInvalidate SkipScroll:=True
-                ElseIf m_lRow < RowCount Then
-                    pvNavigate m_lRow + 1, m_lCol, 0, False
-                End If
-                Handled = True
-            Case vbKeyEscape
-                pvEditEnd bCancel:=True
-                Handled = True
-            End Select
-        End If
-    Case WM_CHAR
-        RaiseEvent KeyPress(LoWordInt(wParam))
-    Case WM_KEYUP
-        RaiseEvent KeyUp(LoWordInt(wParam), pvShiftState())
-    Case WM_MOUSEWHEEL
-        If (GetWindowLong(m_hWndEdit, GWL_STYLE) And ES_MULTILINE) = 0 Then
-            Call SendMessage(picGrid.hWnd, WM_MOUSEWHEEL, wParam, lParam)
-            Handled = True
-        End If
-    Case WM_SETFOCUS
-        If Not m_bGridFocus Then
-            m_bGridFocus = True
-            pvInvalidate SkipScroll:=True
-        End If
-    Case WM_KILLFOCUS
-        If wParam <> picGrid.hWnd And wParam <> UserControl.hWnd Then
-            pvEditFocusLost
-            If m_bGridFocus Then
-                m_bGridFocus = False
-                pvInvalidate SkipScroll:=True
-            End If
-        End If
-    End Select
-End Function
 
 Public Function ControlSubclassProc(ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long, Handled As Boolean) As Long
 Attribute ControlSubclassProc.VB_MemberFlags = "40"
@@ -4737,14 +3766,14 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
     If hWnd = UserControl.hWnd Then
         Select Case wMsg
         Case WM_LBUTTONDOWN
-            pvOnNavigatorClick GetXLParam(lParam), GetYLParam(lParam)
+            pvHandleNavigatorClick GetXLParam(lParam), GetYLParam(lParam)
         Case WM_MOUSEACTIVATE
             If pvHitScrollBar() Then
                 ControlSubclassProc = MA_NOACTIVATE
                 Handled = True
             End If
         Case WM_PAINT
-            pvOnPaint hWnd
+            pvHandlePaint hWnd
             Handled = True
         Case WM_ERASEBKGND
             If m_bRecordNavigator Then
@@ -4755,7 +3784,7 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
             Handled = True
         Case WM_HSCROLL
             If lParam = hsbGrid.hWnd Then
-                pvOnHScroll LoWord(wParam), HiWord(wParam)
+                pvHandleHScroll LoWord(wParam), HiWord(wParam)
                 Handled = True
             End If
         End Select
@@ -4763,7 +3792,7 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
     End If
     Select Case wMsg
     Case WM_PAINT
-        pvOnPaint hWnd
+        pvHandlePaint hWnd
         Handled = True
     Case WM_ERASEBKGND
         ControlSubclassProc = 1
@@ -4788,27 +3817,27 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
     Case WM_SETFOCUS
         If Not m_bGridFocus Then
             m_bGridFocus = True
-            pvInvalidate SkipScroll:=True
+            pvInvalidateGrid SkipScroll:=True
         End If
     Case WM_KILLFOCUS
         If m_bGridFocus And (wParam <> m_hWndEdit Or m_hWndEdit = 0) Then
             m_bGridFocus = False
-            pvInvalidate SkipScroll:=True
+            pvInvalidateGrid SkipScroll:=True
         End If
     Case WM_VSCROLL
-        pvOnVScroll LoWord(wParam), HiWord(wParam)
+        pvHandleVScroll LoWord(wParam), HiWord(wParam)
         Handled = True
     Case WM_MOUSEWHEEL
-        pvOnMouseWheel wParam
+        pvHandleMouseWheel wParam
         Handled = True
     Case WM_KEYDOWN
         nKeyCode = LoWordInt(wParam)
-        nShift = pvShiftState()
+        nShift = pvGetShiftState()
         RaiseEvent KeyDown(nKeyCode, nShift)
-        pvOnKeyDown nKeyCode, nShift
+        pvHandleKeyDown nKeyCode, nShift
     Case WM_LBUTTONDOWN
-        pvOnLButtonDown GetXLParam(lParam), GetYLParam(lParam), pvMouseShift(wParam)
-        RaiseEvent MouseDown(vbLeftButton, pvMouseShift(wParam), GetXLParam(lParam) * Screen.TwipsPerPixelX, GetYLParam(lParam) * Screen.TwipsPerPixelY)
+        pvHandleLButtonDown GetXLParam(lParam), GetYLParam(lParam), pvGetMouseShift(wParam)
+        RaiseEvent MouseDown(vbLeftButton, pvGetMouseShift(wParam), GetXLParam(lParam) * Screen.TwipsPerPixelX, GetYLParam(lParam) * Screen.TwipsPerPixelY)
         If m_hWndEdit <> 0 Then
             ControlSubclassProc = CallNextSubclassProc(m_pSubclassPic, hWnd, wMsg, wParam, lParam)
             Handled = True
@@ -4819,7 +3848,7 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         If Not m_oSizeCol Is Nothing Then
             pvEndColSize bCancel:=False
         ElseIf m_bDragging Then
-            pvOnColDrag GetXLParam(lParam), GetYLParam(lParam)
+            pvTrackColDrag GetXLParam(lParam), GetYLParam(lParam)
             pvEndColDrag bCancel:=False
         Else
             If Not m_oDragGroup Is Nothing Then
@@ -4828,7 +3857,7 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
                 pvInvalidateHeaders
                 RaiseEvent GroupByBoxHeaderClick(oGroup)
                 If m_bAutomaticSort Then
-                    pvAutoSort m_oColumns.Item(oGroup.ColIndex)
+                    pvApplyAutoSort m_oColumns.Item(oGroup.ColIndex)
                 End If
             End If
             If Not m_oDragCol Is Nothing Then
@@ -4837,10 +3866,10 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
                 pvInvalidateHeaders
                 RaiseEvent ColumnHeaderClick(oSizeCol)
                 If m_bAutomaticSort Then
-                    pvAutoSort oSizeCol
+                    pvApplyAutoSort oSizeCol
                 End If
             End If
-            RaiseEvent MouseUp(vbLeftButton, pvMouseShift(wParam), GetXLParam(lParam) * Screen.TwipsPerPixelX, GetYLParam(lParam) * Screen.TwipsPerPixelY)
+            RaiseEvent MouseUp(vbLeftButton, pvGetMouseShift(wParam), GetXLParam(lParam) * Screen.TwipsPerPixelX, GetYLParam(lParam) * Screen.TwipsPerPixelY)
             If m_bEatClick Then
                 m_bEatClick = False
             Else
@@ -4848,9 +3877,9 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
             End If
         End If
     Case WM_LBUTTONDBLCLK
-        Set oSizeCol = pvColDividerAt(GetXLParam(lParam), GetYLParam(lParam))
+        Set oSizeCol = pvHitColDivider(GetXLParam(lParam), GetYLParam(lParam))
         If oSizeCol Is Nothing Then
-            If pvGroupRowDblClk(GetYLParam(lParam)) Then
+            If pvHandleGroupDblClk(GetYLParam(lParam)) Then
                 m_bEatClick = True
             End If
             RaiseEvent DblClick
@@ -4858,22 +3887,22 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
             frColAutoSize oSizeCol
         End If
     Case WM_MOUSEMOVE
-        RaiseEvent MouseMove(IIf(m_oSizeCol Is Nothing, pvMouseButton(wParam), 0), pvMouseShift(wParam), GetXLParam(lParam) * Screen.TwipsPerPixelX, GetYLParam(lParam) * Screen.TwipsPerPixelY)
+        RaiseEvent MouseMove(IIf(m_oSizeCol Is Nothing, pvGetMouseButton(wParam), 0), pvGetMouseShift(wParam), GetXLParam(lParam) * Screen.TwipsPerPixelX, GetYLParam(lParam) * Screen.TwipsPerPixelY)
         If Not m_oSizeCol Is Nothing Then
-            pvOnColSize GetXLParam(lParam)
+            pvTrackColSize GetXLParam(lParam)
         ElseIf (Not m_oDragCol Is Nothing Or Not m_oDragGroup Is Nothing) And (wParam And MK_LBUTTON) <> 0 Then
-            pvOnColDrag GetXLParam(lParam), GetYLParam(lParam)
+            pvTrackColDrag GetXLParam(lParam), GetYLParam(lParam)
         ElseIf (wParam And MK_LBUTTON) <> 0 Then
-            pvOnMouseDrag GetYLParam(lParam)
+            pvHandleMouseDrag GetYLParam(lParam)
         End If
     Case WM_CHAR
         nKeyAscii = LoWordInt(wParam)
         If nKeyAscii >= 32 And m_hWndEdit = 0 And Not m_bEditing Then
-            Set oEditCol = pvColByPosition(m_lCol)
+            Set oEditCol = pvGetColByPosition(m_lCol)
             If Not oEditCol Is Nothing Then
                 If oEditCol.EditType <> jgexEditTextBox Then
                     Set oEditCol = Nothing
-                ElseIf Not pvEditInit(m_lRow, m_lCol, bSelectAll:=True) Then
+                ElseIf Not pvOpenEditor(m_lRow, m_lCol, bSelectAll:=True) Then
                     Set oEditCol = Nothing
                 ElseIf m_hWndEdit = 0 Then
                     Set oEditCol = Nothing
@@ -4886,7 +3915,7 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
             Call SendMessage(m_hWndEdit, WM_CHAR, wParam, lParam)
         End If
     Case WM_KEYUP
-        RaiseEvent KeyUp(LoWordInt(wParam), pvShiftState())
+        RaiseEvent KeyUp(LoWordInt(wParam), pvGetShiftState())
     Case WM_COMMAND
         If lParam = m_hWndEdit And m_hWndEdit <> 0 Then
             If (wParam \ &H10000) = EN_CHANGE And Not m_bInEditSetup Then
@@ -4902,82 +3931,347 @@ QH:
     End If
 End Function
 
-Private Function pvShiftState() As Integer
-    If GetKeyState(vbKeyShift) < 0 Then
-        pvShiftState = pvShiftState Or vbShiftMask
-    End If
-    If GetKeyState(vbKeyControl) < 0 Then
-        pvShiftState = pvShiftState Or vbCtrlMask
-    End If
-    If GetKeyState(vbKeyMenu) < 0 Then
-        pvShiftState = pvShiftState Or vbAltMask
-    End If
+Public Function EditSubclassProc(ByVal hWnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long, Handled As Boolean) As Long
+Attribute EditSubclassProc.VB_MemberFlags = "40"
+    #If hWnd Then '--- touch args
+    #End If
+    Dim nKeyCode        As Integer
+    Dim nShift          As Integer
+
+    Select Case wMsg
+    Case WM_KEYDOWN
+        nKeyCode = LoWordInt(wParam)
+        If pvIsLeaveKey(nKeyCode) Then
+            Call SendMessage(picGrid.hWnd, WM_KEYDOWN, wParam, lParam)
+            Handled = True
+        Else
+            nShift = pvGetShiftState()
+            RaiseEvent KeyDown(nKeyCode, nShift)
+            Select Case nKeyCode
+            Case vbKeyReturn
+                pvEndEdit
+                pvCommitEdit
+                If pvIsNewRow(m_lRow) Then
+                    pvNavigateCell m_pDataModel.GetRowPosition(m_oRowData.frInitRowIndex), m_lCol, 0, False
+                    m_oSelectedItems.Clear
+                    RaiseEvent SelectionChange
+                    pvSetRow pvGetNewRow()
+                    pvInitNewRow
+                    pvInvalidateGrid SkipScroll:=True
+                ElseIf m_lRow < RowCount Then
+                    pvNavigateCell m_lRow + 1, m_lCol, 0, False
+                End If
+                Handled = True
+            Case vbKeyEscape
+                pvEndEdit bCancel:=True
+                Handled = True
+            End Select
+        End If
+    Case WM_CHAR
+        RaiseEvent KeyPress(LoWordInt(wParam))
+    Case WM_KEYUP
+        RaiseEvent KeyUp(LoWordInt(wParam), pvGetShiftState())
+    Case WM_MOUSEWHEEL
+        If (GetWindowLong(m_hWndEdit, GWL_STYLE) And ES_MULTILINE) = 0 Then
+            Call SendMessage(picGrid.hWnd, WM_MOUSEWHEEL, wParam, lParam)
+            Handled = True
+        End If
+    Case WM_SETFOCUS
+        If Not m_bGridFocus Then
+            m_bGridFocus = True
+            pvInvalidateGrid SkipScroll:=True
+        End If
+    Case WM_KILLFOCUS
+        If wParam <> picGrid.hWnd And wParam <> UserControl.hWnd Then
+            pvHandleFocusLoss
+            If m_bGridFocus Then
+                m_bGridFocus = False
+                pvInvalidateGrid SkipScroll:=True
+            End If
+        End If
+    End Select
 End Function
 
-Private Function pvMouseShift(ByVal wParam As Long) As Integer
-    If (wParam And MK_SHIFT) <> 0 Then
-        pvMouseShift = pvMouseShift Or vbShiftMask
-    End If
-    If (wParam And MK_CONTROL) <> 0 Then
-        pvMouseShift = pvMouseShift Or vbCtrlMask
-    End If
-    If GetKeyState(vbKeyMenu) < 0 Then
-        pvMouseShift = pvMouseShift Or vbAltMask
-    End If
-End Function
+Private Sub pvHandleKeyDown(ByVal lKeyCode As Long, ByVal lShift As Long)
+    Dim lPos            As Long
+    Dim oCol            As JSColumn
 
-Private Function pvMouseButton(ByVal wParam As Long) As Integer
-    If (wParam And MK_LBUTTON) <> 0 Then
-        pvMouseButton = pvMouseButton Or vbLeftButton
-    End If
-    If (wParam And MK_RBUTTON) <> 0 Then
-        pvMouseButton = pvMouseButton Or vbRightButton
-    End If
-End Function
+    Select Case lKeyCode
+    Case vbKeyDown, vbKeyReturn
+        If pvIsNewRow(m_lRow) Then
+            If m_eNewRowPos = jgexTop Then
+                pvNavigateCell 1, m_lCol, lShift, False
+            End If
+        ElseIf m_lRow < RowCount Then
+            pvNavigateCell m_lRow + 1, m_lCol, lShift, False
+        ElseIf pvIsNewRow(m_lRow + 1) Then
+            pvNavigateCell m_lRow + 1, m_lCol, lShift, False
+        End If
+    Case vbKeyUp
+        If pvIsNewRow(m_lRow) Then
+            If m_eNewRowPos = jgexBottom Then
+                pvNavigateCell RowCount, m_lCol, lShift, False
+            End If
+        ElseIf m_lRow > 1 Then
+            pvNavigateCell m_lRow - 1, m_lCol, lShift, False
+        ElseIf m_lRow = 1 And pvIsNewRow(-1) Then
+            pvNavigateCell -1, m_lCol, lShift, False
+        End If
+    Case vbKeyRight
+        If pvIsGroupRow(m_lRow) Then
+            If pvIsGroupHeader(m_lRow) Then
+                If Not m_pDataModel.RowExpanded(m_lRow) Then
+                    pvToggleRow m_lRow
+                ElseIf m_lRow < RowCount Then
+                    pvNavigateCell m_lRow + 1, m_lCol, lShift, False
+                End If
+            End If
+        Else
+            lPos = pvFindSelectableCol(m_lCol, 1)
+            If lPos >= 1 Then
+                Col = lPos
+                EnsureVisible m_lRow, m_lCol
+            End If
+        End If
+    Case vbKeyLeft
+        If pvIsGroupRow(m_lRow) Then
+            If pvIsGroupHeader(m_lRow) Then
+                If m_pDataModel.RowExpanded(m_lRow) Then
+                    pvToggleRow m_lRow
+                End If
+            End If
+        Else
+            lPos = pvFindSelectableCol(m_lCol, -1)
+            If lPos >= 1 Then
+                Col = lPos
+                EnsureVisible m_lRow, m_lCol
+            End If
+        End If
+    Case vbKeyF2
+        pvOpenEditor m_lRow, m_lCol, bSelectAll:=True
+    Case vbKeyDelete
+        If m_lCol >= 1 And m_bAllowEdit Then
+            Set oCol = pvGetColByPosition(m_lCol)
+            If Not oCol Is Nothing Then
+                If oCol.EditType = jgexEditTextBox Then
+                    If pvOpenEditor(m_lRow, m_lCol, bSelectAll:=True) Then
+                        If m_hWndEdit <> 0 Then
+                            Call SendMessage(m_hWndEdit, WM_CLEAR, 0, 0)
+                        End If
+                    End If
+                End If
+            End If
+        ElseIf m_bAllowDelete Then
+            Delete
+        End If
+    Case vbKeySpace
+        '--- a deliberate step past the original, which ignores Space here:
+        '--- the header's level toggles, a footer stays as it is
+        If pvIsGroupHeader(m_lRow) Then
+            pvToggleRow m_lRow
+        End If
+    Case vbKeyTab
+        If m_bAllowEdit And (lShift And vbCtrlMask) = 0 Then
+            If (lShift And vbShiftMask) <> 0 Then
+                lPos = pvFindSelectableCol(m_lCol, -1)
+            Else
+                lPos = pvFindSelectableCol(m_lCol, 1)
+            End If
+            If lPos >= 1 Then
+                Col = lPos
+                EnsureVisible m_lRow, m_lCol
+                pvOpenEditor m_lRow, m_lCol, bSelectAll:=True
+            End If
+        End If
+    Case vbKeyPageDown
+        pvNavigateCell pvClampRow(m_lRow + pvCountVisibleRows()), m_lCol, lShift, False
+    Case vbKeyPageUp
+        pvNavigateCell pvClampRow(m_lRow - pvCountVisibleRows()), m_lCol, lShift, False
+    Case vbKeyHome
+        pvNavigateCell pvClampRow(1), m_lCol, lShift, False
+    Case vbKeyEnd
+        pvNavigateCell pvClampRow(RowCount), m_lCol, lShift, False
+    Case vbKeyEscape
+        If Not m_oSizeCol Is Nothing Then
+            pvEndColSize bCancel:=True
+        ElseIf Not m_oDragCol Is Nothing Or Not m_oDragGroup Is Nothing Then
+            pvEndColDrag bCancel:=True
+        Else
+            pvCancelEdit
+        End If
+    End Select
+End Sub
 
-Private Sub pvOnMouseDrag(ByVal lY As Long)
+Private Sub pvHandleLButtonDown(ByVal lX As Long, ByVal lY As Long, ByVal lShift As Long)
+    Dim lTopGbox        As Long
+    Dim lTopHdr         As Long
+    Dim lPos            As Long
+    Dim oCol            As JSColumn
+    Dim oGroup          As JSGroup
+    Dim lRow            As Long
+
+    m_bDragSelect = False
+    lTopGbox = pvGetGroupByBoxHeight()
+    lTopHdr = pvGetRowsTop()
+    Set m_oSizeCol = pvHitColDivider(lX, lY)
+    If Not m_oSizeCol Is Nothing Then
+        m_lSizeStartX = lX
+        m_lSizeStartW = pvGetColWidth(m_oSizeCol)
+        Call SetCapture(picGrid.hWnd)
+        Exit Sub
+    End If
+    If lY < lTopGbox Then
+        lPos = pvHitGroup(lX, lY, oGroup)
+        If Not oGroup Is Nothing Then
+            Set m_oDragGroup = oGroup
+            m_lDragStartX = lX
+            m_lDragStartY = lY
+            pvInvalidateHeaders
+        End If
+    ElseIf lY < lTopHdr Then
+        lPos = pvHitCol(lX, oCol)
+        If Not oCol Is Nothing Then
+            Set m_oDragCol = oCol
+            m_lDragStartX = lX
+            m_lDragStartY = lY
+            pvInvalidateHeaders
+        End If
+    ElseIf m_lRowHeight > 0 Then
+        lRow = pvHitRow(lY)
+        If pvIsNewRow(lRow) Then
+            lPos = pvHitCol(lX, oCol)
+            If lPos >= 1 Then
+                If m_bAllowEdit And oCol.Selectable Then
+                    pvNavigateCell lRow, lPos, lShift, False
+                    If (lShift And (vbCtrlMask Or vbShiftMask)) = 0 Then
+                        m_bClickOpenedEdit = pvOpenEditor(lRow, lPos, False, lX, lY)
+                    End If
+                End If
+            End If
+        ElseIf lRow >= 1 And lRow <= RowCount Then
+            m_bDragSelect = True
+            If pvIsGroupRow(lRow) Then
+                pvNavigateCell lRow, 0, lShift, (lShift And vbCtrlMask) <> 0
+                pvToggleGroupBox lRow, lX, lY
+            ElseIf pvHitRowSelZone(lX, lY) Then
+                pvNavigateCell lRow, 0, lShift, (lShift And vbCtrlMask) <> 0
+                pvClearCol
+            Else
+                lPos = pvHitCol(lX, oCol)
+                If lPos >= 1 Then
+                    If Not m_bAllowEdit Or Not oCol.Selectable Then
+                        pvNavigateCell lRow, 0, lShift, (lShift And vbCtrlMask) <> 0
+                    Else
+                        pvNavigateCell lRow, lPos, lShift, (lShift And vbCtrlMask) <> 0
+                        If (lShift And (vbCtrlMask Or vbShiftMask)) = 0 Then
+                            m_bClickOpenedEdit = pvOpenEditor(lRow, lPos, False, lX, lY)
+                        End If
+                    End If
+                End If
+            End If
+        End If
+    End If
+End Sub
+
+Private Sub pvHandleMouseWheel(ByVal wParam As Long)
+    Const WHEEL_DELTA   As Long = 120
+    Dim lDelta          As Long
+
+    lDelta = HiWordInt(wParam)
+    If (LoWord(wParam) And MK_SHIFT) <> 0 Then
+        LeftCol = m_lLeftCol - lDelta \ WHEEL_DELTA
+    Else
+        FirstItem = m_lFirstItem - (lDelta \ WHEEL_DELTA) * 3
+    End If
+End Sub
+
+Private Sub pvHandleVScroll(ByVal lCode As Long, ByVal lPos As Long)
+    Dim uSi             As SCROLLINFO
+    Dim lPage           As Long
+
+    Select Case lCode
+    Case SB_LINEUP
+        FirstItem = m_lFirstItem - 1
+    Case SB_LINEDOWN
+        FirstItem = m_lFirstItem + 1
+    Case SB_PAGEUP, SB_PAGEDOWN
+        uSi.cbSize = Len(uSi)
+        uSi.fMask = SIF_PAGE
+        Call GetScrollInfo(picGrid.hWnd, SB_VERT, uSi)
+        lPage = uSi.nPage
+        If lPage < 1 Then
+            lPage = 1
+        End If
+        If lCode = SB_PAGEUP Then
+            FirstItem = m_lFirstItem - lPage
+        Else
+            FirstItem = m_lFirstItem + lPage
+        End If
+    Case SB_THUMBPOSITION, SB_THUMBTRACK
+        If lCode = SB_THUMBTRACK And Not m_bContinuousScroll Then
+            Exit Sub
+        End If
+        If lPos = 0 Then
+            uSi.cbSize = Len(uSi)
+            uSi.fMask = SIF_TRACKPOS
+            Call GetScrollInfo(picGrid.hWnd, SB_VERT, uSi)
+            lPos = uSi.nTrackPos
+        End If
+        FirstItem = lPos + 1
+    End Select
+End Sub
+
+Private Sub pvHandleHScroll(ByVal lCode As Long, ByVal lPos As Long)
+    Dim uSi             As SCROLLINFO
+
+    If m_bScrollUpdating Then
+        Exit Sub
+    End If
+    Select Case lCode
+    Case SB_LINELEFT
+        LeftCol = m_lLeftCol - 1
+    Case SB_LINERIGHT
+        LeftCol = m_lLeftCol + 1
+    Case SB_PAGELEFT
+        LeftCol = m_lLeftCol - pvCountColsBefore(pvGetScrollableWidth(), m_lLeftCol)
+    Case SB_PAGERIGHT
+        LeftCol = m_lLeftCol + pvCountColsFrom(pvGetScrollableWidth(), m_lLeftCol)
+    Case SB_THUMBPOSITION, SB_THUMBTRACK
+        If lCode = SB_THUMBTRACK And Not m_bContinuousScroll Then
+            Exit Sub
+        End If
+        If lPos = 0 Then
+            uSi.cbSize = Len(uSi)
+            uSi.fMask = SIF_TRACKPOS
+            Call GetScrollInfo(hsbGrid.hWnd, SB_CTL, uSi)
+            lPos = uSi.nTrackPos
+        End If
+        LeftCol = Clamp(lPos, 1, m_oColumns.Count)
+    Case SB_LEFT
+        LeftCol = 1
+    Case SB_RIGHT
+        LeftCol = m_oColumns.Count
+    End Select
+End Sub
+
+Private Sub pvHandleMouseDrag(ByVal lY As Long)
     Dim lTopHdr         As Long
     Dim lRow            As Long
 
     If Not m_bMultiSelect Or m_lRowHeight <= 0 Or m_bClickOpenedEdit Or Not m_bDragSelect Then
         Exit Sub
     End If
-    lTopHdr = pvTopHeight()
+    lTopHdr = pvGetTopHeight()
     If lY < lTopHdr Then
         Exit Sub
     End If
-    lRow = pvClampRow(pvRowAtY(lY))
+    lRow = pvClampRow(pvHitRow(lY))
     If lRow <> m_lRow Then
         pvSetRow lRow
-        pvSetRangeSel m_lSelAnchor, lRow
+        pvSelectRange m_lSelAnchor, lRow
         EnsureVisible m_lRow
     End If
 End Sub
-
-Private Function pvColDividerAt(ByVal lX As Long, ByVal lY As Long) As JSColumn
-    Dim vOrder          As Variant
-    Dim lIdx            As Long
-    Dim oCol            As JSColumn
-    Dim lCum            As Long
-
-    If Not m_bColumnHeaders Or lY < pvGroupByBoxHeight() Or lY >= pvRowsTop() Then
-        Exit Function
-    End If
-    lCum = pvBlockLeft()
-    vOrder = pvColOrder()
-    For lIdx = 0 To pvOrderMax(vOrder)
-        Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
-        If oCol.Visible Then
-            lCum = lCum + pvColWidth(oCol)
-            If Abs(lX - lCum) <= DIVIDER_GRAB_W Then
-                If oCol.AllowSizing Then
-                    Set pvColDividerAt = oCol
-                End If
-                Exit Function
-            End If
-        End If
-    Next
-End Function
 
 Private Function pvSetCursor() As Boolean
     Dim uPt             As POINTAPI
@@ -4991,10 +4285,10 @@ Private Function pvSetCursor() As Boolean
     Else
         Call GetCursorPos(uPt)
         Call ScreenToClient(picGrid.hWnd, uPt)
-        If Not pvColDividerAt(uPt.X, uPt.Y) Is Nothing Then
+        If Not pvHitColDivider(uPt.X, uPt.Y) Is Nothing Then
             lCursor = IDC_SIZEWE
-        ElseIf pvRowSelZoneAt(uPt.X, uPt.Y) Then
-            hCursor = pvRowSelCursor()
+        ElseIf pvHitRowSelZone(uPt.X, uPt.Y) Then
+            hCursor = pvGetRowSelCursor()
         End If
     End If
     If lCursor <> 0 Then
@@ -5006,7 +4300,7 @@ Private Function pvSetCursor() As Boolean
     End If
 End Function
 
-Private Function pvRowSelCursor() As Long
+Private Function pvGetRowSelCursor() As Long
     Dim uInfo           As ICONINFO
     Dim uBmp            As BITMAP
     Dim hDCSrc          As Long
@@ -5048,10 +4342,338 @@ Private Function pvRowSelCursor() As Long
             Call DeleteObject(hColor)
         End If
     End If
-    pvRowSelCursor = m_hCurRowSel
+    pvGetRowSelCursor = m_hCurRowSel
 End Function
 
-Private Sub pvOnColSize(ByVal lX As Long)
+Private Function pvTranslateSiteKey(ByVal lKeyCode As Long, ByVal lShift As Long) As Boolean
+    Const FUNC_NAME     As String = "pvTranslateSiteKey"
+    Const S_OK          As Long = 0
+    Dim pOleObject      As IOleObject
+    Dim pOleControlSite As IOleControlSite
+    Dim uMsg            As APIMSG
+    Dim oParent         As Object
+
+    On Error GoTo EH
+    With uMsg
+        .hWnd = UserControl.hWnd
+        .Message = WM_KEYDOWN
+        .wParam = lKeyCode
+        .lParam = &H10001
+    End With
+    If Not TypeOf Me Is IOleObject Then
+        Exit Function
+    End If
+    Set pOleObject = Me
+    If pOleObject.GetClientSite(pOleControlSite) <> S_OK Then
+        Exit Function
+    End If
+    If pOleControlSite Is Nothing Then
+        Exit Function
+    End If
+    If pOleControlSite.TranslateAccelerator(VarPtr(uMsg), lShift) = S_OK Then
+        pvTranslateSiteKey = True
+        Exit Function
+    End If
+    Set oParent = UserControl.Parent
+    If oParent Is Nothing Then
+        Exit Function
+    End If
+    If Not TypeOf oParent Is IOleObject Then
+        Exit Function
+    End If
+    Set pOleObject = oParent
+    Set pOleControlSite = Nothing
+    If pOleObject.GetClientSite(pOleControlSite) <> S_OK Then
+        Exit Function
+    End If
+    If pOleControlSite Is Nothing Then
+        Exit Function
+    End If
+    pvTranslateSiteKey = (pOleControlSite.TranslateAccelerator(VarPtr(uMsg), lShift) = S_OK)
+    Exit Function
+EH:
+    PrintError FUNC_NAME
+End Function
+
+Private Function pvGetShiftState() As Integer
+    If GetKeyState(vbKeyShift) < 0 Then
+        pvGetShiftState = pvGetShiftState Or vbShiftMask
+    End If
+    If GetKeyState(vbKeyControl) < 0 Then
+        pvGetShiftState = pvGetShiftState Or vbCtrlMask
+    End If
+    If GetKeyState(vbKeyMenu) < 0 Then
+        pvGetShiftState = pvGetShiftState Or vbAltMask
+    End If
+End Function
+
+Private Function pvGetMouseShift(ByVal wParam As Long) As Integer
+    If (wParam And MK_SHIFT) <> 0 Then
+        pvGetMouseShift = pvGetMouseShift Or vbShiftMask
+    End If
+    If (wParam And MK_CONTROL) <> 0 Then
+        pvGetMouseShift = pvGetMouseShift Or vbCtrlMask
+    End If
+    If GetKeyState(vbKeyMenu) < 0 Then
+        pvGetMouseShift = pvGetMouseShift Or vbAltMask
+    End If
+End Function
+
+Private Function pvGetMouseButton(ByVal wParam As Long) As Integer
+    If (wParam And MK_LBUTTON) <> 0 Then
+        pvGetMouseButton = pvGetMouseButton Or vbLeftButton
+    End If
+    If (wParam And MK_RBUTTON) <> 0 Then
+        pvGetMouseButton = pvGetMouseButton Or vbRightButton
+    End If
+End Function
+
+'--- Navigation and selection --------------------------------------------
+
+Private Sub pvNavigateCell(ByVal lRow As Long, ByVal lCol As Long, ByVal lShift As Long, ByVal bCtrlToggle As Boolean)
+    Dim bRowChanging    As Boolean
+    Dim bNewRow         As Boolean
+
+    bNewRow = (lRow <> m_lRow And pvIsNewRow(lRow))
+    bRowChanging = (lRow <> m_lRow And lRow >= 1 And lRow <= RowCount)
+    pvEndEdit
+    If bRowChanging Or bNewRow Then
+        pvCommitEdit
+    End If
+    If bNewRow Then
+        pvInitNewRow
+        pvRaiseRowFormat m_oRowData
+        m_oSelectedItems.Clear
+        RaiseEvent SelectionChange
+        pvSetRow lRow
+    ElseIf bRowChanging Then
+        If Not pvIsGroupRow(lRow) Then
+            pvRaiseRowFormat pvFetchRowData(lRow)
+        End If
+    End If
+    If bNewRow Then
+        '--- handled above
+    ElseIf lRow >= 1 And lRow <= RowCount Then
+        pvUpdateSelection lRow, lShift, bCtrlToggle
+        pvSetRow lRow
+    Else
+        pvUpdateSelection m_lRow, lShift, bCtrlToggle
+    End If
+    If lCol >= 1 Then
+        Col = lCol
+    End If
+    EnsureVisible m_lRow
+End Sub
+
+Private Sub pvSetRow(ByVal lValue As Long)
+    Dim lLastRow        As Long
+
+    If m_lRow <> lValue Then
+        lLastRow = m_lRow
+        m_lRow = lValue
+        pvSyncRowData
+        If pvIsNewRow(m_lRow) Then
+            m_lHoldRowIndex = 0
+        ElseIf m_pDataModel.RowIndex(m_lRow) <> 0 Then
+            m_lHoldRowIndex = m_pDataModel.RowIndex(m_lRow)
+        End If
+        pvInvalidateGrid SkipScroll:=True
+        RaiseEvent RowColChange(lLastRow, m_lCol)
+    End If
+End Sub
+
+Private Sub pvUpdateSelection(ByVal lRow As Long, ByVal lShift As Long, ByVal bCtrlToggle As Boolean)
+    Dim bSame           As Boolean
+
+    If lRow < 1 Or lRow > RowCount Then
+        Exit Sub
+    End If
+    If m_bMultiSelect And bCtrlToggle Then
+        If pvIsSelectedRow(lRow) Then
+            m_oSelectedItems.RemoveRowPosition lRow
+        Else
+            pvSelectRow lRow
+        End If
+        m_bCurRowDeselected = Not pvIsSelectedRow(lRow)
+        m_lSelAnchor = lRow
+        pvInvalidateGrid SkipScroll:=True
+        RaiseEvent SelectionChange
+    ElseIf m_bMultiSelect And (lShift And vbShiftMask) <> 0 Then
+        pvSelectRange m_lSelAnchor, lRow
+        m_bCurRowDeselected = False
+    Else
+        bSame = (m_oSelectedItems.Count = 1)
+        If bSame Then
+            bSame = (m_oSelectedItems.Item(1).RowPosition = lRow)
+        End If
+        m_oSelectedItems.Clear
+        pvSelectRow lRow
+        m_lSelAnchor = lRow
+        m_bCurRowDeselected = False
+        pvInvalidateGrid SkipScroll:=True
+        If Not bSame Then
+            RaiseEvent SelectionChange
+        End If
+    End If
+End Sub
+
+Private Sub pvSelectRange(ByVal lFrom As Long, ByVal lTo As Long)
+    Dim lLo             As Long
+    Dim lHi             As Long
+    Dim lIdx            As Long
+
+    If lFrom = 0 Then
+        lFrom = lTo
+    End If
+    If lFrom <= lTo Then
+        lLo = lFrom
+        lHi = lTo
+    Else
+        lLo = lTo
+        lHi = lFrom
+    End If
+    m_oSelectedItems.Clear
+    For lIdx = lLo To lHi
+        pvSelectRow lIdx
+    Next
+    pvInvalidateGrid SkipScroll:=True
+    RaiseEvent SelectionChange
+End Sub
+
+Private Sub pvSelectRow(ByVal lPos As Long)
+    Dim lRow            As Long
+
+    If lPos < 1 Or lPos > m_pDataModel.RowCount Then
+        Exit Sub
+    End If
+    lRow = m_pDataModel.RowIndex(lPos)
+    m_oSelectedItems.frAdd lPos, m_pDataModel.RowBookmark(lRow), lRow
+End Sub
+
+Private Function pvIsSelectedRow(ByVal lPos As Long) As Boolean
+    Dim oItem           As JSSelectedItem
+
+    For Each oItem In m_oSelectedItems
+        If oItem.RowPosition = lPos Then
+            pvIsSelectedRow = True
+            Exit Function
+        End If
+    Next
+End Function
+
+Private Sub pvClearCol()
+    Dim lLastCol        As Long
+
+    If m_lCol <> 0 Then
+        pvEndEdit
+        lLastCol = m_lCol
+        m_lCol = 0
+        pvInvalidateGrid SkipScroll:=True
+        RaiseEvent RowColChange(m_lRow, lLastCol)
+    End If
+End Sub
+
+Private Function pvFindSelectableCol(ByVal lFrom As Long, ByVal lStep As Long) As Long
+    Dim lPos            As Long
+    Dim oCol            As JSColumn
+
+    lPos = lFrom + lStep
+    Do While lPos >= 1 And lPos <= pvCountVisibleCols()
+        Set oCol = pvGetColByPosition(lPos)
+        If Not oCol Is Nothing Then
+            If oCol.Selectable Then
+                pvFindSelectableCol = lPos
+                Exit Function
+            End If
+        End If
+        lPos = lPos + lStep
+    Loop
+End Function
+
+Private Function pvClampRow(ByVal lRow As Long) As Long
+    pvClampRow = Clamp(lRow, 1, RowCount)
+End Function
+
+Private Sub pvScrollCurrentToTop()
+    Dim lMax            As Long
+
+    If m_lRow < 1 Or m_pDataModel.RowCount = 0 Then
+        Exit Sub
+    End If
+    lMax = m_pDataModel.RowCount - pvCountVisibleRows() + 1
+    If lMax < 1 Then
+        lMax = 1
+    End If
+    FirstItem = Clamp(m_lRow, 1, lMax)
+End Sub
+
+Private Sub pvEnsureVisibleCol(ByVal lPos As Long, ByVal lColIndex As Long)
+    Dim lIdx            As Long
+    Dim lX              As Long
+    Dim lY              As Long
+    Dim lW              As Long
+
+    For lIdx = 1 To m_oColumns.Count
+        If pvGetCellRect(lPos, lColIndex, lX, lY, lW) Or m_lLeftCol <= 1 Then
+            Exit For
+        End If
+        LeftCol = m_lLeftCol - 1
+    Next
+    For lIdx = 1 To m_oColumns.Count
+        If Not pvGetCellRect(lPos, lColIndex, lX, lY, lW) Then
+            Exit For
+        End If
+        If lX + lW <= picGrid.ScaleWidth Or lX <= pvGetBlockLeft() Then
+            Exit For
+        End If
+        LeftCol = m_lLeftCol + 1
+    Next
+End Sub
+
+'--- The new row ---------------------------------------------------------
+
+Private Sub pvInitNewRow()
+    Set m_oRowData = New JSRowData
+    m_oRowData.frReset m_oColumns.Count
+    m_oRowData.frInitModel m_pDataModel, m_pDataModel.ItemCount + 1, jgexRowTypeRecord, 0
+    pvSetDisplayValues m_oRowData
+End Sub
+
+Private Function pvHasNewRow() As Boolean
+    If m_bAllowAddNew Then
+        If m_eNewRowPos = jgexTop Then
+            pvHasNewRow = True
+        Else
+            pvHasNewRow = (m_oGroups.Count = 0)
+        End If
+    End If
+End Function
+
+Private Function pvGetNewRow() As Long
+    If pvHasNewRow() Then
+        If m_eNewRowPos = jgexTop Then
+            pvGetNewRow = -1
+        Else
+            pvGetNewRow = RowCount + 1
+        End If
+    End If
+End Function
+
+Private Function pvIsNewRow(ByVal lRow As Long) As Boolean
+    If lRow <> 0 Then
+        pvIsNewRow = (lRow = pvGetNewRow())
+    End If
+End Function
+
+Private Function pvGetNewRowBandH() As Long
+    If pvHasNewRow() And m_eNewRowPos = jgexTop Then
+        pvGetNewRowBandH = m_lRowHeight + NEWROW_DIVIDER_H
+    End If
+End Function
+
+'--- Columns under the mouse: size, drag and drop ------------------------
+
+Private Sub pvTrackColSize(ByVal lX As Long)
     Dim lWidth          As Long
 
     pvSetCursor
@@ -5059,13 +4681,36 @@ Private Sub pvOnColSize(ByVal lX As Long)
     If lWidth < MIN_COL_W Then
         lWidth = MIN_COL_W
     End If
-    If lWidth <> pvColWidth(m_oSizeCol) Then
+    If lWidth <> pvGetColWidth(m_oSizeCol) Then
         m_oSizeCol.frWidthPx = lWidth
-        pvInvalidate
+        pvInvalidateGrid
     End If
 End Sub
 
-Private Function pvAutoSizeWidth(ByVal lColIndex As Long) As Long
+Private Sub pvEndColSize(ByVal bCancel As Boolean)
+    Dim oCol            As JSColumn
+    Dim oCancel         As JSRetBoolean
+    Dim lWidth          As Long
+    Dim lNewWidth       As Long
+
+    Set oCol = m_oSizeCol
+    Set m_oSizeCol = Nothing
+    Call ReleaseCapture
+    lWidth = pvGetColWidth(oCol)
+    lNewWidth = oCol.Width
+    oCol.frWidthPx = m_lSizeStartW
+    If Not bCancel Then
+        Set oCancel = New JSRetBoolean
+        RaiseEvent ColResize(oCol.Index, lNewWidth, oCancel)
+        bCancel = oCancel.Value
+    End If
+    If Not bCancel Then
+        oCol.frWidthPx = lWidth
+    End If
+    pvInvalidateGrid
+End Sub
+
+Private Function pvCalcAutoSizeWidth(ByVal lColIndex As Long) As Long
     Dim lIdx            As Long
     Dim hDC             As Long
     Dim hPrevFont       As Long
@@ -5081,7 +4726,7 @@ Private Function pvAutoSizeWidth(ByVal lColIndex As Long) As Long
         hPrevFont = pvSelectFont(hDC, m_oColumnHeaderFont)
         '--- nine, where a value takes five: probed against the original, which
         '--- fits a caption into four pixels more than the text it draws
-        pvAutoSizeWidth = pvTextWidth(hDC, oCol.Caption) + 9
+        pvCalcAutoSizeWidth = pvGetTextWidth(hDC, oCol.Caption) + 9
         Call SelectObject(hDC, hPrevFont)
     End If
     hPrevFont = pvSelectFont(hDC, m_oFont)
@@ -5089,9 +4734,9 @@ Private Function pvAutoSizeWidth(ByVal lColIndex As Long) As Long
         Set oRowData = m_aWindow(lIdx)
         If Not oRowData Is Nothing Then
             If oRowData.RowIndex > 0 Then
-                lWidth = pvTextWidth(hDC, pvCellText(oRowData, oCol)) + 5
-                If lWidth > pvAutoSizeWidth Then
-                    pvAutoSizeWidth = lWidth
+                lWidth = pvGetTextWidth(hDC, pvGetCellText(oRowData, oCol)) + 5
+                If lWidth > pvCalcAutoSizeWidth Then
+                    pvCalcAutoSizeWidth = lWidth
                 End If
             End If
         End If
@@ -5100,43 +4745,32 @@ Private Function pvAutoSizeWidth(ByVal lColIndex As Long) As Long
     Call ReleaseDC(picGrid.hWnd, hDC)
 End Function
 
-Private Function pvGBoxDropMark(lLeft As Long, lTop As Long) As Boolean
-    If Not m_oDropGroup Is Nothing Then
-        If m_oDropGroup Is m_oDragGroup Then
-            Exit Function
-        End If
-        If Not m_oDragGroup Is Nothing Then
-            If Not pvDropMoves(m_oDragGroup.Index, m_oDropGroup.Index, m_bDropAfter) Then
+Private Function pvHitColDivider(ByVal lX As Long, ByVal lY As Long) As JSColumn
+    Dim vOrder          As Variant
+    Dim lIdx            As Long
+    Dim oCol            As JSColumn
+    Dim lCum            As Long
+
+    If Not m_bColumnHeaders Or lY < pvGetGroupByBoxHeight() Or lY >= pvGetRowsTop() Then
+        Exit Function
+    End If
+    lCum = pvGetBlockLeft()
+    vOrder = pvBuildColOrder()
+    For lIdx = 0 To pvGetOrderMax(vOrder)
+        Set oCol = m_oColumns.ItemByPosition(vOrder(lIdx))
+        If oCol.Visible Then
+            lCum = lCum + pvGetColWidth(oCol)
+            If Abs(lX - lCum) <= DIVIDER_GRAB_W Then
+                If oCol.AllowSizing Then
+                    Set pvHitColDivider = oCol
+                End If
                 Exit Function
             End If
         End If
-        lLeft = m_oDropGroup.frChipRect.Left
-        If m_bDropAfter Then
-            lLeft = m_oDropGroup.frChipRect.Right
-        End If
-        lTop = m_oDropGroup.frChipRect.Top
-        pvGBoxDropMark = True
-        Exit Function
-    End If
-    If Not m_oDragGroup Is Nothing Then
-        Exit Function
-    End If
-    lLeft = CHIP_LEFT
-    lTop = CHIP_TOP
-    pvGBoxDropMark = True
+    Next
 End Function
 
-Private Function pvGetDragColumn() As JSColumn
-    If Not m_oDragCol Is Nothing Then
-        Set pvGetDragColumn = m_oDragCol
-    ElseIf Not m_oDragGroup Is Nothing Then
-        If m_oDragGroup.ColIndex >= 1 And m_oDragGroup.ColIndex <= m_oColumns.Count Then
-            Set pvGetDragColumn = m_oColumns.Item(m_oDragGroup.ColIndex)
-        End If
-    End If
-End Function
-
-Private Sub pvOnColDrag(ByVal lX As Long, ByVal lY As Long)
+Private Sub pvTrackColDrag(ByVal lX As Long, ByVal lY As Long)
     Dim oCancel         As JSRetBoolean
     Dim lScroll         As Long
     Dim bNewInGBox      As Boolean
@@ -5189,11 +4823,11 @@ Private Sub pvOnColDrag(ByVal lX As Long, ByVal lY As Long)
         End If
     End If
     If lScroll = 0 Then
-        If m_bGroupByBoxVisible And lY >= 0 And lY < pvGroupByBoxHeight() Then
+        If m_bGroupByBoxVisible And lY >= 0 And lY < pvGetGroupByBoxHeight() Then
             bNewInGBox = True
-            pvGroupDropTarget lX, oNewGroup, bNewAfter
+            pvFindGroupDropTarget lX, oNewGroup, bNewAfter
         ElseIf lY >= 0 And lY < picGrid.ScaleHeight Then
-            pvColAtX lX, oNewCol, bNewAfter
+            pvHitCol lX, oNewCol, bNewAfter
         End If
     End If
     If Not oNewCol Is m_oDropCol Or Not oNewGroup Is m_oDropGroup _
@@ -5254,7 +4888,7 @@ Private Sub pvEndColDrag(ByVal bCancel As Boolean)
     If oTargetCol Is Nothing Or oTargetCol Is oCol Then
         GoTo QH
     End If
-    lNewPos = pvDropPosition(oCol.ColPosition, oTargetCol.ColPosition, bAfter)
+    lNewPos = pvGetDropPosition(oCol.ColPosition, oTargetCol.ColPosition, bAfter)
     If lNewPos = oCol.ColPosition Then
         GoTo QH
     End If
@@ -5267,22 +4901,119 @@ Private Sub pvEndColDrag(ByVal bCancel As Boolean)
 QH:
     m_bDropInGBox = False
     m_bDropAfter = False
-    pvInvalidate
+    pvInvalidateGrid
 End Sub
 
-Private Function pvDropMoves(ByVal lOld As Long, ByVal lTarget As Long, ByVal bAfter As Boolean) As Boolean
-    pvDropMoves = (lOld <> lTarget) And (pvDropPosition(lOld, lTarget, bAfter) <> lOld)
+Private Function pvGetDragColumn() As JSColumn
+    If Not m_oDragCol Is Nothing Then
+        Set pvGetDragColumn = m_oDragCol
+    ElseIf Not m_oDragGroup Is Nothing Then
+        If m_oDragGroup.ColIndex >= 1 And m_oDragGroup.ColIndex <= m_oColumns.Count Then
+            Set pvGetDragColumn = m_oColumns.Item(m_oDragGroup.ColIndex)
+        End If
+    End If
 End Function
 
-Private Function pvDropPosition(ByVal lOld As Long, ByVal lTarget As Long, ByVal bAfter As Boolean) As Long
-    pvDropPosition = lTarget
-    If bAfter Then
-        pvDropPosition = pvDropPosition + 1
+Private Function pvHitCol(ByVal lX As Long, oCol As JSColumn, Optional bAfter As Boolean) As Long
+    Dim lCum            As Long
+    Dim oItem           As JSColumn
+    Dim vOrder          As Variant
+    Dim lIdx            As Long
+    Dim lW              As Long
+
+    lCum = pvGetBlockLeft()
+    vOrder = pvBuildColOrder()
+    For lIdx = 0 To pvGetOrderMax(vOrder)
+        Set oItem = m_oColumns.ItemByPosition(vOrder(lIdx))
+        lW = pvGetColWidth(oItem)
+        lCum = lCum + lW
+        If lX < lCum Then
+            Set oCol = oItem
+            bAfter = (lX >= lCum - lW \ 2)
+            pvHitCol = pvGetVisiblePosition(vOrder(lIdx))
+            Exit Function
+        End If
+    Next
+End Function
+
+Private Function pvHitGroup(ByVal lX As Long, ByVal lY As Long, oGroup As JSGroup, Optional bAfter As Boolean) As Long
+    Dim lIdx            As Long
+    Dim oItem           As JSGroup
+
+    pvLayoutGroupChips
+    For Each oItem In m_oGroups
+        lIdx = lIdx + 1
+        With oItem.frChipRect
+            If lX >= .Left And lX < .Right And lY >= .Top And lY < .Bottom And .Right > .Left Then
+                Set oGroup = oItem
+                bAfter = (lX >= (.Left + .Right) \ 2)
+                pvHitGroup = lIdx
+                Exit For
+            End If
+        End With
+    Next
+End Function
+
+Private Sub pvFindGroupDropTarget(ByVal lX As Long, oGroup As JSGroup, bAfter As Boolean)
+    Dim oItem           As JSGroup
+
+    pvLayoutGroupChips
+    For Each oItem In m_oGroups
+        With oItem.frChipRect
+            If .Right > .Left Then
+                If Not oGroup Is Nothing And lX < .Left Then
+                    Exit For
+                End If
+                Set oGroup = oItem
+            End If
+        End With
+    Next
+    If Not oGroup Is Nothing Then
+        bAfter = (lX >= (oGroup.frChipRect.Left + oGroup.frChipRect.Right) \ 2)
     End If
-    If lOld < pvDropPosition Then
-        pvDropPosition = pvDropPosition - 1
+End Sub
+
+Private Function pvGetGBoxDropMark(lLeft As Long, lTop As Long) As Boolean
+    If Not m_oDropGroup Is Nothing Then
+        If m_oDropGroup Is m_oDragGroup Then
+            Exit Function
+        End If
+        If Not m_oDragGroup Is Nothing Then
+            If Not pvIsDropMove(m_oDragGroup.Index, m_oDropGroup.Index, m_bDropAfter) Then
+                Exit Function
+            End If
+        End If
+        lLeft = m_oDropGroup.frChipRect.Left
+        If m_bDropAfter Then
+            lLeft = m_oDropGroup.frChipRect.Right
+        End If
+        lTop = m_oDropGroup.frChipRect.Top
+        pvGetGBoxDropMark = True
+        Exit Function
+    End If
+    If Not m_oDragGroup Is Nothing Then
+        Exit Function
+    End If
+    lLeft = CHIP_LEFT
+    lTop = CHIP_TOP
+    pvGetGBoxDropMark = True
+End Function
+
+Private Function pvIsDropMove(ByVal lOld As Long, ByVal lTarget As Long, ByVal bAfter As Boolean) As Boolean
+    pvIsDropMove = (lOld <> lTarget) And (pvGetDropPosition(lOld, lTarget, bAfter) <> lOld)
+End Function
+
+Private Function pvGetDropPosition(ByVal lOld As Long, ByVal lTarget As Long, ByVal bAfter As Boolean) As Long
+    pvGetDropPosition = lTarget
+    If bAfter Then
+        pvGetDropPosition = pvGetDropPosition + 1
+    End If
+    If lOld < pvGetDropPosition Then
+        pvGetDropPosition = pvGetDropPosition - 1
     End If
 End Function
+
+'--- Grouping ------------------------------------------------------------
 
 Private Sub pvAddGroup(oCol As JSColumn, oTargetGroup As JSGroup, ByVal bAfter As Boolean)
     Dim oGroup          As JSGroup
@@ -5327,7 +5058,7 @@ Private Sub pvMoveGroup(oGroup As JSGroup, oTargetGroup As JSGroup, ByVal bAfter
         Exit Sub
     End If
     lOldPos = oGroup.Index
-    lNewPos = pvDropPosition(lOldPos, oTargetGroup.Index, bAfter)
+    lNewPos = pvGetDropPosition(lOldPos, oTargetGroup.Index, bAfter)
     If lNewPos = lOldPos Then
         Exit Sub
     End If
@@ -5364,7 +5095,7 @@ Private Sub pvDeleteGroup(oGroup As JSGroup, oTargetCol As JSColumn, ByVal bAfte
     If oTargetCol Is Nothing Or oCol Is Nothing Or oTargetCol Is oCol Then
         Exit Sub
     End If
-    lNewPos = pvDropPosition(oCol.ColPosition, oTargetCol.ColPosition, bAfter)
+    lNewPos = pvGetDropPosition(oCol.ColPosition, oTargetCol.ColPosition, bAfter)
     If lNewPos = oCol.ColPosition Then
         Exit Sub
     End If
@@ -5376,486 +5107,386 @@ Private Sub pvDeleteGroup(oGroup As JSGroup, oTargetCol As JSColumn, ByVal bAfte
     End If
 End Sub
 
-Private Sub pvEndColSize(ByVal bCancel As Boolean)
-    Dim oCol            As JSColumn
-    Dim oCancel         As JSRetBoolean
-    Dim lWidth          As Long
-    Dim lNewWidth       As Long
-
-    Set oCol = m_oSizeCol
-    Set m_oSizeCol = Nothing
-    Call ReleaseCapture
-    lWidth = pvColWidth(oCol)
-    lNewWidth = oCol.Width
-    oCol.frWidthPx = m_lSizeStartW
-    If Not bCancel Then
-        Set oCancel = New JSRetBoolean
-        RaiseEvent ColResize(oCol.Index, lNewWidth, oCancel)
-        bCancel = oCancel.Value
-    End If
-    If Not bCancel Then
-        oCol.frWidthPx = lWidth
-    End If
-    pvInvalidate
+Private Sub pvToggleRow(ByVal lRow As Long)
+    RowExpanded(lRow) = Not m_pDataModel.RowExpanded(lRow)
+    pvSyncProjection
+    pvPopulateWindow
 End Sub
 
-Private Function pvColAtX(ByVal lX As Long, oCol As JSColumn, Optional bAfter As Boolean) As Long
-    Dim lCum            As Long
-    Dim oItem           As JSColumn
-    Dim vOrder          As Variant
-    Dim lIdx            As Long
-    Dim lW              As Long
-
-    lCum = pvBlockLeft()
-    vOrder = pvColOrder()
-    For lIdx = 0 To pvOrderMax(vOrder)
-        Set oItem = m_oColumns.ItemByPosition(vOrder(lIdx))
-        lW = pvColWidth(oItem)
-        lCum = lCum + lW
-        If lX < lCum Then
-            Set oCol = oItem
-            bAfter = (lX >= lCum - lW \ 2)
-            pvColAtX = pvVisiblePosition(vOrder(lIdx))
-            Exit Function
-        End If
-    Next
-End Function
-
-Private Sub pvGroupDropTarget(ByVal lX As Long, oGroup As JSGroup, bAfter As Boolean)
-    Dim oItem           As JSGroup
-
-    pvLayoutGroupChips
-    For Each oItem In m_oGroups
-        With oItem.frChipRect
-            If .Right > .Left Then
-                If Not oGroup Is Nothing And lX < .Left Then
-                    Exit For
-                End If
-                Set oGroup = oItem
-            End If
-        End With
-    Next
-    If Not oGroup Is Nothing Then
-        bAfter = (lX >= (oGroup.frChipRect.Left + oGroup.frChipRect.Right) \ 2)
-    End If
-End Sub
-
-Private Function pvGroupAtPoint(ByVal lX As Long, ByVal lY As Long, oGroup As JSGroup, Optional bAfter As Boolean) As Long
-    Dim lIdx            As Long
-    Dim oItem           As JSGroup
-
-    pvLayoutGroupChips
-    For Each oItem In m_oGroups
-        lIdx = lIdx + 1
-        With oItem.frChipRect
-            If lX >= .Left And lX < .Right And lY >= .Top And lY < .Bottom And .Right > .Left Then
-                Set oGroup = oItem
-                bAfter = (lX >= (.Left + .Right) \ 2)
-                pvGroupAtPoint = lIdx
-                Exit For
-            End If
-        End With
-    Next
-End Function
-
-Private Function pvEditInit(ByVal lPos As Long, ByVal lCol As Long, ByVal bSelectAll As Boolean, Optional ByVal lClickX As Long = -1, Optional ByVal lClickY As Long = -1) As Boolean
-    Dim oCol            As JSColumn
-    Dim oCancel         As JSRetBoolean
-    Dim lRowIndex       As Long
-    Dim lX              As Long
-    Dim lY              As Long
-    Dim lW              As Long
-    Dim lStyle          As Long
-    Dim lCaret          As Long
-    Dim lTextTop        As Long
-    Dim lEditH          As Long
-    Dim pFont           As IFont
-    Dim uMetrics        As TEXTMETRICW
-
-    If Not m_bAllowEdit Or m_bEditing Then
-        Exit Function
-    End If
-    If pvIsNewRow(lPos) Then
-        If m_oRowData Is Nothing Then
-            pvNewRowData
-        End If
-        lRowIndex = pvNewRow()
-    Else
-        lRowIndex = m_pDataModel.RowIndex(lPos)
-        If lRowIndex <= 0 Then
-            Exit Function
-        End If
-    End If
-    Set oCol = pvColByPosition(lCol)
-    If oCol Is Nothing Then
-        Exit Function
-    End If
-    If Not pvCellRect(lPos, oCol.Index, lX, lY, lW) Then
-        Exit Function
-    End If
-    If lClickX >= 0 Then
-        lClickX = lClickX - lX
-        lClickY = lClickY - lY
-    End If
-    EnsureVisible lPos
-    pvEnsureColVisible lPos, oCol.Index
-    If Not pvCellRect(lPos, oCol.Index, lX, lY, lW) Then
-        Exit Function
-    End If
-    If lClickX >= 0 Then
-        lClickX = lClickX + lX
-        lClickY = lClickY + lY
-    End If
-    Set oCancel = New JSRetBoolean
-    RaiseEvent BeforeColEdit(oCol.Index, oCancel)
-    If oCancel.Value Then
-        Exit Function
-    End If
-    If oCol.EditType = jgexEditCheckBox Then
-        Value(oCol.Index) = Not pvIsChecked(pvRowDataAt(lPos), oCol.Index)
-        pvInvalidate SkipScroll:=True
-        RaiseEvent Change
-        pvEditInit = True
-        Exit Function
-    End If
-    If oCol.EditType <> jgexEditTextBox Then
-        m_bEditing = True
-        m_lEditRow = lRowIndex
-        m_lEditCol = oCol.Index
-        m_sEditOldValue = pvEditInitText(pvRowDataAt(lPos), oCol)
-        pvEditInit = True
-        Exit Function
-    End If
-    m_bInEditSetup = True
-    m_bEditing = True
-    m_lEditRow = lRowIndex
-    m_lEditCol = oCol.Index
-    m_sEditOldValue = pvEditInitText(pvRowDataAt(lPos), oCol)
-    lStyle = WS_CHILD Or WS_VISIBLE
-    Select Case oCol.TextAlignment
-    Case jgexAlignRight
-        lStyle = lStyle Or ES_RIGHT
-    Case jgexAlignCenter
-        lStyle = lStyle Or ES_CENTER
-    Case Else
-        lStyle = lStyle Or ES_LEFT
-    End Select
-    If oCol.WordWrap Then
-        lStyle = lStyle Or ES_MULTILINE Or ES_AUTOVSCROLL
-    Else
-        lStyle = lStyle Or ES_AUTOHSCROLL
-    End If
-    uMetrics = FontTextMetrics(m_oFont)
-    lTextTop = lY + (pvRowContentH(m_lRowHeight) - uMetrics.tmHeight) \ 2
-    lEditH = uMetrics.tmHeight
-    If oCol.WordWrap Then
-        lTextTop = lY + 1
-        lEditH = pvRowContentH(m_lRowHeight) - 2
-    End If
-    m_hWndEdit = CreateWindowEx(0, StrPtr("EDIT"), 0, lStyle, lX + 1, lTextTop, lW - 4, lEditH, hWnd, 0, App.hInstance, ByVal 0&)
-    If m_hWndEdit = 0 Then
-        m_bEditing = False
-        m_bInEditSetup = False
-        Exit Function
-    End If
-    Set pFont = m_oFont
-    Call SendMessage(m_hWndEdit, WM_SETFONT, pFont.hFont, 1)
-    Call SendMessage(m_hWndEdit, EM_SETMARGINS, EC_LEFTMARGIN, 1)
-    Call SendMessage(m_hWndEdit, EM_LIMITTEXT, oCol.MaxLength, 0)
-    Call SendMessage(m_hWndEdit, WM_SETTEXT, 0, ByVal StrPtr(m_sEditOldValue))
-    If bSelectAll Then
-        Call SendMessage(m_hWndEdit, EM_SETSEL, 0, -1)
-    ElseIf lClickY >= 0 Then
-        If lClickY - lTextTop >= uMetrics.tmHeight Then
-            lCaret = Len(m_sEditOldValue)
-        Else
-            lCaret = SendMessage(m_hWndEdit, EM_CHARFROMPOS, 0, MakeDWord(lClickX - lX, lClickY - lTextTop))
-            If lCaret = -1 Then
-                lCaret = Len(m_sEditOldValue)
-            Else
-                lCaret = lCaret And &HFFFF&
-            End If
-        End If
-        Call SendMessage(m_hWndEdit, EM_SETSEL, lCaret, lCaret)
-    Else
-        Call SendMessage(m_hWndEdit, EM_SETSEL, Len(m_sEditOldValue), Len(m_sEditOldValue))
-    End If
-    Set m_pSubclassEdit = InitSubclassingThunk(m_hWndEdit, Me, pvAddressOfSubclassProc.EditSubclassProc(0, 0, 0, 0, 0))
-    Call SetFocusApi(m_hWndEdit)
-    m_bInEditSetup = False
-    pvEditInit = True
-End Function
-
-Private Sub pvEditFocusLost()
-    Dim sText           As String
-
-    If Not m_bEditing Then
-        Exit Sub
-    End If
-    sText = pvEditText()
-    m_bEditing = False
-    pvEditTerminate
-    If sText <> m_sEditOldValue Then
-        If Not m_oRowData Is Nothing Then
-            m_oRowData.frAllowUpdate = True
-            m_oRowData.Value(m_lEditCol) = sText
-        End If
-    End If
-    pvInvalidate SkipScroll:=True
-End Sub
-
-Private Function pvEditText() As String
-    Dim lLen            As Long
-
-    If m_hWndEdit = 0 Then
-        pvEditText = m_sEditOldValue
-        Exit Function
-    End If
-    lLen = SendMessage(m_hWndEdit, WM_GETTEXTLENGTH, 0, 0)
-    pvEditText = String$(lLen + 1, 0)
-    lLen = SendMessage(m_hWndEdit, WM_GETTEXT, lLen + 1, ByVal StrPtr(pvEditText))
-    pvEditText = Left$(pvEditText, lLen)
-End Function
-
-Private Sub pvEditTerminate()
-    If m_hWndEdit = 0 Then
-        Exit Sub
-    End If
-    TerminateSubclassingThunk m_pSubclassEdit, Me
-    Set m_pSubclassEdit = Nothing
-    Call DestroyWindow(m_hWndEdit)
-    m_hWndEdit = 0
-End Sub
-
-Private Sub pvEditCommit()
-    Dim oCancel         As JSRetBoolean
-
-    If Not DataChanged Or m_bInPendCommit Then
-        Exit Sub
-    End If
-    Set oCancel = New JSRetBoolean
-    RaiseEvent BeforeUpdate(oCancel)
-    If oCancel.Value Then
-        Exit Sub
-    End If
-    m_bInPendCommit = True
-    m_pDataModel.UpdateRowData m_oRowData
-    m_bInPendCommit = False
-    If m_lItemCount < m_pDataModel.ItemCount Then
-        m_lItemCount = m_pDataModel.ItemCount
-        pvUpdateScrollBars
-    End If
-    m_oRowData.frAllowUpdate = False
-    pvRaiseRowFormat m_oRowData
-    RaiseEvent AfterUpdate
-End Sub
-
-Private Sub pvEditCancel()
-    If Not DataChanged Then
-        Exit Sub
-    End If
-    If pvIsNewRow(m_lRow) Then
-        pvNewRowData
-        pvInvalidate SkipScroll:=True
-        pvRaiseRowFormat m_oRowData
-        Exit Sub
-    End If
-    Set m_oRowData = m_pDataModel.GetRowData(m_lRow)
-    If m_lRow >= m_lWindowFirst And m_lRow < m_lWindowFirst + m_lWindowCount Then
-        Set m_aWindow(m_lRow - m_lWindowFirst + 1) = m_oRowData
-    End If
-    pvInvalidate SkipScroll:=True
-    pvRaiseRowFormat m_oRowData
-End Sub
-
-Private Sub pvEditEnd(Optional ByVal bCancel As Boolean)
-    Dim oCancel         As JSRetBoolean
-    Dim lCol            As Long
-    Dim lRowIndex       As Long
-    Dim sText           As String
+Private Function pvToggleGroupBox(ByVal lRow As Long, ByVal lX As Long, ByVal lY As Long) As Boolean
     Dim oRowData        As JSRowData
+    Dim uRect           As RECT
+
+    pvPopulateWindow
+    Set oRowData = pvGetWindowRow(lRow)
+    If oRowData Is Nothing Then
+        Exit Function
+    End If
+    If oRowData.RowType <> jgexRowTypeGroupHeader Then
+        Exit Function
+    End If
+    If Not pvGetGroupBoxRect(lRow, pvGetRowsTop() + (lRow - m_lFirstItem) * m_lRowHeight, uRect) Then
+        Exit Function
+    End If
+    If Not pvIsPtInRect(uRect, lX, lY) Then
+        Exit Function
+    End If
+    pvToggleRow lRow
+    pvToggleGroupBox = True
+End Function
+
+Private Function pvHandleGroupDblClk(ByVal lY As Long) As Boolean
+    Dim lRow            As Long
+    Dim oRowData        As JSRowData
+
+    If m_lRowHeight <= 0 Or lY < pvGetRowsTop() Then
+        Exit Function
+    End If
+    lRow = pvHitRow(lY)
+    If lRow < 1 Or lRow > RowCount Then
+        Exit Function
+    End If
+    pvPopulateWindow
+    Set oRowData = pvGetWindowRow(lRow)
+    If oRowData Is Nothing Then
+        Exit Function
+    End If
+    If oRowData.RowType <> jgexRowTypeGroupHeader Then
+        Exit Function
+    End If
+    pvToggleRow lRow
+    pvHandleGroupDblClk = True
+End Function
+
+Private Function pvGetGroupBoxRect(ByVal lPos As Long, ByVal lRowTop As Long, uRect As RECT) As Boolean
+    If Not pvIsGroupRow(lPos) Then
+        Exit Function
+    End If
+    If pvGetWindowRow(lPos) Is Nothing Then
+        Exit Function
+    End If
+    uRect.Left = pvGetRowHeaderWidth() + pvGetRowIndent(lPos) + (GROUP_INDENT_W - GROUP_BOX_W) \ 2
+    uRect.Top = lRowTop + (m_lRowHeight - 1 - GROUP_BOX_W) \ 2
+    uRect.Right = uRect.Left + GROUP_BOX_W
+    uRect.Bottom = uRect.Top + GROUP_BOX_W
+    pvGetGroupBoxRect = True
+End Function
+
+Private Sub pvLayoutGroupChips(Optional ByVal hDC As Long)
+    Dim hOwnDC          As Long
+    Dim hPrevFont       As Long
+    Dim uMetrics        As TEXTMETRICW
+    Dim lChipH          As Long
+    Dim lLeft           As Long
+    Dim lTop            As Long
+    Dim oGroup          As JSGroup
+    Dim uRect           As RECT
+
+    If hDC = 0 Then
+        hOwnDC = GetDC(picGrid.hWnd)
+        hDC = hOwnDC
+        hPrevFont = pvSelectFont(hDC, m_oFont)
+    End If
+    uMetrics = FontTextMetrics(m_oColumnHeaderFont, hDC)
+    lChipH = uMetrics.tmHeight + 6
+    lLeft = CHIP_LEFT
+    lTop = CHIP_TOP
+    For Each oGroup In m_oGroups
+        uRect.Left = 0
+        uRect.Top = 0
+        uRect.Right = 0
+        uRect.Bottom = 0
+        If oGroup.ColIndex >= 1 And oGroup.ColIndex <= m_oColumns.Count Then
+            uRect.Left = lLeft
+            uRect.Top = lTop
+            uRect.Right = lLeft + pvGetTextWidth(hDC, m_oColumns.Item(oGroup.ColIndex).Caption) + CHIP_PAD
+            uRect.Bottom = lTop + lChipH
+            lLeft = uRect.Right + CHIP_GAP
+            lTop = lTop + m_lColumnHeaderHeight \ 2
+        End If
+        oGroup.frChipRect = uRect
+    Next
+    If hOwnDC <> 0 Then
+        Call SelectObject(hDC, hPrevFont)
+        Call ReleaseDC(picGrid.hWnd, hOwnDC)
+    End If
+End Sub
+
+Private Function pvIsGroupRow(ByVal lPos As Long) As Boolean
+    If lPos < 1 Then
+        Exit Function
+    End If
+    pvIsGroupRow = (m_pDataModel.RowIndex(lPos) < 0)
+End Function
+
+Private Function pvIsGroupHeader(ByVal lPos As Long) As Boolean
+    Dim oRowData        As JSRowData
+
+    If pvIsGroupRow(lPos) Then
+        pvPopulateWindow
+        Set oRowData = pvGetWindowRow(lPos)
+        If Not oRowData Is Nothing Then
+            pvIsGroupHeader = (oRowData.RowType = jgexRowTypeGroupHeader)
+        End If
+    End If
+End Function
+
+Private Function pvGetGroupByBoxHeight() As Long
+    If m_bGroupByBoxVisible Then
+        pvGetGroupByBoxHeight = m_lColumnHeaderHeight + 14
+        If m_oGroups.Count > 1 Then
+            pvGetGroupByBoxHeight = CLng(m_lColumnHeaderHeight * (m_oGroups.Count + 1) / 2) + 14
+        End If
+    End If
+End Function
+
+Private Function pvGetGroupIndent() As Long
+    pvGetGroupIndent = m_oGroups.Count * GROUP_INDENT_W
+End Function
+
+Private Function pvGetRowIndent(ByVal lPos As Long) As Long
+    If pvIsGroupRow(lPos) Then
+        pvGetRowIndent = (pvGetWindowRow(lPos).GroupLevel - 1) * GROUP_INDENT_W
+    Else
+        pvGetRowIndent = pvGetGroupIndent()
+    End If
+End Function
+
+'--- Data model, sort and cell text --------------------------------------
+
+Private Sub pvCreateDataModel()
+    Dim oUnbound        As cUnboundDataModel
+    Dim oAdo            As cAdoDataModel
+
+    If Not m_pDataModel Is Nothing Then
+        m_pDataModel.Terminate
+        Set m_pDataModel = Nothing
+    End If
+    '--- jgexDAO gets the unbound model too: DAO binding is out of scope, and
+    '--- a control in that mode with no recordset behaves as an empty unbound
+    '--- one rather than raising
+    Select Case m_eDataMode
+    Case jgexADO
+        Set oAdo = New cAdoDataModel
+        oAdo.frInit Me
+        Set m_pDataModel = oAdo
+    Case Else
+        Set oUnbound = New cUnboundDataModel
+        oUnbound.frInit Me
+        Set m_pDataModel = oUnbound
+    End Select
+End Sub
+
+Private Sub pvPopulateWindow()
+    Dim lFirst          As Long
+    Dim lCount          As Long
+    Dim aPrev()         As JSRowData
+    Dim lPrevCount      As Long
+    Dim lIdx            As Long
+    Dim lRowIndex         As Long
+    Dim oCarry          As JSRowData
+    Dim lJdx            As Long
+
+    lFirst = m_lFirstItem
+    If lFirst < 1 Then
+        lFirst = 1
+    End If
+    lCount = pvCountVisibleRows() + 1
+    If lFirst + lCount - 1 > RowCount Then
+        lCount = RowCount - lFirst + 1
+    End If
+    If lCount < 0 Then
+        lCount = 0
+    End If
+    If Not m_bWindowDirty Then
+        If lFirst = m_lWindowFirst And lCount = m_lWindowCount Then
+            Exit Sub
+        End If
+    End If
+    If m_lWindowCount > 0 Then
+        aPrev = m_aWindow
+        lPrevCount = m_lWindowCount
+    End If
+    Erase m_aWindow
+    m_bWindowDirty = False
+    m_lWindowFirst = lFirst
+    m_lWindowCount = lCount
+    If lCount = 0 Then
+        Exit Sub
+    End If
+    ReDim m_aWindow(1 To lCount) As JSRowData
+    For lIdx = 1 To lCount
+        If lFirst + lIdx - 1 = m_lRow And DataChanged Then
+            Set m_aWindow(lIdx) = m_oRowData
+            If lPrevCount = 0 Then
+                pvRaiseRowFormat m_aWindow(lIdx)
+            End If
+        Else
+            Set oCarry = Nothing
+            If lPrevCount > 0 Then
+                lRowIndex = m_pDataModel.RowIndex(lFirst + lIdx - 1)
+                If lRowIndex <> 0 Then
+                    For lJdx = 1 To lPrevCount
+                        If Not aPrev(lJdx) Is Nothing Then
+                            If aPrev(lJdx).frInitRowIndex = lRowIndex Then
+                                Set oCarry = aPrev(lJdx)
+                                Exit For
+                            End If
+                        End If
+                    Next
+                End If
+            End If
+            If Not oCarry Is Nothing Then
+                Set m_aWindow(lIdx) = oCarry
+            Else
+                Set m_aWindow(lIdx) = m_pDataModel.GetRowData(lFirst + lIdx - 1)
+                pvRaiseRowFormat m_aWindow(lIdx)
+            End If
+        End If
+    Next
+    pvSyncRowData
+End Sub
+
+Private Sub pvSyncProjection()
+    Dim lCount          As Long
+    Dim lVersion        As Long
+    Dim lRowIndex       As Long
+
+    lCount = m_pDataModel.RowCount
+    lVersion = m_pDataModel.Version
+    If lVersion <> m_lVersion Then
+        m_lVersion = lVersion
+        pvRemapCurrentRow
+        m_lWindowCount = 0
+        m_bWindowDirty = True
+    End If
+    lRowIndex = m_pDataModel.RowIndex(m_lRow)
+    If lRowIndex <> 0 Then
+        m_lHoldRowIndex = lRowIndex
+    End If
+End Sub
+
+Private Sub pvRemapCurrentRow()
+    Dim lPos            As Long
+    Dim oItem           As JSSelectedItem
+
+    If m_lHoldRowIndex <> 0 Then
+        lPos = m_pDataModel.GetRowPosition(m_lHoldRowIndex)
+        If lPos >= 1 Then
+            m_lRow = lPos
+            pvSyncRowData
+        End If
+    End If
+    For Each oItem In m_oSelectedItems
+        oItem.frRowPosition = m_pDataModel.GetRowPosition(oItem.frInitRowIndex)
+    Next
+End Sub
+
+Private Sub pvSyncRowData()
+    Dim oRowData        As JSRowData
+
+    If pvIsNewRow(m_lRow) Then
+        Exit Sub
+    End If
+    Set oRowData = pvFetchRowData(m_lRow)
+    If Not oRowData Is m_oRowData And DataChanged Then
+        Err.Raise vbObjectError, , "Internal error: DataChanged=" & DataChanged
+    End If
+    Set m_oRowData = oRowData
+End Sub
+
+Private Function pvFetchRowData(ByVal lRowPosition As Long) As JSRowData
+    Set pvFetchRowData = pvGetWindowRow(lRowPosition)
+    If pvFetchRowData Is Nothing Then
+        If lRowPosition >= 1 And lRowPosition <= m_pDataModel.RowCount Then
+            Set pvFetchRowData = m_pDataModel.GetRowData(lRowPosition)
+            pvSetDisplayValues pvFetchRowData
+        End If
+    End If
+End Function
+
+Private Function pvGetWindowRow(ByVal lPos As Long) As JSRowData
+    If lPos >= m_lWindowFirst And lPos < m_lWindowFirst + m_lWindowCount Then
+        Set pvGetWindowRow = m_aWindow(lPos - m_lWindowFirst + 1)
+    End If
+End Function
+
+Private Sub pvSetDisplayValues(oRowData As JSRowData)
     Dim oCol            As JSColumn
+
+    If oRowData Is Nothing Then
+        Exit Sub
+    End If
+    If oRowData.RowType <> jgexRowTypeRecord Then
+        Exit Sub
+    End If
+    For Each oCol In m_oColumns
+        oRowData.DisplayValue(oCol.Index) = pvGetDisplayText(oCol, oRowData.Value(oCol.Index))
+    Next
+End Sub
+
+Private Sub pvRaiseRowFormat(oRowData As JSRowData)
+    pvSetDisplayValues oRowData
+    RaiseEvent RowFormat(oRowData)
+End Sub
+
+Private Function pvGetCellText(oRowData As JSRowData, oCol As JSColumn) As String
+    Dim vValue          As Variant
+
+    If oRowData Is Nothing Then
+        Exit Function
+    End If
+    If oRowData.frCellDirty(oCol.Index) Then
+        AssignVariant vValue, oRowData.Value(oCol.Index)
+        pvGetCellText = pvGetDisplayText(oCol, vValue)
+        Exit Function
+    End If
+    pvGetCellText = oRowData.DisplayValue(oCol.Index)
+    If LenB(pvGetCellText) = 0 Then
+        If pvUsesValueList(oCol) Then
+            Exit Function
+        End If
+        pvGetCellText = C2Str(oRowData.Value(oCol.Index))
+    End If
+End Function
+
+Private Function pvGetDisplayText(oCol As JSColumn, vValue As Variant) As String
     Dim oItem           As JSValueItem
 
-    If Not m_bEditing Then
-        Exit Sub
-    End If
-    lCol = m_lEditCol
-    lRowIndex = m_lEditRow
-    sText = pvEditText()
-    m_bEditing = False
-    pvEditTerminate
-    Set oRowData = m_oRowData
-    If Not bCancel And sText <> m_sEditOldValue Then
-        Set oCancel = New JSRetBoolean
-        RaiseEvent BeforeColUpdate(lRowIndex, lCol, m_sEditOldValue, oCancel)
-        If oCancel.Value Then
-            GoTo QH
+    If pvUsesValueList(oCol) Then
+        Set oItem = oCol.ValueList.ItemByValue(vValue)
+        If Not oItem Is Nothing Then
+            pvGetDisplayText = oItem.Text
         End If
-        If Not oRowData Is Nothing Then
-            Set oCol = m_oColumns.Item(lCol)
-            If pvColReplaces(oCol) Then
-                Set oItem = pvValueItemByText(oCol, sText)
-                If Not oItem Is Nothing Then
-                    oRowData.frAllowUpdate = True
-                    oRowData.Value(lCol) = oItem.Value
-                End If
-            Else
-                oRowData.frAllowUpdate = True
-                oRowData.Value(lCol) = sText
-            End If
-        End If
-        RaiseEvent AfterColUpdate(lCol)
-    Else
-        If sText <> m_sEditOldValue And Not DataChanged Then
-            pvRaiseRowFormat m_oRowData
-        End If
-    End If
-QH:
-    pvInvalidate SkipScroll:=True
-    RaiseEvent AfterColEdit(lCol)
-    Call SetFocusApi(hWnd)
-End Sub
-
-Private Function pvGroupByBoxHeight() As Long
-    If m_bGroupByBoxVisible Then
-        pvGroupByBoxHeight = m_lColumnHeaderHeight + 14
-        If m_oGroups.Count > 1 Then
-            pvGroupByBoxHeight = CLng(m_lColumnHeaderHeight * (m_oGroups.Count + 1) / 2) + 14
-        End If
-    End If
-End Function
-
-Private Function pvRowsTop() As Long
-    pvRowsTop = pvGroupByBoxHeight()
-    If m_bColumnHeaders Then
-        pvRowsTop = pvRowsTop + m_lColumnHeaderHeight
-    End If
-End Function
-
-Private Function pvColByPosition(ByVal lPos As Long) As JSColumn
-    Dim lIdx            As Long
-    Dim lSeen           As Long
-    Dim oItem           As JSColumn
-
-    For lIdx = 1 To m_oColumns.Count
-        Set oItem = m_oColumns.ItemByPosition(lIdx)
-        If oItem.Visible Then
-            lSeen = lSeen + 1
-            If lSeen = lPos Then
-                Set pvColByPosition = oItem
-                Exit Function
-            End If
-        End If
-    Next
-End Function
-
-Private Function pvCellRect(ByVal lPos As Long, ByVal lColIndex As Long, lX As Long, lY As Long, lW As Long) As Boolean
-    Dim vOrder          As Variant
-    Dim lIdx            As Long
-    Dim oItem           As JSColumn
-    Dim lCum            As Long
-
-    If m_lRowHeight <= 0 Then
         Exit Function
     End If
-    If lPos < m_lFirstItem And Not pvIsNewRow(lPos) Then
+    pvGetDisplayText = C2Str(vValue)
+    If LenB(pvGetDisplayText) = 0 Then
         Exit Function
     End If
-    lY = pvRowTopAt(lPos)
-    lCum = pvBlockLeft()
-    vOrder = pvColOrder()
-    For lIdx = 0 To pvOrderMax(vOrder)
-        Set oItem = m_oColumns.ItemByPosition(vOrder(lIdx))
-        If oItem.Visible Then
-            If oItem.Index = lColIndex Then
-                lX = lCum
-                lW = pvColWidth(oItem)
-                pvCellRect = True
-                Exit Function
-            End If
-            lCum = lCum + pvColWidth(oItem)
-        End If
-    Next
+    If LenB(oCol.Format) <> 0 Then
+        pvGetDisplayText = VBA.Format$(vValue, oCol.Format)
+    End If
 End Function
 
-Private Function pvEditorRect(lX As Long, lTop As Long, lW As Long, lH As Long) As Boolean
-    Dim lPos            As Long
-    Dim lY              As Long
-    Dim lCellW          As Long
-    Dim oCol            As JSColumn
-    Dim uMetrics        As TEXTMETRICW
-
-    If m_oSelectedItems.Count > 1 Then
-        Exit Function
+Private Function pvUsesValueList(oCol As JSColumn) As Boolean
+    If oCol.HasValueList And oCol.ReplaceValues Then
+        pvUsesValueList = Not oCol.ValueList Is Nothing
     End If
-    If pvIsNewRow(m_lEditRow) Then
-        lPos = m_lEditRow
-    Else
-        lPos = m_pDataModel.GetRowPosition(m_lEditRow)
-        If lPos < 1 Then
+End Function
+
+Private Function pvFindValueItem(oCol As JSColumn, sText As String) As JSValueItem
+    Dim oItem           As JSValueItem
+
+    For Each oItem In oCol.ValueList
+        If oItem.Text = sText Then
+            Set pvFindValueItem = oItem
             Exit Function
         End If
-    End If
-    If Not pvCellRect(lPos, m_lEditCol, lX, lY, lCellW) Then
-        Exit Function
-    End If
-    Set oCol = m_oColumns.Item(m_lEditCol)
-    uMetrics = FontTextMetrics(m_oFont)
-    lTop = lY + (pvRowContentH(m_lRowHeight) - uMetrics.tmHeight) \ 2
-    lH = uMetrics.tmHeight
-    If oCol.WordWrap Then
-        lTop = lY + 1
-        lH = pvRowContentH(m_lRowHeight) - 2
-    End If
-    lX = lX + 1
-    lW = lCellW - 4
-    If lW > picGrid.ScaleWidth - lX Then
-        lW = picGrid.ScaleWidth - lX
-    End If
-    pvEditorRect = (lW > 0 And lTop < picGrid.ScaleHeight)
+    Next
 End Function
 
-Private Sub pvEnsureColVisible(ByVal lPos As Long, ByVal lColIndex As Long)
-    Dim lIdx            As Long
-    Dim lX              As Long
-    Dim lY              As Long
-    Dim lW              As Long
-
-    For lIdx = 1 To m_oColumns.Count
-        If pvCellRect(lPos, lColIndex, lX, lY, lW) Or m_lLeftCol <= 1 Then
-            Exit For
-        End If
-        LeftCol = m_lLeftCol - 1
-    Next
-    For lIdx = 1 To m_oColumns.Count
-        If Not pvCellRect(lPos, lColIndex, lX, lY, lW) Then
-            Exit For
-        End If
-        If lX + lW <= picGrid.ScaleWidth Or lX <= pvBlockLeft() Then
-            Exit For
-        End If
-        LeftCol = m_lLeftCol + 1
-    Next
-End Sub
-
-Private Sub pvLayoutEditor()
-    Dim lX              As Long
-    Dim lTop            As Long
-    Dim lW              As Long
-    Dim lH              As Long
-
-    If m_hWndEdit = 0 Then
-        Exit Sub
-    End If
-    If pvEditorRect(lX, lTop, lW, lH) Then
-        Call SetWindowPos(m_hWndEdit, 0, lX, lTop, lW, lH, SWP_NOZORDER Or SWP_SHOWWINDOW)
-    Else
-        Call SetWindowPos(m_hWndEdit, 0, 0, 0, 0, 0, SWP_NOMOVE Or SWP_NOSIZE Or SWP_NOZORDER Or SWP_HIDEWINDOW)
-    End If
-End Sub
-
-Private Sub pvAutoSort(oCol As JSColumn)
+Private Sub pvApplyAutoSort(oCol As JSColumn)
     Dim oGroup          As JSGroup
 
     For Each oGroup In m_oGroups
@@ -5877,509 +5508,902 @@ Private Sub pvAutoSort(oCol As JSColumn)
     End If
 End Sub
 
-Private Sub pvOnLButtonDown(ByVal lX As Long, ByVal lY As Long, ByVal lShift As Long)
-    Dim lTopGbox        As Long
-    Dim lTopHdr         As Long
-    Dim lPos            As Long
-    Dim oCol            As JSColumn
-    Dim oGroup          As JSGroup
-    Dim lRow            As Long
+Private Sub pvApplyHoldSort(HoldSortSettings As Variant)
+    Dim bHold           As Boolean
 
-    m_bDragSelect = False
-    lTopGbox = pvGroupByBoxHeight()
-    lTopHdr = pvRowsTop()
-    Set m_oSizeCol = pvColDividerAt(lX, lY)
-    If Not m_oSizeCol Is Nothing Then
-        m_lSizeStartX = lX
-        m_lSizeStartW = pvColWidth(m_oSizeCol)
-        Call SetCapture(picGrid.hWnd)
-        Exit Sub
+    If IsMissing(HoldSortSettings) Then
+        bHold = m_bHoldSortSettings
+    Else
+        bHold = CBool(HoldSortSettings)
     End If
-    If lY < lTopGbox Then
-        lPos = pvGroupAtPoint(lX, lY, oGroup)
-        If Not oGroup Is Nothing Then
-            Set m_oDragGroup = oGroup
-            m_lDragStartX = lX
-            m_lDragStartY = lY
-            pvInvalidateHeaders
-        End If
-    ElseIf lY < lTopHdr Then
-        lPos = pvColAtX(lX, oCol)
-        If Not oCol Is Nothing Then
-            Set m_oDragCol = oCol
-            m_lDragStartX = lX
-            m_lDragStartY = lY
-            pvInvalidateHeaders
-        End If
-    ElseIf m_lRowHeight > 0 Then
-        lRow = pvRowAtY(lY)
-        If pvIsNewRow(lRow) Then
-            lPos = pvColAtX(lX, oCol)
-            If lPos >= 1 Then
-                If m_bAllowEdit And oCol.Selectable Then
-                    pvNavigate lRow, lPos, lShift, False
-                    If (lShift And (vbCtrlMask Or vbShiftMask)) = 0 Then
-                        m_bClickOpenedEdit = pvEditInit(lRow, lPos, False, lX, lY)
-                    End If
-                End If
-            End If
-        ElseIf lRow >= 1 And lRow <= RowCount Then
-            m_bDragSelect = True
-            If pvIsGroupRow(lRow) Then
-                pvNavigate lRow, 0, lShift, (lShift And vbCtrlMask) <> 0
-                pvGroupBoxToggle lRow, lX, lY
-            ElseIf pvRowSelZoneAt(lX, lY) Then
-                pvNavigate lRow, 0, lShift, (lShift And vbCtrlMask) <> 0
-                pvClearCol
-            Else
-                lPos = pvColAtX(lX, oCol)
-                If lPos >= 1 Then
-                    If Not m_bAllowEdit Or Not oCol.Selectable Then
-                        pvNavigate lRow, 0, lShift, (lShift And vbCtrlMask) <> 0
-                    Else
-                        pvNavigate lRow, lPos, lShift, (lShift And vbCtrlMask) <> 0
-                        If (lShift And (vbCtrlMask Or vbShiftMask)) = 0 Then
-                            m_bClickOpenedEdit = pvEditInit(lRow, lPos, False, lX, lY)
-                        End If
-                    End If
-                End If
-            End If
-        End If
+    If Not bHold Then
+        m_oSortKeys.Clear
+        m_oGroups.Clear
     End If
 End Sub
 
-Private Sub pvToggleRow(ByVal lRow As Long)
-    RowExpanded(lRow) = Not m_pDataModel.RowExpanded(lRow)
-    pvSyncProjection
-    pvPopulateWindow
-End Sub
-
-Private Function pvGroupBoxRect(ByVal lPos As Long, ByVal lRowTop As Long, uRect As RECT) As Boolean
-    If Not pvIsGroupRow(lPos) Then
-        Exit Function
-    End If
-    If pvWindowRow(lPos) Is Nothing Then
-        Exit Function
-    End If
-    uRect.Left = pvRowHeaderWidth() + pvRowIndent(lPos) + (GROUP_INDENT_W - GROUP_BOX_W) \ 2
-    uRect.Top = lRowTop + (m_lRowHeight - 1 - GROUP_BOX_W) \ 2
-    uRect.Right = uRect.Left + GROUP_BOX_W
-    uRect.Bottom = uRect.Top + GROUP_BOX_W
-    pvGroupBoxRect = True
-End Function
-
-Private Function pvGroupBoxToggle(ByVal lRow As Long, ByVal lX As Long, ByVal lY As Long) As Boolean
-    Dim oRowData        As JSRowData
-    Dim uRect           As RECT
-
-    pvPopulateWindow
-    Set oRowData = pvWindowRow(lRow)
-    If oRowData Is Nothing Then
-        Exit Function
-    End If
-    If oRowData.RowType <> jgexRowTypeGroupHeader Then
-        Exit Function
-    End If
-    If Not pvGroupBoxRect(lRow, pvRowsTop() + (lRow - m_lFirstItem) * m_lRowHeight, uRect) Then
-        Exit Function
-    End If
-    If Not pvPtInRect(uRect, lX, lY) Then
-        Exit Function
-    End If
-    pvToggleRow lRow
-    pvGroupBoxToggle = True
-End Function
-
-Private Function pvGroupRowDblClk(ByVal lY As Long) As Boolean
-    Dim lRow            As Long
-    Dim oRowData        As JSRowData
-
-    If m_lRowHeight <= 0 Or lY < pvRowsTop() Then
-        Exit Function
-    End If
-    lRow = pvRowAtY(lY)
-    If lRow < 1 Or lRow > RowCount Then
-        Exit Function
-    End If
-    pvPopulateWindow
-    Set oRowData = pvWindowRow(lRow)
-    If oRowData Is Nothing Then
-        Exit Function
-    End If
-    If oRowData.RowType <> jgexRowTypeGroupHeader Then
-        Exit Function
-    End If
-    pvToggleRow lRow
-    pvGroupRowDblClk = True
-End Function
-
-Private Sub pvOnKeyDown(ByVal lKeyCode As Long, ByVal lShift As Long)
-    Dim oRowData        As JSRowData
-    Dim lPos            As Long
-    Dim oCol            As JSColumn
-
-    Select Case lKeyCode
-    Case vbKeyDown, vbKeyReturn
-        If pvIsNewRow(m_lRow) Then
-            If m_eNewRowPos = jgexTop Then
-                pvNavigate 1, m_lCol, lShift, False
-            End If
-        ElseIf m_lRow < RowCount Then
-            pvNavigate m_lRow + 1, m_lCol, lShift, False
-        ElseIf pvIsNewRow(m_lRow + 1) Then
-            pvNavigate m_lRow + 1, m_lCol, lShift, False
-        End If
-    Case vbKeyUp
-        If pvIsNewRow(m_lRow) Then
-            If m_eNewRowPos = jgexBottom Then
-                pvNavigate RowCount, m_lCol, lShift, False
-            End If
-        ElseIf m_lRow > 1 Then
-            pvNavigate m_lRow - 1, m_lCol, lShift, False
-        ElseIf m_lRow = 1 And pvIsNewRow(-1) Then
-            pvNavigate -1, m_lCol, lShift, False
-        End If
-    Case vbKeyRight
-        If pvIsGroupRow(m_lRow) Then
-            If pvIsGroupHeader(m_lRow) Then
-                If Not m_pDataModel.RowExpanded(m_lRow) Then
-                    pvToggleRow m_lRow
-                ElseIf m_lRow < RowCount Then
-                    pvNavigate m_lRow + 1, m_lCol, lShift, False
-                End If
-            End If
-        Else
-            lPos = pvNextSelectableCol(m_lCol, 1)
-            If lPos >= 1 Then
-                Col = lPos
-                EnsureVisible m_lRow, m_lCol
-            End If
-        End If
-    Case vbKeyLeft
-        If pvIsGroupRow(m_lRow) Then
-            If pvIsGroupHeader(m_lRow) Then
-                If m_pDataModel.RowExpanded(m_lRow) Then
-                    pvToggleRow m_lRow
-                End If
-            End If
-        Else
-            lPos = pvNextSelectableCol(m_lCol, -1)
-            If lPos >= 1 Then
-                Col = lPos
-                EnsureVisible m_lRow, m_lCol
-            End If
-        End If
-    Case vbKeyF2
-        pvEditInit m_lRow, m_lCol, bSelectAll:=True
-    Case vbKeyDelete
-        If m_lCol >= 1 And m_bAllowEdit Then
-            Set oCol = pvColByPosition(m_lCol)
-            If Not oCol Is Nothing Then
-                If oCol.EditType = jgexEditTextBox Then
-                    If pvEditInit(m_lRow, m_lCol, bSelectAll:=True) Then
-                        If m_hWndEdit <> 0 Then
-                            Call SendMessage(m_hWndEdit, WM_CLEAR, 0, 0)
-                        End If
-                    End If
-                End If
-            End If
-        ElseIf m_bAllowDelete Then
-            Delete
-        End If
-    Case vbKeySpace
-        '--- a deliberate step past the original, which ignores Space here:
-        '--- the header's level toggles, a footer stays as it is
-        If pvIsGroupHeader(m_lRow) Then
-            pvToggleRow m_lRow
-        End If
-    Case vbKeyTab
-        If m_bAllowEdit And (lShift And vbCtrlMask) = 0 Then
-            If (lShift And vbShiftMask) <> 0 Then
-                lPos = pvNextSelectableCol(m_lCol, -1)
-            Else
-                lPos = pvNextSelectableCol(m_lCol, 1)
-            End If
-            If lPos >= 1 Then
-                Col = lPos
-                EnsureVisible m_lRow, m_lCol
-                pvEditInit m_lRow, m_lCol, bSelectAll:=True
-            End If
-        End If
-    Case vbKeyPageDown
-        pvNavigate pvClampRow(m_lRow + pvVisibleRows()), m_lCol, lShift, False
-    Case vbKeyPageUp
-        pvNavigate pvClampRow(m_lRow - pvVisibleRows()), m_lCol, lShift, False
-    Case vbKeyHome
-        pvNavigate pvClampRow(1), m_lCol, lShift, False
-    Case vbKeyEnd
-        pvNavigate pvClampRow(RowCount), m_lCol, lShift, False
-    Case vbKeyEscape
-        If Not m_oSizeCol Is Nothing Then
-            pvEndColSize bCancel:=True
-        ElseIf Not m_oDragCol Is Nothing Or Not m_oDragGroup Is Nothing Then
-            pvEndColDrag bCancel:=True
-        Else
-            pvEditCancel
-        End If
-    End Select
-End Sub
-
-Private Function pvNextSelectableCol(ByVal lFrom As Long, ByVal lStep As Long) As Long
-    Dim lPos            As Long
-    Dim oCol            As JSColumn
-
-    lPos = lFrom + lStep
-    Do While lPos >= 1 And lPos <= pvVisibleColCount()
-        Set oCol = pvColByPosition(lPos)
-        If Not oCol Is Nothing Then
-            If oCol.Selectable Then
-                pvNextSelectableCol = lPos
-                Exit Function
-            End If
-        End If
-        lPos = lPos + lStep
-    Loop
-End Function
-
-Private Function pvEditKeyLeaves(ByVal nKeyCode As Integer) As Boolean
-    Dim lStart          As Long
-    Dim lEnd            As Long
-
-    Select Case nKeyCode
-    Case vbKeyTab
-        pvEditKeyLeaves = True
-    Case vbKeyDown, vbKeyUp
-        pvEditKeyLeaves = ((GetWindowLong(m_hWndEdit, GWL_STYLE) And ES_MULTILINE) = 0)
-    Case vbKeyLeft, vbKeyRight
-        Call SendMessage(m_hWndEdit, EM_GETSEL, VarPtr(lStart), VarPtr(lEnd))
-        If lStart = lEnd Then
-            If nKeyCode = vbKeyRight Then
-                pvEditKeyLeaves = (lEnd = GetWindowTextLength(m_hWndEdit))
-            ElseIf (GetWindowLong(m_hWndEdit, GWL_STYLE) And ES_MULTILINE) = 0 Then
-                pvEditKeyLeaves = (lStart = 0)
-            End If
-        End If
+Private Function pvIsBlankValue(vValue As Variant) As Boolean
+    Select Case VarType(vValue)
+    Case vbEmpty, vbNull, vbError
+        pvIsBlankValue = True
+    Case vbString
+        pvIsBlankValue = (LenB(vValue) = 0)
     End Select
 End Function
 
-Private Sub pvSetRow(ByVal lValue As Long)
-    Dim lLastRow        As Long
+'--- Layout and scrolling ------------------------------------------------
 
-    If m_lRow <> lValue Then
-        lLastRow = m_lRow
-        m_lRow = lValue
-        pvSyncRowData
-        If pvIsNewRow(m_lRow) Then
-            m_lHoldRowIndex = 0
-        ElseIf m_pDataModel.RowIndex(m_lRow) <> 0 Then
-            m_lHoldRowIndex = m_pDataModel.RowIndex(m_lRow)
-        End If
-        pvInvalidate SkipScroll:=True
-        RaiseEvent RowColChange(lLastRow, m_lCol)
-    End If
-End Sub
-
-Private Sub pvNavigate(ByVal lRow As Long, ByVal lCol As Long, ByVal lShift As Long, ByVal bCtrlToggle As Boolean)
-    Dim bRowChanging    As Boolean
-    Dim bNewRow         As Boolean
-
-    bNewRow = (lRow <> m_lRow And pvIsNewRow(lRow))
-    bRowChanging = (lRow <> m_lRow And lRow >= 1 And lRow <= RowCount)
-    pvEditEnd
-    If bRowChanging Or bNewRow Then
-        pvEditCommit
-    End If
-    If bNewRow Then
-        pvNewRowData
-        pvRaiseRowFormat m_oRowData
-        m_oSelectedItems.Clear
-        RaiseEvent SelectionChange
-        pvSetRow lRow
-    ElseIf bRowChanging Then
-        If Not pvIsGroupRow(lRow) Then
-            pvRaiseRowFormat pvRowDataAt(lRow)
-        End If
-    End If
-    If bNewRow Then
-        '--- handled above
-    ElseIf lRow >= 1 And lRow <= RowCount Then
-        pvUpdateSelection lRow, lShift, bCtrlToggle
-        pvSetRow lRow
-    Else
-        pvUpdateSelection m_lRow, lShift, bCtrlToggle
-    End If
-    If lCol >= 1 Then
-        Col = lCol
-    End If
-    EnsureVisible m_lRow
-End Sub
-
-Private Sub pvNewRowData()
-    Set m_oRowData = New JSRowData
-    m_oRowData.frReset m_oColumns.Count
-    m_oRowData.frInitModel m_pDataModel, m_pDataModel.ItemCount + 1, jgexRowTypeRecord, 0
-    pvSetDisplayValues m_oRowData
-End Sub
-
-Private Sub pvUpdateSelection(ByVal lRow As Long, ByVal lShift As Long, ByVal bCtrlToggle As Boolean)
-    Dim bSame           As Boolean
-
-    If lRow < 1 Or lRow > RowCount Then
-        Exit Sub
-    End If
-    If m_bMultiSelect And bCtrlToggle Then
-        If pvIsRowSelected(lRow) Then
-            m_oSelectedItems.RemoveRowPosition lRow
-        Else
-            pvAddSel lRow
-        End If
-        m_bCurRowDeselected = Not pvIsRowSelected(lRow)
-        m_lSelAnchor = lRow
-        pvInvalidate SkipScroll:=True
-        RaiseEvent SelectionChange
-    ElseIf m_bMultiSelect And (lShift And vbShiftMask) <> 0 Then
-        pvSetRangeSel m_lSelAnchor, lRow
-        m_bCurRowDeselected = False
-    Else
-        bSame = (m_oSelectedItems.Count = 1)
-        If bSame Then
-            bSame = (m_oSelectedItems.Item(1).RowPosition = lRow)
-        End If
-        m_oSelectedItems.Clear
-        pvAddSel lRow
-        m_lSelAnchor = lRow
-        m_bCurRowDeselected = False
-        pvInvalidate SkipScroll:=True
-        If Not bSame Then
-            RaiseEvent SelectionChange
-        End If
-    End If
-End Sub
-
-Private Function pvIsRowSelected(ByVal lPos As Long) As Boolean
-    Dim oItem           As JSSelectedItem
-
-    For Each oItem In m_oSelectedItems
-        If oItem.RowPosition = lPos Then
-            pvIsRowSelected = True
-            Exit Function
-        End If
-    Next
-End Function
-
-Private Sub pvAddSel(ByVal lPos As Long)
-    Dim lRow            As Long
-
-    If lPos < 1 Or lPos > m_pDataModel.RowCount Then
-        Exit Sub
-    End If
-    lRow = m_pDataModel.RowIndex(lPos)
-    m_oSelectedItems.frAdd lPos, m_pDataModel.RowBookmark(lRow), lRow
-End Sub
-
-Private Sub pvSetRangeSel(ByVal lFrom As Long, ByVal lTo As Long)
-    Dim lLo             As Long
-    Dim lHi             As Long
-    Dim lIdx            As Long
-
-    If lFrom = 0 Then
-        lFrom = lTo
-    End If
-    If lFrom <= lTo Then
-        lLo = lFrom
-        lHi = lTo
-    Else
-        lLo = lTo
-        lHi = lFrom
-    End If
-    m_oSelectedItems.Clear
-    For lIdx = lLo To lHi
-        pvAddSel lIdx
-    Next
-    pvInvalidate SkipScroll:=True
-    RaiseEvent SelectionChange
-End Sub
-
-Private Sub pvOnMouseWheel(ByVal wParam As Long)
-    Const WHEEL_DELTA   As Long = 120
-    Dim lDelta          As Long
-
-    lDelta = HiWordInt(wParam)
-    If (LoWord(wParam) And MK_SHIFT) <> 0 Then
-        LeftCol = m_lLeftCol - lDelta \ WHEEL_DELTA
-    Else
-        FirstItem = m_lFirstItem - (lDelta \ WHEEL_DELTA) * 3
-    End If
-End Sub
-
-Private Sub pvOnVScroll(ByVal lCode As Long, ByVal lPos As Long)
-    Dim uSi             As SCROLLINFO
-    Dim lPage           As Long
-
-    Select Case lCode
-    Case SB_LINEUP
-        FirstItem = m_lFirstItem - 1
-    Case SB_LINEDOWN
-        FirstItem = m_lFirstItem + 1
-    Case SB_PAGEUP, SB_PAGEDOWN
-        uSi.cbSize = Len(uSi)
-        uSi.fMask = SIF_PAGE
-        Call GetScrollInfo(picGrid.hWnd, SB_VERT, uSi)
-        lPage = uSi.nPage
-        If lPage < 1 Then
-            lPage = 1
-        End If
-        If lCode = SB_PAGEUP Then
-            FirstItem = m_lFirstItem - lPage
-        Else
-            FirstItem = m_lFirstItem + lPage
-        End If
-    Case SB_THUMBPOSITION, SB_THUMBTRACK
-        If lCode = SB_THUMBTRACK And Not m_bContinuousScroll Then
-            Exit Sub
-        End If
-        If lPos = 0 Then
-            uSi.cbSize = Len(uSi)
-            uSi.fMask = SIF_TRACKPOS
-            Call GetScrollInfo(picGrid.hWnd, SB_VERT, uSi)
-            lPos = uSi.nTrackPos
-        End If
-        FirstItem = lPos + 1
-    End Select
-End Sub
-
-Private Sub pvOnHScroll(ByVal lCode As Long, ByVal lPos As Long)
+Private Sub pvUpdateScrollBars()
+    Dim lTopH           As Long
+    Dim lAvailH         As Long
+    Dim lAvailW         As Long
+    Dim lFullH          As Long
+    Dim lFullW          As Long
+    Dim lHdrW           As Long
+    Dim lColsW          As Long
+    Dim lStyle          As Long
+    Dim lNewStyle       As Long
+    Dim bNeedV          As Boolean
+    Dim bNeedH          As Boolean
+    Dim lScrollRows     As Long
     Dim uSi             As SCROLLINFO
 
     If m_bScrollUpdating Then
         Exit Sub
     End If
-    Select Case lCode
-    Case SB_LINELEFT
-        LeftCol = m_lLeftCol - 1
-    Case SB_LINERIGHT
-        LeftCol = m_lLeftCol + 1
-    Case SB_PAGELEFT
-        LeftCol = m_lLeftCol - pvColsFitBefore(pvScrollableWidth(), m_lLeftCol)
-    Case SB_PAGERIGHT
-        LeftCol = m_lLeftCol + pvColsFitFrom(pvScrollableWidth(), m_lLeftCol)
-    Case SB_THUMBPOSITION, SB_THUMBTRACK
-        If lCode = SB_THUMBTRACK And Not m_bContinuousScroll Then
-            Exit Sub
+    m_bScrollUpdating = True
+    lTopH = pvGetTopHeight()
+    lHdrW = pvGetBlockLeft()
+    lColsW = lHdrW + pvGetTotalColWidth()
+    lFullH = picGrid.ScaleHeight
+    If m_bBandVisible Then
+        lFullH = lFullH + GetSystemMetrics(SM_CYHSCROLL)
+    End If
+    lFullW = picGrid.ScaleWidth
+    If (GetWindowLong(picGrid.hWnd, GWL_STYLE) And WS_VSCROLL) <> 0 Then
+        lFullW = lFullW + GetSystemMetrics(SM_CXVSCROLL)
+    End If
+    lAvailH = lFullH - lTopH
+    If m_bRecordNavigator Then
+        lAvailH = lAvailH - GetSystemMetrics(SM_CYHSCROLL)
+    End If
+    lAvailH = lAvailH - pvGetNewRowBandH()
+    pvSyncProjection
+    lScrollRows = pvGetScrollRowCount()
+    lAvailW = lFullW
+    bNeedV = (m_lRowHeight > 0 And lScrollRows > 0 And lScrollRows * m_lRowHeight > lAvailH)
+    bNeedH = (lColsW > lAvailW)
+    If bNeedV Then
+        lAvailW = lFullW - GetSystemMetrics(SM_CXVSCROLL)
+        bNeedH = (lColsW > lAvailW)
+    End If
+    If bNeedH And Not m_bRecordNavigator Then
+        lAvailH = lAvailH - GetSystemMetrics(SM_CYHSCROLL)
+        bNeedV = (m_lRowHeight > 0 And lScrollRows > 0 And lScrollRows * m_lRowHeight > lAvailH)
+        If bNeedV Then
+            lAvailW = lFullW - GetSystemMetrics(SM_CXVSCROLL)
         End If
-        If lPos = 0 Then
-            uSi.cbSize = Len(uSi)
-            uSi.fMask = SIF_TRACKPOS
-            Call GetScrollInfo(hsbGrid.hWnd, SB_CTL, uSi)
-            lPos = uSi.nTrackPos
-        End If
-        LeftCol = Clamp(lPos, 1, m_oColumns.Count)
-    Case SB_LEFT
-        LeftCol = 1
-    Case SB_RIGHT
-        LeftCol = m_oColumns.Count
-    End Select
+    End If
+    lStyle = GetWindowLong(picGrid.hWnd, GWL_STYLE)
+    lNewStyle = lStyle And Not WS_VSCROLL And Not WS_HSCROLL
+    If bNeedV Then
+        lNewStyle = lNewStyle Or WS_VSCROLL
+    End If
+    If lNewStyle <> lStyle Then
+        Call SetWindowLong(picGrid.hWnd, GWL_STYLE, lNewStyle)
+        Call SetWindowPos(picGrid.hWnd, 0, 0, 0, 0, 0, SWP_NOSIZE Or SWP_NOMOVE Or SWP_NOZORDER Or SWP_FRAMECHANGED)
+    End If
+    If bNeedV Then
+        With uSi
+            .cbSize = Len(uSi)
+            .fMask = SIF_RANGE Or SIF_PAGE Or SIF_POS
+            .nMax = lScrollRows - 1
+            If m_lRowHeight > 0 Then
+                .nPage = lAvailH \ m_lRowHeight
+            End If
+            m_lFirstItem = Clamp(m_lFirstItem, 1, lScrollRows - .nPage + 1)
+            .nPos = m_lFirstItem - 1
+        End With
+        Call SetScrollInfo(picGrid.hWnd, SB_VERT, uSi, 1)
+    End If
+    m_bBandVisible = bNeedH Or m_bRecordNavigator
+    pvLayoutGrid
+    pvLayoutHScroll bNeedH
+    If bNeedH Then
+        With uSi
+            .cbSize = Len(uSi)
+            .fMask = SIF_RANGE Or SIF_PAGE Or SIF_POS
+            .nMin = pvCountFrozenCols() + 1
+            .nMax = pvGetMaxLeftCol()
+            If .nMax < .nMin Then
+                .nMax = .nMin
+            End If
+            .nPage = 1
+            m_lLeftCol = Clamp(m_lLeftCol, .nMin, .nMax)
+            .nPos = m_lLeftCol
+        End With
+        Call SetScrollInfo(hsbGrid.hWnd, SB_CTL, uSi, 1)
+    ElseIf m_lLeftCol > 1 Then
+        m_lLeftCol = 1
+    End If
+    m_bScrollUpdating = False
 End Sub
+
+Private Sub pvLayoutGrid()
+    Dim lBandH          As Long
+
+    If m_bBandVisible Then
+        lBandH = GetSystemMetrics(SM_CYHSCROLL)
+    End If
+    picGrid.Move 0, 0, Clamp(UserControl.ScaleWidth, lMin:=0), Clamp(UserControl.ScaleHeight - lBandH, lMin:=0)
+End Sub
+
+Private Sub pvLayoutHScroll(ByVal bNeedH As Boolean)
+    Dim lBandH          As Long
+    Dim lNavW           As Long
+    Dim uNav            As UcsNavLayout
+
+    If Not bNeedH Then
+        hsbGrid.Visible = False
+        m_hWndHScroll = 0
+        Exit Sub
+    End If
+    lBandH = GetSystemMetrics(SM_CYHSCROLL)
+    If pvLayoutNavigator(uNav) Then
+        lNavW = uNav.Width
+    End If
+    hsbGrid.Move lNavW, UserControl.ScaleHeight - lBandH, Clamp(picGrid.ScaleWidth - lNavW, lMin:=0), lBandH
+    hsbGrid.Visible = True
+    m_hWndHScroll = hsbGrid.hWnd
+End Sub
+
+Private Sub pvRecalcVisibleRows()
+    Dim lMax            As Long
+
+    lMax = pvGetScrollRowCount() - pvCountVisibleRows() + 1
+    If lMax < 1 Then
+        lMax = 1
+    End If
+    If m_lFirstItem > lMax Then
+        FirstItem = lMax
+    End If
+    pvRemapCurrentRow
+    m_bWindowDirty = True
+    pvInvalidateGrid
+End Sub
+
+Private Function pvCountVisibleRows() As Long
+    If m_lRowHeight > 0 Then
+        pvCountVisibleRows = (picGrid.ScaleHeight - pvGetTopHeight() - pvGetNewRowBandH()) \ m_lRowHeight
+    End If
+    If pvCountVisibleRows < 1 Then
+        pvCountVisibleRows = 1
+    End If
+End Function
+
+Private Function pvGetScrollRowCount() As Long
+    pvGetScrollRowCount = m_pDataModel.RowCount
+    If pvHasNewRow() And m_eNewRowPos = jgexBottom Then
+        pvGetScrollRowCount = pvGetScrollRowCount + 1
+    End If
+End Function
+
+Private Function pvGetMaxLeftCol() As Long
+    Dim lWidth          As Long
+    Dim lIdx            As Long
+    Dim oCol            As JSColumn
+    Dim lCum            As Long
+
+    lWidth = pvGetScrollableWidth()
+    pvGetMaxLeftCol = m_oColumns.Count
+    For lIdx = m_oColumns.Count To pvCountFrozenCols() + 1 Step -1
+        Set oCol = m_oColumns.ItemByPosition(lIdx)
+        If oCol.Visible Then
+            lCum = lCum + pvGetColWidth(oCol)
+            If lCum >= lWidth Then
+                Exit For
+            End If
+            pvGetMaxLeftCol = lIdx
+        End If
+    Next
+    If pvGetMaxLeftCol < 1 Then
+        pvGetMaxLeftCol = 1
+    End If
+End Function
+
+Private Function pvCountColsFrom(ByVal lWidth As Long, ByVal lStart As Long) As Long
+    Dim lIdx            As Long
+    Dim oCol            As JSColumn
+    Dim lCum            As Long
+
+    For lIdx = lStart To m_oColumns.Count
+        Set oCol = m_oColumns.ItemByPosition(lIdx)
+        If oCol.Visible Then
+            lCum = lCum + pvGetColWidth(oCol)
+            If lCum >= lWidth Then
+                Exit Function
+            End If
+            pvCountColsFrom = pvCountColsFrom + 1
+        End If
+    Next
+    If pvCountColsFrom < 1 Then
+        pvCountColsFrom = 1
+    End If
+End Function
+
+Private Function pvCountColsBefore(ByVal lWidth As Long, ByVal lStart As Long) As Long
+    Dim lIdx            As Long
+    Dim oCol            As JSColumn
+    Dim lCum            As Long
+
+    For lIdx = lStart - 1 To pvCountFrozenCols() + 1 Step -1
+        Set oCol = m_oColumns.ItemByPosition(lIdx)
+        If oCol.Visible Then
+            lCum = lCum + pvGetColWidth(oCol)
+            If lCum >= lWidth Then
+                Exit For
+            End If
+            pvCountColsBefore = pvCountColsBefore + 1
+        End If
+    Next
+    If pvCountColsBefore < 1 Then
+        pvCountColsBefore = 1
+    End If
+End Function
+
+Private Function pvGetFirstCol() As Long
+    pvGetFirstCol = m_lLeftCol
+    If pvGetFirstCol < 1 Then
+        pvGetFirstCol = 1
+    End If
+    If pvGetFirstCol > m_oColumns.Count Then
+        pvGetFirstCol = m_oColumns.Count
+    End If
+End Function
+
+Private Function pvCountVisibleCols() As Long
+    Dim oCol            As JSColumn
+
+    For Each oCol In m_oColumns
+        If oCol.Visible Then
+            pvCountVisibleCols = pvCountVisibleCols + 1
+        End If
+    Next
+End Function
+
+Private Function pvGetVisiblePosition(ByVal lPosition As Long) As Long
+    Dim lIdx            As Long
+
+    For lIdx = 1 To lPosition
+        If m_oColumns.ItemByPosition(lIdx).Visible Then
+            pvGetVisiblePosition = pvGetVisiblePosition + 1
+        End If
+    Next
+End Function
+
+Private Function pvGetScrollableWidth() As Long
+    Dim lIdx            As Long
+    Dim oCol            As JSColumn
+    Dim lFrozen         As Long
+
+    pvGetScrollableWidth = picGrid.ScaleWidth - pvGetBlockLeft()
+    lFrozen = pvCountFrozenCols()
+    For lIdx = 1 To lFrozen
+        Set oCol = m_oColumns.ItemByPosition(lIdx)
+        If oCol.Visible Then
+            pvGetScrollableWidth = pvGetScrollableWidth - pvGetColWidth(oCol)
+        End If
+    Next
+End Function
+
+Private Function pvGetTotalColWidth() As Long
+    Dim oCol            As JSColumn
+
+    For Each oCol In m_oColumns
+        If oCol.Visible Then
+            pvGetTotalColWidth = pvGetTotalColWidth + pvGetColWidth(oCol)
+        End If
+    Next
+End Function
+
+Private Function pvGetColWidth(oCol As JSColumn) As Long
+    Dim lIdx            As Long
+    Dim oItem           As JSColumn
+    Dim lTotal          As Long
+    Dim lAvail          As Long
+    Dim lCum            As Long
+    Dim lPrev           As Long
+
+    If Not m_bColumnAutoResize Then
+        pvGetColWidth = ToPixels(oCol.Width)
+        Exit Function
+    End If
+    lAvail = picGrid.ScaleWidth - pvGetBlockLeft()
+    For lIdx = 1 To m_oColumns.Count
+        Set oItem = m_oColumns.ItemByPosition(lIdx)
+        If oItem.Visible Then
+            lTotal = lTotal + ToPixels(oItem.Width)
+        End If
+    Next
+    If lTotal <= 0 Or lAvail <= 0 Then
+        pvGetColWidth = ToPixels(oCol.Width)
+        Exit Function
+    End If
+    For lIdx = 1 To m_oColumns.Count
+        Set oItem = m_oColumns.ItemByPosition(lIdx)
+        If oItem.Visible Then
+            lPrev = (lCum * lAvail + lTotal \ 2) \ lTotal
+            lCum = lCum + ToPixels(oItem.Width)
+            If oItem Is oCol Then
+                pvGetColWidth = (lCum * lAvail + lTotal \ 2) \ lTotal - lPrev
+                Exit Function
+            End If
+        End If
+    Next
+    pvGetColWidth = ToPixels(oCol.Width)
+End Function
+
+Private Function pvBuildColOrder() As Variant
+    Dim lIdx            As Long
+    Dim oCol            As JSColumn
+    Dim aOrder()        As Long
+    Dim lCount          As Long
+    Dim lFrozen         As Long
+
+    ReDim aOrder(0 To m_oColumns.Count) As Long
+    lFrozen = pvCountFrozenCols()
+    For lIdx = 1 To lFrozen
+        Set oCol = m_oColumns.ItemByPosition(lIdx)
+        If oCol.Visible Then
+            aOrder(lCount) = lIdx
+            lCount = lCount + 1
+        End If
+    Next
+    For lIdx = pvGetFirstCol() To m_oColumns.Count
+        If lIdx > lFrozen Then
+            Set oCol = m_oColumns.ItemByPosition(lIdx)
+            If oCol.Visible Then
+                aOrder(lCount) = lIdx
+                lCount = lCount + 1
+            End If
+        End If
+    Next
+    If lCount = 0 Then
+        pvBuildColOrder = Array()
+        Exit Function
+    End If
+    ReDim Preserve aOrder(0 To lCount - 1) As Long
+    pvBuildColOrder = aOrder
+End Function
+
+Private Function pvGetOrderMax(vOrder As Variant) As Long
+    pvGetOrderMax = -1
+    If IsArray(vOrder) Then
+        pvGetOrderMax = UBound(vOrder)
+    End If
+End Function
+
+Private Function pvCountFrozenCols() As Long
+    pvCountFrozenCols = m_lFrozenColumns
+    If pvCountFrozenCols < 0 Then
+        pvCountFrozenCols = 0
+    End If
+    If pvCountFrozenCols > m_oColumns.Count Then
+        pvCountFrozenCols = m_oColumns.Count
+    End If
+End Function
+
+Private Function pvGetColByPosition(ByVal lPos As Long) As JSColumn
+    Dim lIdx            As Long
+    Dim lSeen           As Long
+    Dim oItem           As JSColumn
+
+    For lIdx = 1 To m_oColumns.Count
+        Set oItem = m_oColumns.ItemByPosition(lIdx)
+        If oItem.Visible Then
+            lSeen = lSeen + 1
+            If lSeen = lPos Then
+                Set pvGetColByPosition = oItem
+                Exit Function
+            End If
+        End If
+    Next
+End Function
+
+'--- Hit testing and geometry --------------------------------------------
+
+Private Function pvHitRow(ByVal lY As Long) As Long
+    Dim lTop            As Long
+
+    lTop = pvGetRowsTop()
+    If m_lRowHeight <= 0 Or lY < lTop Then
+        Exit Function
+    End If
+    If pvGetNewRowBandH() > 0 Then
+        If lY < lTop + m_lRowHeight Then
+            pvHitRow = -1
+            Exit Function
+        End If
+        If lY < lTop + pvGetNewRowBandH() Then
+            '--- the divider is nobody's row
+            Exit Function
+        End If
+        lTop = lTop + pvGetNewRowBandH()
+    End If
+    pvHitRow = m_lFirstItem + (lY - lTop) \ m_lRowHeight
+End Function
+
+Private Function pvGetRowTop(ByVal lRow As Long) As Long
+    If pvIsNewRow(lRow) And m_eNewRowPos = jgexTop Then
+        pvGetRowTop = pvGetRowsTop()
+    Else
+        pvGetRowTop = pvGetRowsTop() + pvGetNewRowBandH() + (lRow - m_lFirstItem) * m_lRowHeight
+    End If
+End Function
+
+Private Function pvGetCellRect(ByVal lPos As Long, ByVal lColIndex As Long, lX As Long, lY As Long, lW As Long) As Boolean
+    Dim vOrder          As Variant
+    Dim lIdx            As Long
+    Dim oItem           As JSColumn
+    Dim lCum            As Long
+
+    If m_lRowHeight <= 0 Then
+        Exit Function
+    End If
+    If lPos < m_lFirstItem And Not pvIsNewRow(lPos) Then
+        Exit Function
+    End If
+    lY = pvGetRowTop(lPos)
+    lCum = pvGetBlockLeft()
+    vOrder = pvBuildColOrder()
+    For lIdx = 0 To pvGetOrderMax(vOrder)
+        Set oItem = m_oColumns.ItemByPosition(vOrder(lIdx))
+        If oItem.Visible Then
+            If oItem.Index = lColIndex Then
+                lX = lCum
+                lW = pvGetColWidth(oItem)
+                pvGetCellRect = True
+                Exit Function
+            End If
+            lCum = lCum + pvGetColWidth(oItem)
+        End If
+    Next
+End Function
+
+Private Function pvHitRowSelZone(ByVal lX As Long, ByVal lY As Long) As Boolean
+    Dim lZone           As Long
+    Dim lRow            As Long
+
+    lZone = pvGetRowHeaderWidth()
+    If lZone = 0 Then
+        lZone = ROWSEL_ZONE_W
+    End If
+    If lX < 0 Or lX >= lZone Then
+        Exit Function
+    End If
+    If m_lRowHeight <= 0 Or lY < pvGetRowsTop() Then
+        Exit Function
+    End If
+    lRow = pvHitRow(lY)
+    If lRow >= 1 And lRow <= RowCount Then
+        pvHitRowSelZone = Not pvIsGroupRow(lRow)
+    End If
+End Function
+
+Private Function pvHitScrollBar() As Boolean
+    Dim uPt             As POINTAPI
+
+    If m_hWndHScroll = 0 Then
+        Exit Function
+    End If
+    Call GetCursorPos(uPt)
+    pvHitScrollBar = (WindowFromPoint(uPt.X, uPt.Y) = m_hWndHScroll)
+End Function
+
+Private Function pvGetTopHeight() As Long
+    pvGetTopHeight = pvGetGroupByBoxHeight()
+    If m_bColumnHeaders Then
+        pvGetTopHeight = pvGetTopHeight + m_lColumnHeaderHeight
+    End If
+End Function
+
+Private Function pvGetRowsTop() As Long
+    pvGetRowsTop = pvGetGroupByBoxHeight()
+    If m_bColumnHeaders Then
+        pvGetRowsTop = pvGetRowsTop + m_lColumnHeaderHeight
+    End If
+End Function
+
+Private Function pvGetRowHeaderWidth() As Long
+    If m_bRowHeaders Then
+        pvGetRowHeaderWidth = CHROME_COL_W
+    End If
+End Function
+
+Private Function pvGetBlockLeft() As Long
+    If m_bRowHeaders Then
+        pvGetBlockLeft = CHROME_COL_W
+    End If
+    pvGetBlockLeft = pvGetBlockLeft + pvGetGroupIndent()
+End Function
+
+Private Function pvGetRowContentH(ByVal lRowH As Long) As Long
+    pvGetRowContentH = lRowH
+    If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLHorizontal Then
+        pvGetRowContentH = lRowH - 1
+    End If
+End Function
+
+Private Function pvGetMarqueeRight(ByVal lHdrW As Long, ByVal lTotalW As Long) As Long
+    pvGetMarqueeRight = lHdrW + lTotalW - 1
+    If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLVertical Then
+        pvGetMarqueeRight = pvGetMarqueeRight - 1
+    End If
+End Function
+
+Private Function pvIsPtInRect(uRect As RECT, ByVal lX As Long, ByVal lY As Long) As Boolean
+    pvIsPtInRect = (lX >= uRect.Left And lX < uRect.Right And lY >= uRect.Top And lY < uRect.Bottom)
+End Function
+
+Private Sub pvSetRect(uRect As RECT, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long)
+    uRect.Left = lLeft
+    uRect.Top = lTop
+    uRect.Right = lRight
+    uRect.Bottom = lBottom
+End Sub
+
+'--- The record navigator ------------------------------------------------
+
+Private Function pvLayoutNavigator(uNav As UcsNavLayout) As Boolean
+    Dim lBtnW           As Long
+    Dim lBtnTop         As Long
+    Dim lBtnH           As Long
+    Dim lBoxW           As Long
+    Dim hDC             As Long
+    Dim hPrevFont       As Long
+    Dim lX              As Long
+    Dim vSplit          As Variant
+
+    If Not m_bRecordNavigator Then
+        Exit Function
+    End If
+    uNav.BandH = GetSystemMetrics(SM_CYHSCROLL)
+    uNav.BandTop = UserControl.ScaleHeight - uNav.BandH
+    If uNav.BandH <= 0 Then
+        Exit Function
+    End If
+    vSplit = Split(m_sRecordNavigatorString & "|", "|")
+    uNav.Prefix = vSplit(0)
+    uNav.Middle = vSplit(1) & " " & RowCount
+    lBtnW = uNav.BandH + 1
+    lBtnTop = uNav.BandTop + 1
+    lBtnH = uNav.BandH - 1
+    hDC = GetDC(UserControl.hWnd)
+    hPrevFont = pvSelectFont(hDC, m_oFont)
+    lX = 4
+    uNav.PrefixX = lX
+    lX = lX + pvGetTextWidth(hDC, uNav.Prefix) + 4
+    pvSetRect uNav.BtnFirst, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
+    lX = lX + lBtnW
+    pvSetRect uNav.BtnPrev, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
+    lX = lX + lBtnW + 4
+    lBoxW = pvGetTextWidth(hDC, "9999999") + 4
+    pvSetRect uNav.Box, lX, uNav.BandTop, lX + lBoxW, uNav.BandTop + uNav.BandH + 4
+    lX = lX + lBoxW + 4
+    uNav.MiddleX = lX
+    lX = lX + pvGetTextWidth(hDC, uNav.Middle) + 8
+    pvSetRect uNav.BtnNext, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
+    lX = lX + lBtnW
+    pvSetRect uNav.BtnLast, lX, lBtnTop, lX + lBtnW, lBtnTop + lBtnH
+    lX = lX + lBtnW
+    uNav.Width = lX
+    Call SelectObject(hDC, hPrevFont)
+    Call ReleaseDC(UserControl.hWnd, hDC)
+    pvLayoutNavigator = True
+End Function
+
+Private Sub pvPaintNavigator(ByVal hDC As Long)
+    Dim uNav            As UcsNavLayout
+    Dim hPrevFont       As Long
+    Dim uBox            As RECT
+    Dim lAtFirst        As Long
+    Dim lAtLast         As Long
+    Dim lBarX           As Long
+    Dim lBarW           As Long
+    Dim lBarY           As Long
+    Dim lBarHalf        As Long
+    Dim lTextH          As Long
+    Dim lTextTop        As Long
+
+    pvFillRect hDC, 0, UserControl.ScaleHeight - GetSystemMetrics(SM_CYHSCROLL), UserControl.ScaleWidth, UserControl.ScaleHeight, UserControl.BackColor
+    If Not m_bRecordNavigator Then
+        Exit Sub
+    End If
+    If Not pvLayoutNavigator(uNav) Then
+        Exit Sub
+    End If
+    pvFillRect hDC, 0, uNav.BandTop, uNav.Width, uNav.BandTop + uNav.BandH, UserControl.BackColor
+    lAtFirst = 0
+    If m_lRow <= 1 Then
+        lAtFirst = DFCS_INACTIVE
+    End If
+    lAtLast = 0
+    If m_lRow >= RowCount Then
+        lAtLast = DFCS_INACTIVE
+    End If
+    pvPaintNavButton hDC, uNav.BtnFirst
+    pvPaintNavButton hDC, uNav.BtnPrev
+    pvPaintNavButton hDC, uNav.BtnNext
+    pvPaintNavButton hDC, uNav.BtnLast
+    pvPaintNavArrow hDC, uNav.BtnFirst, False, False, True, uNav.BandH
+    pvPaintNavArrow hDC, uNav.BtnPrev, False, (m_lRow <= 1), False, uNav.BandH
+    pvPaintNavArrow hDC, uNav.BtnNext, True, (m_lRow >= RowCount), False, uNav.BandH
+    pvPaintNavArrow hDC, uNav.BtnLast, True, False, True, uNav.BandH
+    lBarX = (uNav.BandH + 2) \ 4
+    lBarW = uNav.BandH \ 7
+    lBarHalf = uNav.BandH \ 4
+    lBarY = uNav.BtnFirst.Top + (uNav.BtnFirst.Bottom - uNav.BtnFirst.Top) \ 2 - 1 - lBarHalf
+    pvFillRect hDC, uNav.BtnFirst.Left + lBarX, lBarY, uNav.BtnFirst.Left + lBarX + lBarW, lBarY + 2 * lBarHalf + 1, vbBlack
+    pvFillRect hDC, uNav.BtnLast.Right - 1 - lBarX - lBarW, lBarY, uNav.BtnLast.Right - 1 - lBarX, lBarY + 2 * lBarHalf + 1, vbBlack
+    uBox = uNav.Box
+    Call DrawEdge(hDC, uBox, EDGE_SUNKEN, BF_RECT)
+    pvFillRect hDC, uNav.Box.Left + 2, uNav.Box.Top + 2, uNav.Box.Right - 2, uNav.Box.Bottom - 2, vbWindowBackground
+    hPrevFont = pvSelectFont(hDC, m_oFont)
+    lTextH = FontTextMetrics(m_oFont, hDC).tmHeight
+    lTextTop = uNav.BandTop + (uNav.BandH - lTextH + 1) \ 2
+    pvDrawText hDC, uNav.Prefix, uNav.PrefixX, lTextTop, uNav.PrefixX + pvGetTextWidth(hDC, uNav.Prefix), lTextTop + lTextH, vbButtonText, UserControl.BackColor, jgexAlignLeft, uNav.PrefixX, uNav.Width
+    pvDrawText hDC, uNav.Middle, uNav.MiddleX, lTextTop, uNav.MiddleX + pvGetTextWidth(hDC, uNav.Middle), lTextTop + lTextH, vbButtonText, UserControl.BackColor, jgexAlignLeft, uNav.MiddleX, uNav.Width
+    pvDrawText hDC, CStr(m_lRow), uNav.Box.Left + 2, uNav.Box.Top + 2, uNav.Box.Right - 4, uNav.Box.Top + 2 + lTextH, m_clrForeColor, vbWindowBackground, jgexAlignRight, uNav.Box.Left + 2, uNav.Box.Right - 2
+    Call SelectObject(hDC, hPrevFont)
+End Sub
+
+Private Sub pvHandleNavigatorClick(ByVal lX As Long, ByVal lY As Long)
+    Dim uNav            As UcsNavLayout
+
+    If Not pvLayoutNavigator(uNav) Then
+        Exit Sub
+    End If
+    If pvIsPtInRect(uNav.BtnFirst, lX, lY) Then
+        Row = 1
+    ElseIf pvIsPtInRect(uNav.BtnPrev, lX, lY) Then
+        If m_lRow > 1 Then
+            Row = m_lRow - 1
+        End If
+    ElseIf pvIsPtInRect(uNav.BtnNext, lX, lY) Then
+        If m_lRow < RowCount Then
+            Row = m_lRow + 1
+        End If
+    ElseIf pvIsPtInRect(uNav.BtnLast, lX, lY) Then
+        Row = RowCount
+    Else
+        Exit Sub
+    End If
+    EnsureVisible m_lRow
+End Sub
+
+Private Sub pvPaintNavButton(ByVal hDC As Long, uBtn As RECT)
+    pvFillRect hDC, uBtn.Left, uBtn.Top, uBtn.Right, uBtn.Bottom, UserControl.BackColor
+    pvDrawLine hDC, uBtn.Left, uBtn.Top, uBtn.Right, uBtn.Top, vb3DHighlight, PS_SOLID
+    pvDrawLine hDC, uBtn.Left, uBtn.Top, uBtn.Left, uBtn.Bottom, vb3DHighlight, PS_SOLID
+    pvDrawLine hDC, uBtn.Right - 2, uBtn.Top + 1, uBtn.Right - 2, uBtn.Bottom - 1, vb3DShadow, PS_SOLID
+    pvDrawLine hDC, uBtn.Left + 1, uBtn.Bottom - 2, uBtn.Right - 1, uBtn.Bottom - 2, vb3DShadow, PS_SOLID
+    pvDrawLine hDC, uBtn.Right - 1, uBtn.Top, uBtn.Right - 1, uBtn.Bottom, vb3DDKShadow, PS_SOLID
+    pvDrawLine hDC, uBtn.Left, uBtn.Bottom - 1, uBtn.Right, uBtn.Bottom - 1, vb3DDKShadow, PS_SOLID
+End Sub
+
+Private Sub pvPaintNavArrow(ByVal hDC As Long, uBtn As RECT, ByVal bRight As Boolean, ByVal bDisabled As Boolean, ByVal bEnd As Boolean, ByVal lBandH As Long)
+    Dim lApex           As Long
+    Dim lCenter         As Long
+    Dim lHalf           As Long
+    Dim lOfs            As Long
+
+    lHalf = lBandH \ 4
+    If bEnd Then
+        lOfs = lBandH \ 4 + lBandH \ 7 + lBandH \ 5
+    Else
+        lOfs = (uBtn.Right - uBtn.Left - lHalf - 1) \ 2 + 1
+    End If
+    lCenter = uBtn.Top + (uBtn.Bottom - uBtn.Top) \ 2 - 1
+    If bRight Then
+        lApex = uBtn.Right - 1 - lOfs
+    Else
+        lApex = uBtn.Left + lOfs
+    End If
+    If bDisabled Then
+        pvPaintNavTriangle hDC, lApex + 1, lCenter + 1, bRight, vb3DHighlight, lHalf
+        pvPaintNavTriangle hDC, lApex, lCenter, bRight, vb3DShadow, lHalf
+    Else
+        pvPaintNavTriangle hDC, lApex, lCenter, bRight, vbBlack, lHalf
+    End If
+End Sub
+
+Private Sub pvPaintNavTriangle(ByVal hDC As Long, ByVal lApex As Long, ByVal lCenter As Long, ByVal bRight As Boolean, ByVal clrFill As OLE_COLOR, ByVal lHalf As Long)
+    Dim lIdx            As Long
+    Dim lX              As Long
+
+    For lIdx = 0 To lHalf
+        If bRight Then
+            lX = lApex - lIdx
+        Else
+            lX = lApex + lIdx
+        End If
+        pvFillRect hDC, lX, lCenter - lIdx, lX + 1, lCenter + lIdx + 1, clrFill
+    Next
+End Sub
+
+'--- Drawing primitives --------------------------------------------------
+
+Private Sub pvDrawText(ByVal hDC As Long, sText As String, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long, ByVal clrText As OLE_COLOR, ByVal clrBack As OLE_COLOR, ByVal eAlign As jgexAlignmentConstants, ByVal ClipLeft As Long, ByVal ClipRight As Long, Optional ByVal bWordWrap As Boolean, Optional ByVal bEllipsis As Boolean)
+    Dim uRect           As RECT
+    Dim lFlags          As Long
+    Dim lSaved          As Long
+
+    uRect.Left = lLeft
+    uRect.Top = lTop
+    uRect.Right = lRight
+    uRect.Bottom = lBottom
+    If bWordWrap Then
+        uRect.Top = lTop + 1
+        uRect.Bottom = lBottom - 1
+        lFlags = DT_WORDBREAK Or DT_NOPREFIX
+    Else
+        lFlags = DT_SINGLELINE Or DT_VCENTER Or DT_NOPREFIX
+        If bEllipsis Then
+            lFlags = lFlags Or DT_END_ELLIPSIS
+        End If
+    End If
+    Select Case eAlign
+    Case jgexAlignCenter
+        lFlags = lFlags Or DT_CENTER
+    Case jgexAlignRight
+        lFlags = lFlags Or DT_RIGHT
+    End Select
+    lSaved = SaveDC(hDC)
+    Call IntersectClipRect(hDC, ClipLeft, uRect.Top, ClipRight, uRect.Bottom)
+    lFlags = lFlags Or DT_NOCLIP
+    Call SetBkMode(hDC, OPAQUE)
+    Call SetBkColor(hDC, pvTranslateColor(clrBack))
+    Call SetTextColor(hDC, pvTranslateColor(clrText))
+    Call DrawText(hDC, StrPtr(sText), Len(sText), uRect, lFlags)
+    Call RestoreDC(hDC, lSaved)
+End Sub
+
+Private Sub pvFillRect(ByVal hDC As Long, ByVal lLeft As Long, ByVal lTop As Long, ByVal lRight As Long, ByVal lBottom As Long, ByVal clrFill As OLE_COLOR)
+    Dim uRect           As RECT
+    Dim hBrush          As Long
+
+    If lRight <= lLeft Or lBottom <= lTop Then
+        Exit Sub
+    End If
+    uRect.Left = lLeft
+    uRect.Top = lTop
+    uRect.Right = lRight
+    uRect.Bottom = lBottom
+    hBrush = CreateSolidBrush(pvTranslateColor(clrFill))
+    Call FillRect(hDC, uRect, hBrush)
+    Call DeleteObject(hBrush)
+End Sub
+
+Private Sub pvDrawLine(ByVal hDC As Long, ByVal lX1 As Long, ByVal lY1 As Long, ByVal lX2 As Long, ByVal lY2 As Long, ByVal clrLine As OLE_COLOR, ByVal lPenStyle As Long, Optional ByVal DashAnchor As Long = -1, Optional ByVal GapColor As Long = -1)
+    Dim hPen            As Long
+    Dim hPrevPen        As Long
+    Dim clrGap          As OLE_COLOR
+
+    If lPenStyle = PS_DOT Or lPenStyle = PS_DASH Then
+        clrGap = m_clrBackColorBkg
+        If GapColor <> -1 Then
+            clrGap = GapColor
+        End If
+        If lPenStyle = PS_DOT Then
+            pvDrawStampedLine hDC, lX1, lY1, lX2, lY2, IIf(lY1 = lY2, lY1, lX1), 2, 1, clrLine, clrGap
+        Else
+            If DashAnchor < 0 Then
+                DashAnchor = IIf(lY1 = lY2, lX2 - 1, lY1)
+            End If
+            pvDrawStampedLine hDC, lX1, lY1, lX2, lY2, DashAnchor, 6, 3, clrLine, clrGap
+        End If
+        Exit Sub
+    End If
+    hPen = CreatePen(lPenStyle, 1, pvTranslateColor(clrLine))
+    hPrevPen = SelectObject(hDC, hPen)
+    Call MoveToEx(hDC, lX1, lY1, 0)
+    Call LineTo(hDC, lX2, lY2)
+    Call SelectObject(hDC, hPrevPen)
+    Call DeleteObject(hPen)
+End Sub
+
+Private Sub pvDrawStampedLine(ByVal hDC As Long, ByVal lX1 As Long, ByVal lY1 As Long, ByVal lX2 As Long, ByVal lY2 As Long, ByVal lAnchor As Long, ByVal lPeriod As Long, ByVal lOn As Long, ByVal clrLine As OLE_COLOR, ByVal clrGap As OLE_COLOR)
+    Dim hBrush          As Long
+    Dim hPrevBrush      As Long
+    Dim lIdx            As Long
+
+    If lY1 = lY2 Then
+        pvFillRect hDC, lX1, lY1, lX2, lY1 + 1, clrGap
+    Else
+        pvFillRect hDC, lX1, lY1, lX1 + 1, lY2, clrGap
+    End If
+    hBrush = CreateSolidBrush(pvTranslateColor(clrLine))
+    hPrevBrush = SelectObject(hDC, hBrush)
+    If lY1 = lY2 Then
+        For lIdx = lX1 To lX2 - 1
+            If Abs(lIdx - lAnchor) Mod lPeriod < lOn Then
+                Call PatBlt(hDC, lIdx, lY1, 1, 1, PATCOPY)
+            End If
+        Next
+    Else
+        For lIdx = lY1 To lY2 - 1
+            If Abs(lIdx - lAnchor) Mod lPeriod < lOn Then
+                Call PatBlt(hDC, lX1, lIdx, 1, 1, PATCOPY)
+            End If
+        Next
+    End If
+    Call SelectObject(hDC, hPrevBrush)
+    Call DeleteObject(hBrush)
+End Sub
+
+Private Sub pvSetPixel(ByVal hDC As Long, ByVal lX As Long, ByVal lY As Long, ByVal clrColor As OLE_COLOR)
+    pvFillRect hDC, lX, lY, lX + 1, lY + 1, clrColor
+End Sub
+
+Private Function pvGetTextWidth(ByVal hDC As Long, sText As String) As Long
+    Dim uSize           As SIZEAPI
+
+    Call GetTextExtentPoint32(hDC, StrPtr(sText), Len(sText), uSize)
+    pvGetTextWidth = uSize.cx
+End Function
+
+Private Function pvSelectFont(ByVal hDC As Long, pFont As IFont) As Long
+    pvSelectFont = SelectObject(hDC, pFont.hFont)
+End Function
+
+Private Sub pvInheritAmbientFont()
+    Const FUNC_NAME     As String = "pvInheritAmbientFont"
+
+    On Error GoTo EH
+    Set m_oFont = CloneFont(Ambient.Font)
+    Set m_oColumnHeaderFont = CloneFont(Ambient.Font)
+    m_oFont_FontChanged vbNullString
+    m_oColumnHeaderFont_FontChanged vbNullString
+    Exit Sub
+EH:
+    PrintError FUNC_NAME
+End Sub
+
+Private Sub pvGetSelColors(clrBack As OLE_COLOR, clrFore As OLE_COLOR)
+    Dim oStyle          As JSFormatStyle
+
+    Set oStyle = m_oFormatStyles.frItemOrNothing("SelectedRow")
+    If oStyle Is Nothing Then
+        clrBack = vbHighlight
+        clrFore = vbHighlightText
+    Else
+        clrBack = oStyle.BackColor
+        clrFore = oStyle.ForeColor
+    End If
+End Sub
+
+Private Function pvTranslateColor(ByVal clrValue As OLE_COLOR) As Long
+    Call OleTranslateColor(clrValue, 0, pvTranslateColor)
+End Function
+
+Private Function pvGetPenStyle() As Long
+    Select Case m_eGridLineStyle
+    Case jgexGLSDashes
+        pvGetPenStyle = PS_DASH
+    Case jgexGLSSmallDots
+        pvGetPenStyle = PS_DOT
+    Case Else
+        pvGetPenStyle = PS_SOLID
+    End Select
+End Function
+
+Private Function pvGetScreenDpi() As Long
+    Dim hScreenDC       As Long
+
+    hScreenDC = GetDC(0)
+    pvGetScreenDpi = GetDeviceCaps(hScreenDC, LOGPIXELSY)
+    Call ReleaseDC(0, hScreenDC)
+End Function
 
 '=========================================================================
 ' Interface IObjectSafety
@@ -6404,7 +6428,7 @@ Private Sub UserControl_InitProperties()
     pvInheritAmbientFont
     m_oColumns.Add(vbNullString).Width = ToTwips(m_lDefaultColumnWidth)
     m_oColumns.Add(vbNullString).Width = ToTwips(m_lDefaultColumnWidth)
-    pvSubclass
+    pvSubclassWindows
     If Ambient.UserMode Then
         InitIPAO m_uIPAO, Me
     End If
@@ -6418,7 +6442,7 @@ Private Sub UserControl_ReadProperties(PropBag As PropertyBag)
 
     On Error GoTo EH
     pvInheritAmbientFont
-    pvSubclass
+    pvSubclassWindows
     If Ambient.UserMode Then
         InitIPAO m_uIPAO, Me
     End If
@@ -6442,7 +6466,7 @@ Private Sub UserControl_Resize()
 
     On Error GoTo EH
     pvLayoutGrid
-    pvInvalidate
+    pvInvalidateGrid
     Exit Sub
 EH:
     PrintError FUNC_NAME
@@ -6473,7 +6497,7 @@ Private Sub m_oFont_FontChanged(ByVal PropertyName As String)
             m_lRowHeight = 19
         End If
     End If
-    pvInvalidate
+    pvInvalidateGrid
     Exit Sub
 EH:
     PrintError FUNC_NAME
@@ -6484,7 +6508,7 @@ Private Sub m_oColumnHeaderFont_FontChanged(ByVal PropertyName As String)
 
     On Error GoTo EH
     m_lColumnHeaderHeight = FontTextMetrics(m_oColumnHeaderFont).tmHeight + 6
-    pvInvalidate
+    pvInvalidateGrid
     Exit Sub
 EH:
     PrintError FUNC_NAME
@@ -6568,7 +6592,7 @@ Private Sub UserControl_Terminate()
     Dim vErr            As Variant
     
     vErr = PushError
-    pvEditTerminate
+    pvDestroyEditor
     If m_hCurRowSel <> 0 Then
         Call DestroyIcon(m_hCurRowSel)
         m_hCurRowSel = 0
@@ -6576,7 +6600,7 @@ Private Sub UserControl_Terminate()
     TerminateIPAO m_uIPAO
     TerminateSubclassingThunk m_pSubclassPic, Me
     TerminateSubclassingThunk m_pSubclassCtl, Me
-    pvBufferTermiante
+    pvFreeBuffer
     '--- cleanup weakrefs
     If Not m_oGroups Is Nothing Then
         m_oGroups.frTerminate
