@@ -1620,3 +1620,49 @@ vertical lines only. One capture showed three things.
   rather than a Null -- since what it governs is how an empty cell reaches
   a database. The harness event log spells `Null` out now, which is the
   only reason that reads as an answer rather than as a blank
+
+### Added (M5 -- the new row and the wheel)
+
+- `AllowAddNew`/`NewRowPos`: the phantom record row, addressed as `Row = -1`
+  above the records under a five-pixel divider (106) or as `RowCount + 1`
+  below them (107); it lives outside `RowCount` and no event acknowledges
+  it until something is typed. Grouping hides the bottom flavour only
+  (108); the top flavour indents with the groups, keeps the marquee
+  walking the indent as its own dither segment, and -- its selection lost
+  to the regroup -- wears the unfocused one-pixel outline instead of the
+  selection fill (109). The divider dresses after `HeaderStyle`, probed
+  per style at both DPIs: the double-3D default, flat single line (110)
+  and single-3D (111)
+- The new row edits: a click or a typed character opens the editor over a
+  fresh pending buffer, `RowFormat` seeing the prospective index; the
+  commit is an insertion -- `IDataModel.UpdateRowData` past `ItemCount`
+  raises `UnboundAddNew`, harvests the buffer into new storage and
+  re-initializes the wrapper onto the record it became. Leaving the row
+  with data changed commits it, by click or by keyboard; `Escape` drops
+  the buffer and re-arms; scrolling keeps the editor glued to the band
+- `Enter` on a modified new row, probed: the original commits, touches
+  down on the record it just became and comes straight back to a fresh
+  new row -- `Row` ends at `-1`, the data-entry loop. Pinned in
+  ModelTests; not in the corpus, because the original defers its
+  `UnboundAddNew` past the capture window where ours raises it
+  synchronously, where a client needs it
+- The vertical scrollbar counts the extra row and surrenders the band's
+  height, so the range stays honest with the phantom on screen
+- The mouse wheel scrolls: three rows a notch vertically, a column a
+  notch with `Shift` held; the single-line editor forwards the wheel to
+  the grid so scrolling does not stop at the caret. The delta comes out
+  of `wParam` through `HiWordInt` -- the masked-division spelling loses
+  the sign when the low word is set
+- `src/reg.bat`: unregisters the stale typelib key and re-registers the
+  built OCX in one step
+
+### Fixed (what the new row turned up)
+
+- `pvPaintDataRow` painted the new row's other columns empty: the window
+  buffer has no row at the phantom index, so the painter falls back to
+  the pending buffer for the current new row
+- The initial bind with `NewRowPos = jgexTop` set `Row = -1` with no
+  pending buffer behind it, so the first edit wrote into `Nothing` and
+  painted nothing; the bind now arms the buffer the way navigation does
+- `pvPaintNewRowDivider` stopped at the last column, leaving the band's
+  right remainder undrawn past the block

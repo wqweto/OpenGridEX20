@@ -57,6 +57,7 @@ Public Const WM_MOUSEMOVE               As Long = &H200
 Public Const WM_LBUTTONDOWN             As Long = &H201
 Public Const WM_LBUTTONUP               As Long = &H202
 Public Const WM_LBUTTONDBLCLK           As Long = &H203
+Public Const WM_MOUSEWHEEL              As Long = &H20A
 Public Const EN_CHANGE                  As Long = &H300
 Public Const WM_CLEAR                   As Long = &H303
 '--- Edit control margins

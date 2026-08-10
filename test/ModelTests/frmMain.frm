@@ -76,6 +76,7 @@ Private Const WM_KEYDOWN            As Long = &H100
 Private Const WM_LBUTTONDOWN        As Long = &H201
 Private Const WM_LBUTTONUP          As Long = &H202
 Private Const WM_LBUTTONDBLCLK      As Long = &H203
+Private Const WM_MOUSEWHEEL         As Long = &H20A
 Private Const WM_MOUSEMOVE          As Long = &H200
 Private Const WM_CHAR               As Long = &H102
 Private Const MK_LBUTTON            As Long = &H1
@@ -175,6 +176,8 @@ Private Sub Form_Load()
     pvTestEditLeaveCell
     pvTestTabKey
     pvTestDelKey
+    pvTestNewRow
+    pvTestWheel
     pvTestDisplayValue
     pvTestSorting
     pvTestSelectionApi
@@ -1543,6 +1546,96 @@ Private Sub pvTestTabKey()
         AssertEquals "TabKey: the row-select strip lands the row", 1, .Row
         AssertEquals "TabKey: and clears the column", 0, .Col
         AssertEquals "TabKey: without opening an editor", 0, .hWndEdit
+    End With
+    Unload oForm
+End Sub
+
+Private Sub pvTestNewRow()
+    Dim oForm           As frmWeak
+    Dim lY              As Long
+
+    '--- probed: the new row is editable like any cell -- the click lands the
+    '--- currency on its own address, the editor opens on an empty buffer and
+    '--- leaving the row commits it as an insertion
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Move 60, 60, 3600
+        .GroupByBoxVisible = False
+        .Columns.Add("A").Width = 1500
+        .Columns.Add("B").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 3
+        .Rebind
+        .AllowEdit = True
+        .AllowAddNew = True
+        .NewRowPos = jgexBottom
+        .Columns.Item(1).EditType = jgexEditTextBox
+        .Columns.Item(2).EditType = jgexEditTextBox
+        .Refresh
+        AssertEquals "NewRow: the phantom row is outside the count", 3, .RowCount
+        lY = .ColumnHeaderHeight + 3 * .RowHeight + .RowHeight \ 2
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, lY)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, lY)
+        AssertEquals "NewRow: the click lands one past the last", 4, .Row
+        Assert "NewRow: and opens the editor", .hWndEdit <> 0
+        SendMessage .hWndEdit, WM_CHAR, 78, 0
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, .ColumnHeaderHeight + .RowHeight \ 2)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, .ColumnHeaderHeight + .RowHeight \ 2)
+        AssertEquals "NewRow: leaving commits the insertion", 4, .ItemCount
+        AssertEquals "NewRow: which the block now counts", 4, .RowCount
+        AssertEquals "NewRow: holding what was typed", "N", .GetRowData(4).Value(1)
+        Assert "NewRow: through UnboundAddNew", InStr(oForm.EventLog, "UnboundAddNew") > 0
+        '--- the top flavor answers to -1 and Escape empties it back out
+        .NewRowPos = jgexTop
+        .Refresh
+        lY = .ColumnHeaderHeight + .RowHeight \ 2
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, lY)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, lY)
+        AssertEquals "NewRow: the top row answers to -1", -1, .Row
+        Assert "NewRow: with its editor open", .hWndEdit <> 0
+        SendMessage .hWndEdit, WM_CHAR, 81, 0
+        SendMessage .hWndEdit, WM_KEYDOWN, vbKeyEscape, 0
+        SendMessage .hWnd, WM_KEYDOWN, vbKeyEscape, 0
+        AssertEquals "NewRow: Escape drops it without adding", 4, .ItemCount
+        '--- and the arrows commit like any row leave: Down off the top row
+        '--- lands on the first record with the insertion made
+        SendMessage .hWnd, WM_LBUTTONDOWN, 0, TwipsDWord(750, lY)
+        SendMessage .hWnd, WM_LBUTTONUP, 0, TwipsDWord(750, lY)
+        Assert "NewRow: reopened for the arrow", .hWndEdit <> 0
+        SendMessage .hWndEdit, WM_CHAR, 81, 0
+        SendMessage .hWndEdit, WM_KEYDOWN, vbKeyDown, 0
+        AssertEquals "NewRow: Down off the top row commits", 5, .ItemCount
+        AssertEquals "NewRow: and lands on the first record", 1, .Row
+        AssertEquals "NewRow: with the text stored", "Q", .GetRowData(5).Value(1)
+    End With
+    Unload oForm
+End Sub
+
+Private Sub pvTestWheel()
+    Dim oForm           As frmWeak
+
+    '--- a wheel notch scrolls three rows, and the columns instead while
+    '--- Shift is down
+    Set oForm = New frmWeak
+    Load oForm
+    With oForm.GridEX1
+        .Columns.Add("A").Width = 1500
+        .Columns.Add("B").Width = 1500
+        .Columns.Add("C").Width = 1500
+        .DataMode = jgexUnbound
+        .ItemCount = 50
+        .Rebind
+        AssertEquals "Wheel: starts at the top", 1, .FirstItem
+        SendMessage .hWnd, WM_MOUSEWHEEL, -120 * &H10000, 0
+        AssertEquals "Wheel: a notch down scrolls three rows", 4, .FirstItem
+        SendMessage .hWnd, WM_MOUSEWHEEL, 120 * &H10000, 0
+        AssertEquals "Wheel: and one up brings them back", 1, .FirstItem
+        SendMessage .hWnd, WM_MOUSEWHEEL, -120 * &H10000 + MK_SHIFT, 0
+        AssertEquals "Wheel: shifted it walks the columns", 2, .LeftCol
+        AssertEquals "Wheel: leaving the rows alone", 1, .FirstItem
+        SendMessage .hWnd, WM_MOUSEWHEEL, 120 * &H10000 + MK_SHIFT, 0
+        AssertEquals "Wheel: and back", 1, .LeftCol
     End With
     Unload oForm
 End Sub

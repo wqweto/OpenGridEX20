@@ -539,6 +539,7 @@ Private Const CHECK_BOX_CLR_CUR         As Long = &H646464
 Private Const DIVIDER_GRAB_W            As Long = 3
 Private Const MIN_COL_W                 As Long = 10
 Private Const ROWSEL_ZONE_W             As Long = 5
+Private Const NEWROW_DIVIDER_H          As Long = 5
 Private Const DRAG_SCROLL_ID            As Long = 1
 Private Const DRAG_SCROLL_MS            As Long = 50
 
@@ -745,7 +746,6 @@ Public Property Get RowHeight() As Long
 End Property
 
 Public Property Let RowHeight(ByVal lValue As Long)
-    '--- an explicit height survives later font changes
     m_lRowHeight = ToPixels(lValue)
     m_bRowHeightSet = True
     pvInvalidate
@@ -1937,10 +1937,16 @@ Attribute Rebind.VB_Description = "Forces re-creation of the recordset."
     m_bWindowDirty = True
     m_oSelectedItems.Clear
     If RowCount > 0 Then
-        m_lRow = 1
         m_lFirstItem = 1
-        pvAddSel 1
-        m_lSelAnchor = 1
+        If pvNewRowBandH() > 0 Then
+            m_lRow = -1
+            m_lSelAnchor = -1
+            pvNewRowData
+        Else
+            m_lRow = 1
+            pvAddSel 1
+            m_lSelAnchor = 1
+        End If
     Else
         m_lRow = 0
         m_lFirstItem = 0
@@ -2548,6 +2554,9 @@ End Sub
 Private Sub pvSyncRowData()
     Dim oRowData        As JSRowData
 
+    If pvIsNewRow(m_lRow) Then
+        Exit Sub
+    End If
     Set oRowData = pvRowDataAt(m_lRow)
     If Not oRowData Is m_oRowData And DataChanged Then
         Err.Raise vbObjectError, , "Internal error: DataChanged=" & DataChanged
@@ -2574,7 +2583,7 @@ End Function
 Private Sub pvRecalcVisible()
     Dim lMax            As Long
 
-    lMax = m_pDataModel.RowCount - pvVisibleRows() + 1
+    lMax = pvScrollRowCount() - pvVisibleRows() + 1
     If lMax < 1 Then
         lMax = 1
     End If
@@ -2600,7 +2609,71 @@ Private Sub pvScrollCurrentToTop()
 End Sub
 
 Private Function pvIsGroupRow(ByVal lPos As Long) As Boolean
+    If lPos < 1 Then
+        Exit Function
+    End If
     pvIsGroupRow = (m_pDataModel.RowIndex(lPos) < 0)
+End Function
+
+Private Function pvNewRowShown() As Boolean
+    If m_bAllowAddNew Then
+        If m_eNewRowPos = jgexTop Then
+            pvNewRowShown = True
+        Else
+            pvNewRowShown = (m_oGroups.Count = 0)
+        End If
+    End If
+End Function
+
+Private Function pvNewRow() As Long
+    If pvNewRowShown() Then
+        If m_eNewRowPos = jgexTop Then
+            pvNewRow = -1
+        Else
+            pvNewRow = RowCount + 1
+        End If
+    End If
+End Function
+
+Private Function pvIsNewRow(ByVal lRow As Long) As Boolean
+    If lRow <> 0 Then
+        pvIsNewRow = (lRow = pvNewRow())
+    End If
+End Function
+
+Private Function pvNewRowBandH() As Long
+    If pvNewRowShown() And m_eNewRowPos = jgexTop Then
+        pvNewRowBandH = m_lRowHeight + NEWROW_DIVIDER_H
+    End If
+End Function
+
+Private Function pvRowTopAt(ByVal lRow As Long) As Long
+    If pvIsNewRow(lRow) And m_eNewRowPos = jgexTop Then
+        pvRowTopAt = pvRowsTop()
+    Else
+        pvRowTopAt = pvRowsTop() + pvNewRowBandH() + (lRow - m_lFirstItem) * m_lRowHeight
+    End If
+End Function
+
+Private Function pvRowAtY(ByVal lY As Long) As Long
+    Dim lTop            As Long
+
+    lTop = pvRowsTop()
+    If m_lRowHeight <= 0 Or lY < lTop Then
+        Exit Function
+    End If
+    If pvNewRowBandH() > 0 Then
+        If lY < lTop + m_lRowHeight Then
+            pvRowAtY = -1
+            Exit Function
+        End If
+        If lY < lTop + pvNewRowBandH() Then
+            '--- the divider is nobody's row
+            Exit Function
+        End If
+        lTop = lTop + pvNewRowBandH()
+    End If
+    pvRowAtY = m_lFirstItem + (lY - lTop) \ m_lRowHeight
 End Function
 
 Private Sub pvClearCol()
@@ -2629,7 +2702,7 @@ Private Function pvRowSelZoneAt(ByVal lX As Long, ByVal lY As Long) As Boolean
     If m_lRowHeight <= 0 Or lY < pvRowsTop() Then
         Exit Function
     End If
-    lRow = m_lFirstItem + (lY - pvRowsTop()) \ m_lRowHeight
+    lRow = pvRowAtY(lY)
     If lRow >= 1 And lRow <= RowCount Then
         pvRowSelZoneAt = Not pvIsGroupRow(lRow)
     End If
@@ -3007,12 +3080,33 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal hMemDC As Long, ByVal lY As Lon
     lRowTop = lY
     lRowsBottom = lY
     lRow = lFirst
+    If pvNewRowBandH() > 0 And m_lRowHeight > 0 Then
+        lBandTop = lRowTop - 1
+        If lBandTop < 0 Then
+            lBandTop = 0
+        End If
+        If pvNeedRepaint(uClip, lBandTop, lRowTop + pvNewRowBandH() - lBandTop) Then
+            pvBufferBand hMemDC, lBandTop, picGrid.ScaleWidth, lRowTop + pvNewRowBandH() - lBandTop
+            hPrevFont = pvSelectFont(hMemDC, m_oFont)
+            pvFillRect hMemDC, lHdrW + lTotalW, lRowTop, picGrid.ScaleWidth, lRowTop + m_lRowHeight, m_clrBackColorBkg
+            pvPaintDataRow hMemDC, -1, lRowTop, m_lRowHeight, lHdrW, lTotalW
+            If m_lRow = -1 And m_bGridFocus Then
+                pvPaintRowMarquee hMemDC, lRowTop, m_lRowHeight, lHdrW, lTotalW
+            End If
+            pvPaintRowRules hMemDC, -1, lRowTop - 1, m_lRowHeight + 1, lHdrW, vOrder
+            pvPaintNewRowDivider hMemDC, lRowTop + m_lRowHeight, pvRowHeaderWidth(), lHdrW + lTotalW - pvRowHeaderWidth()
+            pvBufferFlush hDC, hMemDC, lBandTop, picGrid.ScaleWidth, lRowTop + pvNewRowBandH() - lBandTop
+            Call SelectObject(hMemDC, hPrevFont)
+        End If
+        lRowTop = lRowTop + pvNewRowBandH()
+        lRowsBottom = lRowTop
+    End If
     Do While lRowTop < picGrid.ScaleHeight
         lRowH = m_lRowHeight
         If lRowH <= 0 Then
             Exit Do
         End If
-        If lRow > RowCount And Not m_bEmptyRows Then
+        If lRow > RowCount And Not m_bEmptyRows And Not pvIsNewRow(lRow) Then
             Exit Do
         End If
         lBandTop = lRowTop - 1
@@ -3022,12 +3116,16 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal hMemDC As Long, ByVal lY As Lon
         If lRow <= RowCount Then
             lPainted = lPainted + 1
             lRowsBottom = lRowTop + lRowH
+        ElseIf pvIsNewRow(lRow) Then
+            lRowsBottom = lRowTop + lRowH
         End If
         If pvNeedRepaint(uClip, lBandTop, lRowTop + lRowH - lBandTop) Then
             pvBufferBand hMemDC, lBandTop, picGrid.ScaleWidth, lRowTop + lRowH - lBandTop
             hPrevFont = pvSelectFont(hMemDC, m_oFont)
             pvFillRect hMemDC, lHdrW + lTotalW, lRowTop, picGrid.ScaleWidth, lRowTop + lRowH, m_clrBackColorBkg
-            If lRow > RowCount Then
+            If pvIsNewRow(lRow) Then
+                pvPaintDataRow hMemDC, lRow, lRowTop, lRowH, lHdrW, lTotalW
+            ElseIf lRow > RowCount Then
                 If m_bRowHeaders Then
                     pvFillRect hMemDC, 0, lRowTop, CHROME_COL_W, lRowTop + lRowH, m_clrBackColor
                     pvPaintRowHeader hMemDC, lRowTop, lRowH, CHROME_COL_W, False, EmptyRow:=True
@@ -3043,11 +3141,11 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal hMemDC As Long, ByVal lY As Lon
                     End If
                 End If
             ElseIf pvIsGroupRow(lRow) Then
-                pvPaintGroupRow hMemDC, lRow, lRowTop, lRowH, lHdrW + lTotalW, lY
+                pvPaintGroupRow hMemDC, lRow, lRowTop, lRowH, lHdrW + lTotalW, lY + pvNewRowBandH()
             Else
                 pvPaintDataRow hMemDC, lRow, lRowTop, lRowH, lHdrW, lTotalW
             End If
-            If lRow = m_lRow And lRow <= RowCount And m_bGridFocus Then
+            If lRow = m_lRow And (lRow <= RowCount Or pvIsNewRow(lRow)) And m_bGridFocus Then
                 pvPaintRowMarquee hMemDC, lRowTop, lRowH, lHdrW, lTotalW
             End If
             pvPaintRowRules hMemDC, lRow, lRowTop, lRowH, lHdrW, vOrder
@@ -3080,6 +3178,37 @@ Private Sub pvPaintRows(ByVal hDC As Long, ByVal hMemDC As Long, ByVal lY As Lon
     End If
 End Sub
 
+Private Sub pvPaintNewRowDivider(ByVal hDC As Long, ByVal lTop As Long, ByVal lHdrW As Long, ByVal lTotalW As Long)
+    Dim lRight          As Long
+
+    lRight = lHdrW + lTotalW
+    If lRight > picGrid.ScaleWidth Then
+        lRight = picGrid.ScaleWidth
+    End If
+    If lRight < picGrid.ScaleWidth Then
+        pvFillRect hDC, lRight, lTop, picGrid.ScaleWidth, lTop + NEWROW_DIVIDER_H, m_clrBackColorBkg
+    End If
+    Select Case m_eHeaderStyle
+    Case jgexHSNoBorder, jgexHSSingleFlat
+        pvFillRect hDC, lHdrW, lTop, lRight, lTop + 4, vbButtonFace
+        pvFillRect hDC, lRight - 1, lTop, lRight, lTop + 4, vb3DDKShadow
+        pvFillRect hDC, lHdrW, lTop + 4, lRight, lTop + 5, vb3DDKShadow
+    Case jgexHSSingle3D
+        pvFillRect hDC, lHdrW, lTop, lRight, lTop + 1, m_clrBackColor
+        pvFillRect hDC, lHdrW, lTop + 1, lRight, lTop + 4, vbButtonFace
+        pvFillRect hDC, lHdrW, lTop + 1, lHdrW + 1, lTop + 4, vb3DHighlight
+        pvFillRect hDC, lRight - 1, lTop, lRight, lTop + 4, vb3DShadow
+        pvFillRect hDC, lHdrW, lTop + 4, lRight, lTop + 5, vb3DDKShadow
+    Case Else
+        pvFillRect hDC, lHdrW, lTop, lRight, lTop + 3, m_clrBackColor
+        pvFillRect hDC, lHdrW + 1, lTop + 1, lRight, lTop + 3, vbButtonFace
+        pvFillRect hDC, lHdrW, lTop + 3, lRight, lTop + 4, vb3DShadow
+        pvFillRect hDC, lHdrW, lTop + 4, lRight, lTop + 5, vb3DDKShadow
+        pvFillRect hDC, lRight - 2, lTop, lRight - 1, lTop + 4, vb3DShadow
+        pvFillRect hDC, lRight - 1, lTop, lRight, lTop + 4, vb3DDKShadow
+    End Select
+End Sub
+
 Private Sub pvPaintRowRules(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, vOrder As Variant)
     Dim lIdx            As Long
     Dim lCum            As Long
@@ -3101,6 +3230,7 @@ Private Sub pvPaintRowRules(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop
 End Sub
 
 Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop As Long, ByVal lRowH As Long, ByVal lHdrW As Long, ByVal lTotalW As Long)
+    Dim oRowData        As JSRowData
     Dim bSelected       As Boolean
     Dim bCurrentRow     As Boolean
     Dim bSelOutline     As Boolean
@@ -3128,7 +3258,21 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
     Dim vOrder          As Variant
     Dim lIdx            As Long
 
+    Set oRowData = pvWindowRow(lRow)
+    If oRowData Is Nothing Then
+        If pvIsNewRow(lRow) And lRow = m_lRow Then
+            Set oRowData = m_oRowData
+        End If
+    End If
     bSelected = pvIsRowSelected(lRow) Or (m_lRow >= 1 And lRow = m_lRow And Not m_bCurRowDeselected)
+    If pvIsNewRow(lRow) And lRow = m_lRow Then
+        If m_oGroups.Count = 0 Then
+            bSelected = True
+        Else
+            bSelected = False
+            bSelOutline = True
+        End If
+    End If
     If bSelected And Not m_bGridFocus Then
         Select Case m_eHideSelection
         Case jgexHideSelection
@@ -3163,8 +3307,12 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         pvPaintRowHeader hDC, lRowTop, lRowH, CHROME_COL_W, (lRow = m_lRow)
     End If
     If pvGroupIndent() > 0 Then
-        pvFillRect hDC, pvRowHeaderWidth(), lRowTop, lHdrW, lRowTop + lRowH, m_clrBackColorRowGroup
-        pvPaintIndentRules hDC, lRowTop, lRowH, pvGroupIndent()
+        If pvIsNewRow(lRow) Then
+            pvFillRect hDC, pvRowHeaderWidth(), lRowTop, lHdrW, lRowTop + lRowH, m_clrBackColor
+        Else
+            pvFillRect hDC, pvRowHeaderWidth(), lRowTop, lHdrW, lRowTop + lRowH, m_clrBackColorRowGroup
+            pvPaintIndentRules hDC, lRowTop, lRowH, pvGroupIndent()
+        End If
     End If
     If m_eGridLines = jgexGLBoth Or m_eGridLines = jgexGLVertical Then
         lVLine = 1
@@ -3183,7 +3331,7 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
     End If
     clrHLine = m_clrGridLinesColor
     lPenH = pvPenStyle()
-    If lRow = RowCount Then
+    If lRow = RowCount And Not pvIsNewRow(RowCount + 1) Or pvIsNewRow(lRow) And lRow > RowCount Then
         clrHLine = vb3DDKShadow
         lPenH = PS_SOLID
     End If
@@ -3219,10 +3367,10 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
         End If
         If oCol.ColumnType = jgexCheckBox Then
             pvPaintCheckBox hDC, lX + (lW - CHECK_BOX_W) \ 2 - 1, lRowTop + (pvRowContentH(lRowH) - CHECK_BOX_H) \ 2, _
-                pvIsChecked(pvWindowRow(lRow), oCol.Index), (bCurrentRow And m_lCol = lPos)
+                pvIsChecked(oRowData, oCol.Index), (bCurrentRow And m_lCol = lPos)
             sText = vbNullString
         Else
-            sText = pvCellText(pvWindowRow(lRow), oCol)
+            sText = pvCellText(oRowData, oCol)
         End If
         If LenB(sText) <> 0 Then
             lClipR = lX + lW
@@ -3239,14 +3387,17 @@ Private Sub pvPaintDataRow(ByVal hDC As Long, ByVal lRow As Long, ByVal lRowTop 
     If bHLine And lLineR > lX Then
         pvLine hDC, lX, lRowTop + lRowH - 1, lLineR, lRowTop + lRowH - 1, clrHLine, lPenH, DashAnchor:=lLineR - 1, GapColor:=clrHGap
     End If
+    If bHLine And pvIsNewRow(lRow) And lHdrW > pvRowHeaderWidth() Then
+        pvLine hDC, pvRowHeaderWidth(), lRowTop + lRowH - 1, lHdrW, lRowTop + lRowH - 1, clrHLine, lPenH, DashAnchor:=lLineR - 1, GapColor:=clrHGap
+    End If
     If bSelOutline Then
         lOutR = lHdrW + lTotalW - 2
         If lOutR > picGrid.ScaleWidth - 1 Then
             lOutR = picGrid.ScaleWidth - 1
         End If
-        pvFillRect hDC, lHdrW, lRowTop, lOutR + 1, lRowTop + 1, vbHighlight
-        pvFillRect hDC, lHdrW, lRowTop + pvRowContentH(lRowH) - 1, lOutR + 1, lRowTop + pvRowContentH(lRowH), vbHighlight
-        pvFillRect hDC, lHdrW, lRowTop, lHdrW + 1, lRowTop + pvRowContentH(lRowH), vbHighlight
+        pvFillRect hDC, pvRowHeaderWidth(), lRowTop, lOutR + 1, lRowTop + 1, vbHighlight
+        pvFillRect hDC, pvRowHeaderWidth(), lRowTop + pvRowContentH(lRowH) - 1, lOutR + 1, lRowTop + pvRowContentH(lRowH), vbHighlight
+        pvFillRect hDC, pvRowHeaderWidth(), lRowTop, pvRowHeaderWidth() + 1, lRowTop + pvRowContentH(lRowH), vbHighlight
         pvFillRect hDC, lOutR, lRowTop, lOutR + 1, lRowTop + pvRowContentH(lRowH), vbHighlight
     End If
 End Sub
@@ -3273,6 +3424,8 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
     lLeft = lHdrW
     If bGroupRow Then
         lLeft = 0
+    ElseIf pvIsNewRow(m_lRow) And pvGroupIndent() > 0 Then
+        lLeft = pvRowHeaderWidth()
     End If
     lRight = lHdrW + lTotalW - 1
     If Not bGroupRow Then
@@ -3298,9 +3451,13 @@ Private Sub pvPaintRowMarquee(ByVal hDC As Long, ByVal lRowTop As Long, ByVal lR
         hPrevBrush = SelectObject(hDC, hBrush)
         lCum = lLeft
         vOrder = pvColOrder()
-        For lIdx = 0 To pvOrderMax(vOrder)
+        For lIdx = -1 To pvOrderMax(vOrder)
             lW = 0
-            If bGroupRow Then
+            If lIdx = -1 Then
+                If lLeft < lHdrW Then
+                    lW = lHdrW - lLeft
+                End If
+            ElseIf bGroupRow Then
                 If lIdx = 0 Then
                     lW = lRight - lLeft + 1
                 End If
@@ -3808,10 +3965,17 @@ End Function
 
 Private Function pvVisibleRows() As Long
     If m_lRowHeight > 0 Then
-        pvVisibleRows = (picGrid.ScaleHeight - pvTopHeight()) \ m_lRowHeight
+        pvVisibleRows = (picGrid.ScaleHeight - pvTopHeight() - pvNewRowBandH()) \ m_lRowHeight
     End If
     If pvVisibleRows < 1 Then
         pvVisibleRows = 1
+    End If
+End Function
+
+Private Function pvScrollRowCount() As Long
+    pvScrollRowCount = m_pDataModel.RowCount
+    If pvNewRowShown() And m_eNewRowPos = jgexBottom Then
+        pvScrollRowCount = pvScrollRowCount + 1
     End If
 End Function
 
@@ -4109,6 +4273,7 @@ Private Sub pvUpdateScrollBars()
     Dim lNewStyle       As Long
     Dim bNeedV          As Boolean
     Dim bNeedH          As Boolean
+    Dim lScrollRows     As Long
     Dim uSi             As SCROLLINFO
 
     If m_bScrollUpdating Then
@@ -4130,8 +4295,11 @@ Private Sub pvUpdateScrollBars()
     If m_bRecordNavigator Then
         lAvailH = lAvailH - GetSystemMetrics(SM_CYHSCROLL)
     End If
+    lAvailH = lAvailH - pvNewRowBandH()
+    pvSyncProjection
+    lScrollRows = pvScrollRowCount()
     lAvailW = lFullW
-    bNeedV = (m_lRowHeight > 0 And RowCount > 0 And RowCount * m_lRowHeight > lAvailH)
+    bNeedV = (m_lRowHeight > 0 And lScrollRows > 0 And lScrollRows * m_lRowHeight > lAvailH)
     bNeedH = (lColsW > lAvailW)
     If bNeedV Then
         lAvailW = lFullW - GetSystemMetrics(SM_CXVSCROLL)
@@ -4139,7 +4307,7 @@ Private Sub pvUpdateScrollBars()
     End If
     If bNeedH And Not m_bRecordNavigator Then
         lAvailH = lAvailH - GetSystemMetrics(SM_CYHSCROLL)
-        bNeedV = (m_lRowHeight > 0 And RowCount > 0 And RowCount * m_lRowHeight > lAvailH)
+        bNeedV = (m_lRowHeight > 0 And lScrollRows > 0 And lScrollRows * m_lRowHeight > lAvailH)
         If bNeedV Then
             lAvailW = lFullW - GetSystemMetrics(SM_CXVSCROLL)
         End If
@@ -4157,11 +4325,11 @@ Private Sub pvUpdateScrollBars()
         With uSi
             .cbSize = Len(uSi)
             .fMask = SIF_RANGE Or SIF_PAGE Or SIF_POS
-            .nMax = RowCount - 1
+            .nMax = lScrollRows - 1
             If m_lRowHeight > 0 Then
                 .nPage = lAvailH \ m_lRowHeight
             End If
-            m_lFirstItem = Clamp(m_lFirstItem, 1, RowCount - .nPage + 1)
+            m_lFirstItem = Clamp(m_lFirstItem, 1, lScrollRows - .nPage + 1)
             .nPos = m_lFirstItem - 1
         End With
         Call SetScrollInfo(picGrid.hWnd, SB_VERT, uSi, 1)
@@ -4516,7 +4684,14 @@ Attribute EditSubclassProc.VB_MemberFlags = "40"
             Case vbKeyReturn
                 pvEditEnd
                 pvEditCommit
-                If m_lRow < RowCount Then
+                If pvIsNewRow(m_lRow) Then
+                    pvNavigate m_pDataModel.GetRowPosition(m_oRowData.frInitRowIndex), m_lCol, 0, False
+                    m_oSelectedItems.Clear
+                    RaiseEvent SelectionChange
+                    pvSetRow pvNewRow()
+                    pvNewRowData
+                    pvInvalidate SkipScroll:=True
+                ElseIf m_lRow < RowCount Then
                     pvNavigate m_lRow + 1, m_lCol, 0, False
                 End If
                 Handled = True
@@ -4529,6 +4704,11 @@ Attribute EditSubclassProc.VB_MemberFlags = "40"
         RaiseEvent KeyPress(LoWordInt(wParam))
     Case WM_KEYUP
         RaiseEvent KeyUp(LoWordInt(wParam), pvShiftState())
+    Case WM_MOUSEWHEEL
+        If (GetWindowLong(m_hWndEdit, GWL_STYLE) And ES_MULTILINE) = 0 Then
+            Call SendMessage(picGrid.hWnd, WM_MOUSEWHEEL, wParam, lParam)
+            Handled = True
+        End If
     Case WM_SETFOCUS
         If Not m_bGridFocus Then
             m_bGridFocus = True
@@ -4617,6 +4797,9 @@ Attribute ControlSubclassProc.VB_MemberFlags = "40"
         End If
     Case WM_VSCROLL
         pvOnVScroll LoWord(wParam), HiWord(wParam)
+        Handled = True
+    Case WM_MOUSEWHEEL
+        pvOnMouseWheel wParam
         Handled = True
     Case WM_KEYDOWN
         nKeyCode = LoWordInt(wParam)
@@ -4763,7 +4946,7 @@ Private Sub pvOnMouseDrag(ByVal lY As Long)
     If lY < lTopHdr Then
         Exit Sub
     End If
-    lRow = pvClampRow(m_lFirstItem + (lY - lTopHdr) \ m_lRowHeight)
+    lRow = pvClampRow(pvRowAtY(lY))
     If lRow <> m_lRow Then
         pvSetRow lRow
         pvSetRangeSel m_lSelAnchor, lRow
@@ -5292,9 +5475,16 @@ Private Function pvEditInit(ByVal lPos As Long, ByVal lCol As Long, ByVal bSelec
     If Not m_bAllowEdit Or m_bEditing Then
         Exit Function
     End If
-    lRowIndex = m_pDataModel.RowIndex(lPos)
-    If lRowIndex <= 0 Then
-        Exit Function
+    If pvIsNewRow(lPos) Then
+        If m_oRowData Is Nothing Then
+            pvNewRowData
+        End If
+        lRowIndex = pvNewRow()
+    Else
+        lRowIndex = m_pDataModel.RowIndex(lPos)
+        If lRowIndex <= 0 Then
+            Exit Function
+        End If
     End If
     Set oCol = pvColByPosition(lCol)
     If oCol Is Nothing Then
@@ -5451,6 +5641,10 @@ Private Sub pvEditCommit()
     m_bInPendCommit = True
     m_pDataModel.UpdateRowData m_oRowData
     m_bInPendCommit = False
+    If m_lItemCount < m_pDataModel.ItemCount Then
+        m_lItemCount = m_pDataModel.ItemCount
+        pvUpdateScrollBars
+    End If
     m_oRowData.frAllowUpdate = False
     pvRaiseRowFormat m_oRowData
     RaiseEvent AfterUpdate
@@ -5458,6 +5652,12 @@ End Sub
 
 Private Sub pvEditCancel()
     If Not DataChanged Then
+        Exit Sub
+    End If
+    If pvIsNewRow(m_lRow) Then
+        pvNewRowData
+        pvInvalidate SkipScroll:=True
+        pvRaiseRowFormat m_oRowData
         Exit Sub
     End If
     Set m_oRowData = m_pDataModel.GetRowData(m_lRow)
@@ -5556,10 +5756,13 @@ Private Function pvCellRect(ByVal lPos As Long, ByVal lColIndex As Long, lX As L
     Dim oItem           As JSColumn
     Dim lCum            As Long
 
-    If m_lRowHeight <= 0 Or lPos < m_lFirstItem Then
+    If m_lRowHeight <= 0 Then
         Exit Function
     End If
-    lY = pvRowsTop() + (lPos - m_lFirstItem) * m_lRowHeight
+    If lPos < m_lFirstItem And Not pvIsNewRow(lPos) Then
+        Exit Function
+    End If
+    lY = pvRowTopAt(lPos)
     lCum = pvBlockLeft()
     vOrder = pvColOrder()
     For lIdx = 0 To pvOrderMax(vOrder)
@@ -5586,9 +5789,13 @@ Private Function pvEditorRect(lX As Long, lTop As Long, lW As Long, lH As Long) 
     If m_oSelectedItems.Count > 1 Then
         Exit Function
     End If
-    lPos = m_pDataModel.GetRowPosition(m_lEditRow)
-    If lPos < 1 Then
-        Exit Function
+    If pvIsNewRow(m_lEditRow) Then
+        lPos = m_lEditRow
+    Else
+        lPos = m_pDataModel.GetRowPosition(m_lEditRow)
+        If lPos < 1 Then
+            Exit Function
+        End If
     End If
     If Not pvCellRect(lPos, m_lEditCol, lX, lY, lCellW) Then
         Exit Function
@@ -5705,8 +5912,18 @@ Private Sub pvOnLButtonDown(ByVal lX As Long, ByVal lY As Long, ByVal lShift As 
             pvInvalidateHeaders
         End If
     ElseIf m_lRowHeight > 0 Then
-        lRow = m_lFirstItem + (lY - lTopHdr) \ m_lRowHeight
-        If lRow >= 1 And lRow <= RowCount Then
+        lRow = pvRowAtY(lY)
+        If pvIsNewRow(lRow) Then
+            lPos = pvColAtX(lX, oCol)
+            If lPos >= 1 Then
+                If m_bAllowEdit And oCol.Selectable Then
+                    pvNavigate lRow, lPos, lShift, False
+                    If (lShift And (vbCtrlMask Or vbShiftMask)) = 0 Then
+                        m_bClickOpenedEdit = pvEditInit(lRow, lPos, False, lX, lY)
+                    End If
+                End If
+            End If
+        ElseIf lRow >= 1 And lRow <= RowCount Then
             m_bDragSelect = True
             If pvIsGroupRow(lRow) Then
                 pvNavigate lRow, 0, lShift, (lShift And vbCtrlMask) <> 0
@@ -5780,7 +5997,7 @@ Private Function pvGroupRowDblClk(ByVal lY As Long) As Boolean
     If m_lRowHeight <= 0 Or lY < pvRowsTop() Then
         Exit Function
     End If
-    lRow = m_lFirstItem + (lY - pvRowsTop()) \ m_lRowHeight
+    lRow = pvRowAtY(lY)
     If lRow < 1 Or lRow > RowCount Then
         Exit Function
     End If
@@ -5803,12 +6020,24 @@ Private Sub pvOnKeyDown(ByVal lKeyCode As Long, ByVal lShift As Long)
 
     Select Case lKeyCode
     Case vbKeyDown, vbKeyReturn
-        If m_lRow < RowCount Then
+        If pvIsNewRow(m_lRow) Then
+            If m_eNewRowPos = jgexTop Then
+                pvNavigate 1, m_lCol, lShift, False
+            End If
+        ElseIf m_lRow < RowCount Then
+            pvNavigate m_lRow + 1, m_lCol, lShift, False
+        ElseIf pvIsNewRow(m_lRow + 1) Then
             pvNavigate m_lRow + 1, m_lCol, lShift, False
         End If
     Case vbKeyUp
-        If m_lRow > 1 Then
+        If pvIsNewRow(m_lRow) Then
+            If m_eNewRowPos = jgexBottom Then
+                pvNavigate RowCount, m_lCol, lShift, False
+            End If
+        ElseIf m_lRow > 1 Then
             pvNavigate m_lRow - 1, m_lCol, lShift, False
+        ElseIf m_lRow = 1 And pvIsNewRow(-1) Then
+            pvNavigate -1, m_lCol, lShift, False
         End If
     Case vbKeyRight
         If pvIsGroupRow(m_lRow) Then
@@ -5940,7 +6169,9 @@ Private Sub pvSetRow(ByVal lValue As Long)
         lLastRow = m_lRow
         m_lRow = lValue
         pvSyncRowData
-        If m_pDataModel.RowIndex(m_lRow) <> 0 Then
+        If pvIsNewRow(m_lRow) Then
+            m_lHoldRowIndex = 0
+        ElseIf m_pDataModel.RowIndex(m_lRow) <> 0 Then
             m_lHoldRowIndex = m_pDataModel.RowIndex(m_lRow)
         End If
         pvInvalidate SkipScroll:=True
@@ -5950,18 +6181,28 @@ End Sub
 
 Private Sub pvNavigate(ByVal lRow As Long, ByVal lCol As Long, ByVal lShift As Long, ByVal bCtrlToggle As Boolean)
     Dim bRowChanging    As Boolean
+    Dim bNewRow         As Boolean
 
+    bNewRow = (lRow <> m_lRow And pvIsNewRow(lRow))
     bRowChanging = (lRow <> m_lRow And lRow >= 1 And lRow <= RowCount)
     pvEditEnd
-    If bRowChanging Then
+    If bRowChanging Or bNewRow Then
         pvEditCommit
     End If
-    If bRowChanging Then
+    If bNewRow Then
+        pvNewRowData
+        pvRaiseRowFormat m_oRowData
+        m_oSelectedItems.Clear
+        RaiseEvent SelectionChange
+        pvSetRow lRow
+    ElseIf bRowChanging Then
         If Not pvIsGroupRow(lRow) Then
             pvRaiseRowFormat pvRowDataAt(lRow)
         End If
     End If
-    If lRow >= 1 And lRow <= RowCount Then
+    If bNewRow Then
+        '--- handled above
+    ElseIf lRow >= 1 And lRow <= RowCount Then
         pvUpdateSelection lRow, lShift, bCtrlToggle
         pvSetRow lRow
     Else
@@ -5971,6 +6212,13 @@ Private Sub pvNavigate(ByVal lRow As Long, ByVal lCol As Long, ByVal lShift As L
         Col = lCol
     End If
     EnsureVisible m_lRow
+End Sub
+
+Private Sub pvNewRowData()
+    Set m_oRowData = New JSRowData
+    m_oRowData.frReset m_oColumns.Count
+    m_oRowData.frInitModel m_pDataModel, m_pDataModel.ItemCount + 1, jgexRowTypeRecord, 0
+    pvSetDisplayValues m_oRowData
 End Sub
 
 Private Sub pvUpdateSelection(ByVal lRow As Long, ByVal lShift As Long, ByVal bCtrlToggle As Boolean)
@@ -6050,6 +6298,18 @@ Private Sub pvSetRangeSel(ByVal lFrom As Long, ByVal lTo As Long)
     Next
     pvInvalidate SkipScroll:=True
     RaiseEvent SelectionChange
+End Sub
+
+Private Sub pvOnMouseWheel(ByVal wParam As Long)
+    Const WHEEL_DELTA   As Long = 120
+    Dim lDelta          As Long
+
+    lDelta = HiWordInt(wParam)
+    If (LoWord(wParam) And MK_SHIFT) <> 0 Then
+        LeftCol = m_lLeftCol - lDelta \ WHEEL_DELTA
+    Else
+        FirstItem = m_lFirstItem - (lDelta \ WHEEL_DELTA) * 3
+    End If
 End Sub
 
 Private Sub pvOnVScroll(ByVal lCode As Long, ByVal lPos As Long)

@@ -537,7 +537,7 @@ Private Sub IDataModel_UpdateRowData(oData As JSRowData)
 
     On Error GoTo EH
     lRowIndex = oData.RowIndex
-    If lRowIndex < 0 Then
+    If lRowIndex < 0 Or lRowIndex > m_uState.ItemCount Then
         Set oNewBookmark = New JSRetVariant
         m_pOwner.frRaiseUnboundAddNew oNewBookmark, oData
         pvEnsureCapacity m_uState.ItemCount + 1
@@ -576,6 +576,12 @@ Private Sub IDataModel_Delete(ByVal lRowPosition As Long)
     If lRowIndex <= 0 Then
         Exit Sub
     End If
+    '--- probed with Del in row mode: the original deletes the unbound record
+    '--- internally and raises no UnboundDelete for it -- the veto pair on the
+    '--- control's surface is all the client hears
+    '--- records are indexed by RowIndex itself, so a delete closes the hole
+    '--- and everything above it renumbers -- which is exactly what the
+    '--- original does, and what invalidates the bookmark map wholesale
     For lIdx = lRowIndex To m_uState.ItemCount - 1
         m_aRecord(lIdx) = m_aRecord(lIdx + 1)
     Next
