@@ -697,7 +697,7 @@ Private m_hBufBmp                   As Long
 Private m_hBufOldBmp                As Long
 Private m_lBufLastY                 As Long
 Private m_lBufLastRow               As Long
-Private m_uIPAO                     As IPAOHookStruct
+Private m_uIPAO                     As UcsIPAOHook
 
 Private Type UcsNavLayout
     BandTop                 As Long

@@ -13,11 +13,11 @@ Private Const MODULE_NAME As String = "mdIPAO"
 ' Light-weight object definition
 '=========================================================================
 
-Public Type IPAOHookStruct
-    lpVTable        As Long     'VTable pointer
-    IPAORealPtr     As Long     'Weak-ref for forwarding calls
-    CtlPtr          As Long     'Weak-ref for making Friend calls
-    ThisPtr         As Long
+Public Type UcsIPAOHook
+    lpVTable        As LongPtr
+    IPAORealPtr     As LongPtr
+    CtlPtr          As LongPtr
+    ThisPtr         As LongPtr
     CtlName         As String
 End Type
 
@@ -25,15 +25,10 @@ End Type
 ' API
 '=========================================================================
 
-'--- for thunks
-Private Const MEM_COMMIT                    As Long = &H1000
-Private Const PAGE_EXECUTE_READWRITE        As Long = &H40
-Private Const SIGN_BIT                      As Long = &H80000000
-
+Private Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (Destination As Any, Source As Any, ByVal Length As LongPtr)
 Private Declare Function IsEqualGUID Lib "ole32" (iid1 As Any, iid2 As Any) As Long
-Private Declare Function vbaObjSetAddref Lib "msvbvm60" Alias "__vbaObjSetAddref" (oDest As Any, ByVal lSrcPtr As Long) As Long
-Private Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (Destination As Any, Source As Any, ByVal Length As Long)
-Private Declare Function VirtualAlloc Lib "kernel32" (ByVal lpAddress As Long, ByVal dwSize As Long, ByVal flAllocationType As Long, ByVal flProtect As Long) As Long
+Private Declare Function vbaObjSetAddref Lib "msvbvm60" Alias "__vbaObjSetAddref" (oDest As Any, ByVal lSrcPtr As LongPtr) As Long
+Private Declare Function CoTaskMemAlloc Lib "ole32" (ByVal cb As Long) As LongPtr
 
 Private Type VBGUID
     Data1           As Long
@@ -42,20 +37,20 @@ Private Type VBGUID
     Data4(0 To 7)   As Byte
 End Type
 
-Private Type UcsIPAOHookVTable
-    VTable(0 To 9)  As Long
-End Type
-
 '=========================================================================
 ' Constants and member variables
 '=========================================================================
 
-'Private Const S_FALSE                       As Long = 1
-Private Const S_OK                          As Long = 0
-Private Const NULL_PTR                      As Long = 0
+Private Const S_OK                      As Long = 0
+Private Const NULL_PTR                  As Long = 0
 
-Private IID_IOleInPlaceActiveObject     As VBGUID
-Private m_uVTable                       As UcsIPAOHookVTable
+Private IID_IOleInPlaceActiveObject As VBGUID
+Private m_uVTable                   As UcsIPAOHookVTable
+Private m_lpVTable                  As LongPtr
+
+Private Type UcsIPAOHookVTable
+    VTable(0 To 9)  As LongPtr
+End Type
 
 '=========================================================================
 ' Error handling
@@ -73,14 +68,14 @@ End Sub
 ' Functions
 '=========================================================================
 
-Public Sub InitIPAO(IPAOHookStruct As IPAOHookStruct, oCtl As Object)
+Public Sub InitIPAO(uHook As UcsIPAOHook, oCtl As Object)
     Const FUNC_NAME     As String = "InitIPAO"
     Dim oIPAOReal       As IOleInPlaceActiveObject
     Dim oExt            As VBControlExtender
     
     On Error GoTo EH
     Set oExt = GetExtendedControl(oCtl)
-    With IPAOHookStruct
+    With uHook
         If Not oExt Is Nothing Then
             .CtlName = TypeName(oExt.Parent) & "." & oExt.Name
         End If
@@ -88,66 +83,62 @@ Public Sub InitIPAO(IPAOHookStruct As IPAOHookStruct, oCtl As Object)
         .IPAORealPtr = ObjPtr(oIPAOReal)
         .CtlPtr = ObjPtr(oCtl)
         .lpVTable = pvGetVTable
-        .ThisPtr = VarPtr(IPAOHookStruct)
+        .ThisPtr = VarPtr(uHook)
     End With
     Exit Sub
 EH:
-    RaiseError FUNC_NAME & "(IPAOHookStruct.CtlName=" & IPAOHookStruct.CtlName & ")"
+    RaiseError FUNC_NAME & "(uHook.CtlName=" & uHook.CtlName & ")"
 End Sub
 
-Public Sub TerminateIPAO(IPAOHookStruct As IPAOHookStruct)
+Public Sub TerminateIPAO(uHook As UcsIPAOHook)
     Const FUNC_NAME     As String = "TerminateIPAO"
-    Dim oIPAOReal       As IOleInPlaceActiveObject
-    Dim oCtl            As Object
     
     On Error GoTo EH
-    If IPAOHookStruct.ThisPtr = 0 Then
+    If uHook.ThisPtr = 0 Then
         Exit Sub
     End If
-    With IPAOHookStruct
+    With uHook
         If .IPAORealPtr <> 0 Then
-            Set oIPAOReal = pvToIOleIPAO(.IPAORealPtr)
-            Set oCtl = pvToObject(.CtlPtr)
             pvSetIPAO .CtlPtr, 0
             .IPAORealPtr = 0
             .CtlPtr = 0
-            Set oIPAOReal = Nothing
-            Set oCtl = Nothing
         End If
         .ThisPtr = 0
     End With
     Exit Sub
 EH:
-    RaiseError FUNC_NAME & "(IPAOHookStruct.CtlName=" & IPAOHookStruct.CtlName & ")"
+    RaiseError FUNC_NAME & "(uHook.CtlName=" & uHook.CtlName & ")"
 End Sub
 
-Public Sub SetIPAO(IPAOHookStruct As IPAOHookStruct)
+Public Sub SetIPAO(uHook As UcsIPAOHook)
     Const FUNC_NAME     As String = "SetIPAO"
     
     On Error GoTo EH
-    If IPAOHookStruct.ThisPtr = 0 Then
+    If uHook.ThisPtr = 0 Then
         Exit Sub
     End If
-    pvSetIPAO IPAOHookStruct.CtlPtr, IPAOHookStruct.ThisPtr
+    pvSetIPAO uHook.CtlPtr, uHook.ThisPtr
     Exit Sub
 EH:
-    RaiseError FUNC_NAME & "(IPAOHookStruct.CtlName=" & IPAOHookStruct.CtlName & ")"
+    RaiseError FUNC_NAME & "(uHook.CtlName=" & uHook.CtlName & ")"
 End Sub
 
-Public Sub RestoreIPAO(IPAOHookStruct As IPAOHookStruct)
+Public Sub RestoreIPAO(uHook As UcsIPAOHook)
     Const FUNC_NAME     As String = "RestoreIPAO"
     
     On Error GoTo EH
-    If IPAOHookStruct.ThisPtr = 0 Then
+    If uHook.ThisPtr = 0 Then
         Exit Sub
     End If
-    pvSetIPAO IPAOHookStruct.CtlPtr, IPAOHookStruct.IPAORealPtr
+    pvSetIPAO uHook.CtlPtr, uHook.IPAORealPtr
     Exit Sub
 EH:
-    RaiseError FUNC_NAME & "(IPAOHookStruct.CtlName=" & IPAOHookStruct.CtlName & ")"
+    RaiseError FUNC_NAME & "(uHook.CtlName=" & uHook.CtlName & ")"
 End Sub
 
-Private Sub pvSetIPAO(ByVal lCtlPtr As Long, ByVal pvActiveObj As Long)
+'= private =================================================================
+
+Private Sub pvSetIPAO(ByVal lCtlPtr As LongPtr, ByVal lActiveObjPtr As LongPtr)
     Const FUNC_NAME         As String = "pvSetIPAO"
     Dim oCtl                As Object
     Dim pOleObject          As IOleObject
@@ -163,39 +154,45 @@ Private Sub pvSetIPAO(ByVal lCtlPtr As Long, ByVal pvActiveObj As Long)
         Exit Sub
     End If
     Set oCtl = pvToObject(lCtlPtr)
-    '--- moje client site da e not available
-    If TypeOf oCtl Is IOleObject Then
-        Set pOleObject = oCtl
-        If pOleObject.GetClientSite(pOleInPlaceSite) = S_OK And Not pOleInPlaceSite Is Nothing Then
-            '--- note: moje da grymne s Access Violation
-            On Error Resume Next '--- checked
-            pOleInPlaceSite.GetWindowContext pOleInPlaceFrame, pOleInPlaceUIWindow, VarPtr(rcPos), VarPtr(rcClip), VarPtr(uFrameInfo)
-            On Error GoTo EH
-            If Not pOleInPlaceFrame Is Nothing Then
-                pOleInPlaceFrame.SetActiveObject pvActiveObj, vbNullString
-            End If
-            If Not pOleInPlaceUIWindow Is Nothing Then '-- And Not m_bMouseActivate
-                pOleInPlaceUIWindow.SetActiveObject pvActiveObj, vbNullString
-            End If
-        End If
+    If Not TypeOf oCtl Is IOleObject Then
+        Exit Sub
+    End If
+    Set pOleObject = oCtl
+    If pOleObject.GetClientSite(pOleInPlaceSite) <> S_OK Then
+        Exit Sub
+    End If
+    If pOleInPlaceSite Is Nothing Then
+        Exit Sub
+    End If
+    On Error Resume Next '--- checked
+    pOleInPlaceSite.GetWindowContext pOleInPlaceFrame, pOleInPlaceUIWindow, VarPtr(rcPos), VarPtr(rcClip), VarPtr(uFrameInfo)
+    On Error GoTo EH
+    If Not pOleInPlaceFrame Is Nothing Then
+        pOleInPlaceFrame.SetActiveObject lActiveObjPtr, vbNullString
+    End If
+    If Not pOleInPlaceUIWindow Is Nothing Then
+        pOleInPlaceUIWindow.SetActiveObject lActiveObjPtr, vbNullString
     End If
     Exit Sub
 EH:
     RaiseError FUNC_NAME
 End Sub
 
-' = private =================================================================
-
 Private Function pvGetVTable() As Long
     Dim STR_RELEASE_THUNK       As String: STR_RELEASE_THUNK = "i1QkBItCBIsIUP9RCMIEAA==" ' 13.5.2020 20:15:19
     Const RELEASE_THUNK_SIZE    As Long = 16
-
-    ' Set up the vTable for the interface and return a pointer to it
-    With m_uVTable
-        If .VTable(0) = 0 Then
+    
+    If m_lpVTable = 0 Then
+        '--- init guid
+        With IID_IOleInPlaceActiveObject
+           .Data1 = &H117
+           .Data4(0) = &HC0
+           .Data4(7) = &H46
+        End With
+        With m_uVTable
             .VTable(0) = VBA.CLng(AddressOf QueryInterface)
             .VTable(1) = VBA.CLng(AddressOf AddRef)
-            .VTable(2) = pvThunkAllocate(STR_RELEASE_THUNK, RELEASE_THUNK_SIZE)
+            .VTable(2) = ThunkAllocate(STR_RELEASE_THUNK, RELEASE_THUNK_SIZE)
             .VTable(3) = VBA.CLng(AddressOf GetWindow)
             .VTable(4) = VBA.CLng(AddressOf ContextSensitiveHelp)
             .VTable(5) = VBA.CLng(AddressOf TranslateAccelerator)
@@ -203,60 +200,48 @@ Private Function pvGetVTable() As Long
             .VTable(7) = VBA.CLng(AddressOf OnDocWindowActivate)
             .VTable(8) = VBA.CLng(AddressOf ResizeBorder)
             .VTable(9) = VBA.CLng(AddressOf EnableModeless)
-            '--- init guid
-            With IID_IOleInPlaceActiveObject
-               .Data1 = &H117
-               .Data4(0) = &HC0
-               .Data4(7) = &H46
-            End With
-        End If
-        pvGetVTable = VarPtr(.VTable(0))
-    End With
+        End With
+        m_lpVTable = CoTaskMemAlloc(LenB(m_uVTable))
+        Call CopyMemory(ByVal m_lpVTable, m_uVTable, LenB(m_uVTable))
+    End If
+    pvGetVTable = m_lpVTable
 End Function
 
-Private Function pvToObject(ByVal lPtr As Long) As Object
+Private Function pvToObject(ByVal lPtr As LongPtr) As Object
     Call vbaObjSetAddref(pvToObject, lPtr)
 End Function
 
-Private Function pvToIOleIPAO(ByVal lPtr As Long) As IOleInPlaceActiveObject
+Private Function pvToIOleIPAO(ByVal lPtr As LongPtr) As IOleInPlaceActiveObject
     Call vbaObjSetAddref(pvToIOleIPAO, lPtr)
 End Function
 
-Private Function pvThunkAllocate(sText As String, Optional ByVal Size As Long) As Long
-    Static Map(0 To &H3FF) As Long
-    Dim baInput()       As Byte
-    Dim lIdx            As Long
-    Dim lChar           As Long
-    Dim lPtr            As Long
+Private Function GetExtendedControl(oCtl As IUnknown) As VBControlExtender
+    Const FUNC_NAME     As String = "GetExtendedControl"
+    Dim pOleObject      As IOleObject
+    Dim pOleControlSite As IOleControlSite
     
-    pvThunkAllocate = VirtualAlloc(0, IIf(Size > 0, Size, (Len(sText) \ 4) * 3), MEM_COMMIT, PAGE_EXECUTE_READWRITE)
-    If pvThunkAllocate = 0 Then
+    On Error GoTo EH
+    If oCtl Is Nothing Then
         Exit Function
     End If
-    '--- init decoding maps
-    If Map(65) = 0 Then
-        baInput = StrConv("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/", vbFromUnicode)
-        For lIdx = 0 To UBound(baInput)
-            lChar = baInput(lIdx)
-            Map(&H0 + lChar) = lIdx * (2 ^ 2)
-            Map(&H100 + lChar) = (lIdx And &H30) \ (2 ^ 4) Or (lIdx And &HF) * (2 ^ 12)
-            Map(&H200 + lChar) = (lIdx And &H3) * (2 ^ 22) Or (lIdx And &H3C) * (2 ^ 6)
-            Map(&H300 + lChar) = lIdx * (2 ^ 16)
-        Next
+    If Not TypeOf oCtl Is IOleObject Then
+        Exit Function
     End If
-    '--- base64 decode loop
-    baInput = StrConv(Replace(Replace(sText, vbCr, vbNullString), vbLf, vbNullString), vbFromUnicode)
-    lPtr = pvThunkAllocate
-    For lIdx = 0 To UBound(baInput) - 3 Step 4
-        lChar = Map(baInput(lIdx + 0)) Or Map(&H100 + baInput(lIdx + 1)) Or Map(&H200 + baInput(lIdx + 2)) Or Map(&H300 + baInput(lIdx + 3))
-        Call CopyMemory(ByVal lPtr, lChar, 3)
-        lPtr = (lPtr Xor SIGN_BIT) + 3 Xor SIGN_BIT
-    Next
+    Set pOleObject = oCtl
+    If pOleObject.GetClientSite(pOleControlSite) <> S_OK Then
+        Exit Function
+    End If
+    If Not pOleControlSite Is Nothing Then
+        Set GetExtendedControl = pOleControlSite.GetExtendedControl
+    End If
+    Exit Function
+EH:
+    PrintError FUNC_NAME
 End Function
 
-' = interface implemenattion ================================================
+'= interface implemenattion ================================================
 
-Private Function AddRef(This As IPAOHookStruct) As Long
+Private Function AddRef(This As UcsIPAOHook) As Long
     Const FUNC_NAME     As String = "AddRef"
     
     On Error GoTo EH
@@ -266,7 +251,7 @@ EH:
     PrintError FUNC_NAME & "(This.CtlName=" & This.CtlName & ")"
 End Function
 
-'Private Function Release(This As IPAOHookStruct) As Long
+'Private Function Release(This As UcsIPAOHook) As Long
 '    Const FUNC_NAME     As String = "Release"
 '
 '    On Error GoTo EH
@@ -276,33 +261,33 @@ End Function
 '    PrintError FUNC_NAME & "(This.CtlName=" & This.CtlName & ")"
 'End Function
 
-Private Function QueryInterface(This As IPAOHookStruct, riid As VBGUID, pvObj As Long) As Long
+Private Function QueryInterface(This As UcsIPAOHook, riid As VBGUID, pObjPtr As LongPtr) As Long
     Const FUNC_NAME     As String = "QueryInterface"
     
     On Error GoTo EH
     If IsEqualGUID(riid, IID_IOleInPlaceActiveObject) Then
-        pvObj = This.ThisPtr
+        pObjPtr = This.ThisPtr
         AddRef This
         QueryInterface = 0
     Else
-        QueryInterface = pvToIOleIPAO(This.IPAORealPtr).QueryInterface(ByVal VarPtr(riid), pvObj)
+        QueryInterface = pvToIOleIPAO(This.IPAORealPtr).QueryInterface(ByVal VarPtr(riid), pObjPtr)
     End If
     Exit Function
 EH:
     PrintError FUNC_NAME & "(This.CtlName=" & This.CtlName & ")"
 End Function
 
-Private Function GetWindow(This As IPAOHookStruct, phwnd As Long) As Long
+Private Function GetWindow(This As UcsIPAOHook, hWnd As LongPtr) As Long
     Const FUNC_NAME     As String = "GetWindow"
     
     On Error GoTo EH
-    GetWindow = pvToIOleIPAO(This.IPAORealPtr).GetWindow(phwnd)
+    GetWindow = pvToIOleIPAO(This.IPAORealPtr).GetWindow(hWnd)
     Exit Function
 EH:
     PrintError FUNC_NAME & "(This.CtlName=" & This.CtlName & ")"
 End Function
 
-Private Function ContextSensitiveHelp(This As IPAOHookStruct, ByVal fEnterMode As Long) As Long
+Private Function ContextSensitiveHelp(This As UcsIPAOHook, ByVal fEnterMode As Long) As Long
     Const FUNC_NAME     As String = "ContextSensitiveHelp"
     
     On Error GoTo EH
@@ -312,7 +297,7 @@ EH:
     PrintError FUNC_NAME & "(This.CtlName=" & This.CtlName & ")"
 End Function
 
-Private Function TranslateAccelerator(This As IPAOHookStruct, uMsg As APIMSG) As Long
+Private Function TranslateAccelerator(This As UcsIPAOHook, uMsg As APIMSG) As Long
     Const FUNC_NAME     As String = "TranslateAccelerator"
     Dim oGrid           As GridEX
     Dim bHandled        As Boolean
@@ -344,7 +329,7 @@ EH:
     PrintError FUNC_NAME & "(This.CtlName=" & This.CtlName & ")"
 End Function
 
-Private Function OnFrameWindowActivate(This As IPAOHookStruct, ByVal fActivate As Long) As Long
+Private Function OnFrameWindowActivate(This As UcsIPAOHook, ByVal fActivate As Long) As Long
     Const FUNC_NAME     As String = "OnFrameWindowActivate"
     
     On Error GoTo EH
@@ -354,7 +339,7 @@ EH:
     PrintError FUNC_NAME & "(This.CtlName=" & This.CtlName & ")"
 End Function
 
-Private Function OnDocWindowActivate(This As IPAOHookStruct, ByVal fActivate As Long) As Long
+Private Function OnDocWindowActivate(This As UcsIPAOHook, ByVal fActivate As Long) As Long
     Const FUNC_NAME     As String = "OnDocWindowActivate"
     
     On Error GoTo EH
@@ -364,7 +349,7 @@ EH:
     PrintError FUNC_NAME & "(This.CtlName=" & This.CtlName & ")"
 End Function
 
-Private Function ResizeBorder(This As IPAOHookStruct, prcBorder As RECT, ByVal puiWindow As IOleInPlaceUIWindow, ByVal fFrameWindow As Long) As Long
+Private Function ResizeBorder(This As UcsIPAOHook, prcBorder As RECT, ByVal puiWindow As IOleInPlaceUIWindow, ByVal fFrameWindow As Long) As Long
     Const FUNC_NAME     As String = "ResizeBorder"
     
     On Error GoTo EH
@@ -374,7 +359,7 @@ EH:
     PrintError FUNC_NAME & "(This.CtlName=" & This.CtlName & ")"
 End Function
 
-Private Function EnableModeless(This As IPAOHookStruct, ByVal fEnable As Long) As Long
+Private Function EnableModeless(This As UcsIPAOHook, ByVal fEnable As Long) As Long
     Const FUNC_NAME     As String = "EnableModeless"
     
     On Error GoTo EH
@@ -382,23 +367,4 @@ Private Function EnableModeless(This As IPAOHookStruct, ByVal fEnable As Long) A
     Exit Function
 EH:
     PrintError FUNC_NAME & "(This.CtlName=" & This.CtlName & ")"
-End Function
-
-Private Function GetExtendedControl(oCtl As IUnknown) As VBControlExtender
-    Const FUNC_NAME     As String = "GetExtendedControl"
-    Dim pOleObject      As IOleObject
-    Dim pOleControlSite As IOleControlSite
-    
-    On Error GoTo EH
-    If Not oCtl Is Nothing Then
-        If TypeOf oCtl Is IOleObject Then
-            Set pOleObject = oCtl
-            If pOleObject.GetClientSite(pOleControlSite) = S_OK And Not pOleControlSite Is Nothing Then
-                Set GetExtendedControl = pOleControlSite.GetExtendedControl
-            End If
-        End If
-    End If
-    Exit Function
-EH:
-    PrintError FUNC_NAME
 End Function

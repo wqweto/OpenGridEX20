@@ -272,6 +272,10 @@ Public Function InitCleanupThunk(ByVal hHandle As Long, sModuleName As String, s
     End If
 End Function
 
+Public Function ThunkAllocate(sText As String, Optional ByVal Size As Long) As Long
+    ThunkAllocate = pvThunkAllocate(sText, Size)
+End Function
+
 Private Function pvThunkIdeOwner(hIdeOwner As Long) As Boolean
     #If Not ImplNoIdeProtection Then
         Dim lProcessId      As Long
