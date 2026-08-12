@@ -1695,3 +1695,17 @@ vertical lines only. One capture showed three things.
 - `ARCHITECTURE.md`/`PROPERTIES.md` references updated, including the
   stale `pvBufferOpen`/`pvBufferClose` aliases and a `pvAggregate` that
   had long since become the public `DataAggregateValues`
+
+### Fixed (mdIPAO goes LongPtr-clean)
+
+- The IPAO vtable is built in a `LongPtr` array through a `pvToPtr` cast
+  helper -- `VBA.CLng(AddressOf ...)` would truncate a 64-bit procedure
+  address -- and allocated as `PTR_SIZE * 10` instead of `LenB` of a UDT
+- `CoTaskMemAlloc` takes `SIZE_T`: the `cb` parameter declared `LongPtr`
+- A private `NULL_PTR As Long` shadowed the public one from
+  `mdGlobals.bas` that is properly `LongPtr` under `Win64` -- deleted
+- The raw refcount-skipping copies in `TranslateAccelerator` moved
+  pointer-sized payloads with a hardcoded `4` -- now `PTR_SIZE`
+- `pvGetVTable` returns `LongPtr`
+- Known remaining 32-bit hole: `STR_RELEASE_THUNK` (and `ThunkAllocate`
+  behind it) is x86 machine code; an x64 build needs an x64 thunk

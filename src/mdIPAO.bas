@@ -28,7 +28,7 @@ End Type
 Private Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (Destination As Any, Source As Any, ByVal Length As LongPtr)
 Private Declare Function IsEqualGUID Lib "ole32" (iid1 As Any, iid2 As Any) As Long
 Private Declare Function vbaObjSetAddref Lib "msvbvm60" Alias "__vbaObjSetAddref" (oDest As Any, ByVal lSrcPtr As LongPtr) As Long
-Private Declare Function CoTaskMemAlloc Lib "ole32" (ByVal cb As Long) As LongPtr
+Private Declare Function CoTaskMemAlloc Lib "ole32" (ByVal cb As LongPtr) As LongPtr
 
 Private Type VBGUID
     Data1           As Long
@@ -42,15 +42,9 @@ End Type
 '=========================================================================
 
 Private Const S_OK                      As Long = 0
-Private Const NULL_PTR                  As Long = 0
 
 Private IID_IOleInPlaceActiveObject As VBGUID
-Private m_uVTable                   As UcsIPAOHookVTable
-Private m_lpVTable                  As LongPtr
-
-Private Type UcsIPAOHookVTable
-    VTable(0 To 9)  As LongPtr
-End Type
+Private m_pVTable                   As LongPtr
 
 '=========================================================================
 ' Error handling
@@ -178,33 +172,32 @@ EH:
     RaiseError FUNC_NAME
 End Sub
 
-Private Function pvGetVTable() As Long
+Private Function pvGetVTable() As LongPtr
     Dim STR_RELEASE_THUNK       As String: STR_RELEASE_THUNK = "i1QkBItCBIsIUP9RCMIEAA==" ' 13.5.2020 20:15:19
     Const RELEASE_THUNK_SIZE    As Long = 16
+    Dim aVTable(0 To 9)     As LongPtr
     
-    If m_lpVTable = 0 Then
+    If m_pVTable = 0 Then
         '--- init guid
         With IID_IOleInPlaceActiveObject
            .Data1 = &H117
            .Data4(0) = &HC0
            .Data4(7) = &H46
         End With
-        With m_uVTable
-            .VTable(0) = VBA.CLng(AddressOf QueryInterface)
-            .VTable(1) = VBA.CLng(AddressOf AddRef)
-            .VTable(2) = ThunkAllocate(STR_RELEASE_THUNK, RELEASE_THUNK_SIZE)
-            .VTable(3) = VBA.CLng(AddressOf GetWindow)
-            .VTable(4) = VBA.CLng(AddressOf ContextSensitiveHelp)
-            .VTable(5) = VBA.CLng(AddressOf TranslateAccelerator)
-            .VTable(6) = VBA.CLng(AddressOf OnFrameWindowActivate)
-            .VTable(7) = VBA.CLng(AddressOf OnDocWindowActivate)
-            .VTable(8) = VBA.CLng(AddressOf ResizeBorder)
-            .VTable(9) = VBA.CLng(AddressOf EnableModeless)
-        End With
-        m_lpVTable = CoTaskMemAlloc(LenB(m_uVTable))
-        Call CopyMemory(ByVal m_lpVTable, m_uVTable, LenB(m_uVTable))
+        aVTable(0) = pvToPtr(AddressOf QueryInterface)
+        aVTable(1) = pvToPtr(AddressOf AddRef)
+        aVTable(2) = ThunkAllocate(STR_RELEASE_THUNK, RELEASE_THUNK_SIZE)
+        aVTable(3) = pvToPtr(AddressOf GetWindow)
+        aVTable(4) = pvToPtr(AddressOf ContextSensitiveHelp)
+        aVTable(5) = pvToPtr(AddressOf TranslateAccelerator)
+        aVTable(6) = pvToPtr(AddressOf OnFrameWindowActivate)
+        aVTable(7) = pvToPtr(AddressOf OnDocWindowActivate)
+        aVTable(8) = pvToPtr(AddressOf ResizeBorder)
+        aVTable(9) = pvToPtr(AddressOf EnableModeless)
+        m_pVTable = CoTaskMemAlloc(PTR_SIZE * 10)
+        Call CopyMemory(ByVal m_pVTable, aVTable(0), PTR_SIZE * 10)
     End If
-    pvGetVTable = m_lpVTable
+    pvGetVTable = m_pVTable
 End Function
 
 Private Function pvToObject(ByVal lPtr As LongPtr) As Object
@@ -213,6 +206,10 @@ End Function
 
 Private Function pvToIOleIPAO(ByVal lPtr As LongPtr) As IOleInPlaceActiveObject
     Call vbaObjSetAddref(pvToIOleIPAO, lPtr)
+End Function
+
+Private Function pvToPtr(ByVal lPtr As LongPtr) As LongPtr
+    pvToPtr = lPtr
 End Function
 
 Private Function GetExtendedControl(oCtl As IUnknown) As VBControlExtender
@@ -315,9 +312,9 @@ Private Function TranslateAccelerator(This As UcsIPAOHook, uMsg As APIMSG) As Lo
         TranslateAccelerator = S_OK
     Else
         '--- skip refcounting on This.IPAORealPtr
-        Call CopyMemory(pIPAOReal, This.IPAORealPtr, 4)
+        Call CopyMemory(pIPAOReal, This.IPAORealPtr, PTR_SIZE)
         TranslateAccelerator = pIPAOReal.TranslateAccelerator(ByVal VarPtr(uMsg))
-        Call CopyMemory(pIPAOReal, NULL_PTR, 4)
+        Call CopyMemory(pIPAOReal, NULL_PTR, PTR_SIZE)
     End If
     If This.CtlPtr <> 0 Then
         Set oGrid = pvToObject(This.CtlPtr)
